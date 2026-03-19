@@ -1,7 +1,7 @@
 // api/transcript-status.js
 // Poll AssemblyAI for transcript status and result
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   const { id } = req.query;
@@ -63,3 +63,7 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: err.message });
   }
 }
+
+
+export default handler;
+if (typeof module !== "undefined") module.exports = handler;

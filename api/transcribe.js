@@ -1,5 +1,5 @@
 // api/transcribe.js
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { videoUrl } = req.body;
@@ -17,7 +17,6 @@ module.exports = async function handler(req, res) {
       },
       body: JSON.stringify({
         audio_url: videoUrl,
-        speech_models: ["universal-2"],
         speaker_labels: true,
         auto_highlights: true,
         sentiment_analysis: true
@@ -25,7 +24,7 @@ module.exports = async function handler(req, res) {
     });
 
     const data = await submitRes.json();
-    console.log('[ClipAI] AssemblyAI response:', JSON.stringify(data).substring(0, 200));
+    console.log('[ClipAI] AssemblyAI submit response:', JSON.stringify(data).substring(0, 200));
 
     if (!submitRes.ok) {
       return res.status(500).json({ error: data.error || 'AssemblyAI submission failed' });
@@ -37,3 +36,7 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: err.message });
   }
 };
+
+
+export default handler;
+if (typeof module !== "undefined") module.exports = handler;

@@ -1,7 +1,7 @@
 // api/caption-style.js
 // Uses Groq (free) to generate caption style recommendations
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { clipText, words, stylePrompt, startMs } = req.body;
@@ -60,3 +60,7 @@ JSON only, no markdown.`;
     return res.status(500).json({ error: err.message });
   }
 }
+
+
+export default handler;
+if (typeof module !== "undefined") module.exports = handler;

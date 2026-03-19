@@ -25,7 +25,7 @@ async function uploadBufferToAssemblyAI(buffer, apiKey) {
   return data.upload_url;
 }
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { url } = req.body;
@@ -77,3 +77,7 @@ module.exports = async function handler(req, res) {
   // For any other URL, try passing directly (works for Loom, Dropbox, Drive direct links, etc.)
   return res.status(200).json({ resolvedUrl: url, source: 'passthrough' });
 }
+
+
+export default handler;
+if (typeof module !== "undefined") module.exports = handler;

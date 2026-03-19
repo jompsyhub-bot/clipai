@@ -1,5 +1,5 @@
 // api/test-keys.js — verifies API keys are working
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   const aaiKey = process.env.ASSEMBLYAI_API_KEY;
   const groqKey = process.env.GROQ_API_KEY;
 
@@ -37,3 +37,7 @@ module.exports = async function handler(req, res) {
 
   return res.status(200).json(results);
 };
+
+
+export default handler;
+if (typeof module !== "undefined") module.exports = handler;

@@ -1,7 +1,7 @@
 // api/suggest-clips.js
 // Uses Groq (free, no credit card needed) to suggest the best short clips
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { transcript, utterances, highlights, duration, customPrompt } = req.body;
@@ -86,3 +86,7 @@ function formatTime(seconds) {
   const s = Math.floor(seconds % 60);
   return `${m}:${String(s).padStart(2, '0')}`;
 }
+
+
+export default handler;
+if (typeof module !== "undefined") module.exports = handler;

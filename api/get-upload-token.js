@@ -3,7 +3,7 @@
 // This is safe because AssemblyAI upload tokens only allow uploading files,
 // not reading transcripts or making other API calls.
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   const key = process.env.ASSEMBLYAI_API_KEY;
@@ -11,3 +11,7 @@ module.exports = async function handler(req, res) {
 
   return res.status(200).json({ token: key });
 };
+
+
+export default handler;
+if (typeof module !== "undefined") module.exports = handler;
