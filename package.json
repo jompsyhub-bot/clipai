@@ -1,0 +1,12 @@
+{
+  "name": "clipai",
+  "version": "1.0.0",
+  "description": "AI-powered video clip generator",
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "assemblyai": "^4.0.0",
+    "axios": "^1.6.0",
+    "busboy": "^1.6.0",
+    "fs-extra": "^11.2.0"
+  }
+}
