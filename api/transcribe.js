@@ -37,6 +37,4 @@ async function handler(req, res) {
   }
 };
 
-
 export default handler;
-if (typeof module !== "undefined") module.exports = handler;

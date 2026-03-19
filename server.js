@@ -84,12 +84,21 @@ const server = http.createServer(async (req, res) => {
     res.setHeader = (k, v) => _origSetHeader(k, v);
 
     try {
-      delete require.cache[require.resolve(routePath)];
-      const handler = require(routePath);
-      const fn = handler.default || handler;
+      // Support both CommonJS (upload-local, cut-clip) and ES modules (api routes)
+      let fn;
+      try {
+        delete require.cache[require.resolve(routePath)];
+        const handler = require(routePath);
+        fn = handler.default || handler;
+      } catch(requireErr) {
+        // Fall back to dynamic import for ES modules
+        const fileUrl = 'file:///' + routePath.replace(/\\/g, '/');
+        const mod = await import(fileUrl + '?t=' + Date.now());
+        fn = mod.default || mod;
+      }
       await fn(req, res);
     } catch (err) {
-      console.error(`[${routeName}] Error:`, err.message);
+      console.error('[' + routeName + '] Error:', err.message);
       if (!res.headersSent) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: err.message }));

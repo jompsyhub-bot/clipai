@@ -87,6 +87,4 @@ function formatTime(seconds) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-
 export default handler;
-if (typeof module !== "undefined") module.exports = handler;

@@ -78,6 +78,4 @@ async function handler(req, res) {
   return res.status(200).json({ resolvedUrl: url, source: 'passthrough' });
 }
 
-
 export default handler;
-if (typeof module !== "undefined") module.exports = handler;

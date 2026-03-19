@@ -61,6 +61,4 @@ JSON only, no markdown.`;
   }
 }
 
-
 export default handler;
-if (typeof module !== "undefined") module.exports = handler;
