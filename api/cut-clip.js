@@ -6,7 +6,10 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const FFMPEG = 'C:\\ffmpeg\\bin\\ffmpeg.exe';
+// Use Windows path locally, system ffmpeg on Railway/Linux
+const FFMPEG = process.platform === 'win32'
+  ? 'C:\\ffmpeg\\bin\\ffmpeg.exe'
+  : 'ffmpeg';
 const UPLOAD_DIR = path.join(os.tmpdir(), 'clipai_uploads');
 
 function msToSeconds(ms) {

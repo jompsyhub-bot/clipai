@@ -2,11 +2,14 @@
   "name": "clipai",
   "version": "1.0.0",
   "description": "AI-powered video clip generator",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
   "engines": { "node": ">=18" },
   "dependencies": {
-    "assemblyai": "^4.0.0",
     "axios": "^1.6.0",
-    "busboy": "^1.6.0",
     "fs-extra": "^11.2.0"
   }
 }
