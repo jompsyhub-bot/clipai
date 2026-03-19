@@ -6,10 +6,41 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-// Use Windows path locally, system ffmpeg on Railway/Linux
-const FFMPEG = process.platform === 'win32'
-  ? 'C:\\ffmpeg\\bin\\ffmpeg.exe'
-  : 'ffmpeg';
+// Find FFmpeg path — checks multiple locations
+const { execSync } = require('child_process');
+
+function findFFmpeg() {
+  if (process.platform === 'win32') {
+    return 'C:\\ffmpeg\\bin\\ffmpeg.exe';
+  }
+  // On Linux (Railway), try to find ffmpeg in common locations
+  const candidates = [
+    '/usr/bin/ffmpeg',
+    '/usr/local/bin/ffmpeg',
+    '/nix/store',
+    'ffmpeg'
+  ];
+  // Try which command first
+  try {
+    const path = execSync('which ffmpeg 2>/dev/null', { encoding: 'utf8' }).trim();
+    if (path) {
+      console.log('[ClipAI] Found ffmpeg at:', path);
+      return path;
+    }
+  } catch(e) {}
+  // Try nix store (Railway nixpacks)
+  try {
+    const nixPath = execSync('find /nix/store -name "ffmpeg" -type f 2>/dev/null | head -1', { encoding: 'utf8' }).trim();
+    if (nixPath) {
+      console.log('[ClipAI] Found ffmpeg in nix store:', nixPath);
+      return nixPath;
+    }
+  } catch(e) {}
+  return 'ffmpeg';
+}
+
+const FFMPEG = findFFmpeg();
+console.log('[ClipAI] Using FFmpeg:', FFMPEG);
 const UPLOAD_DIR = path.join(os.tmpdir(), 'clipai_uploads');
 
 function msToSeconds(ms) {
@@ -23,8 +54,20 @@ module.exports = async function handler(req, res) {
   if (!localFileId) return res.status(400).json({ error: 'localFileId is required' });
   if (startMs === undefined || endMs === undefined) return res.status(400).json({ error: 'startMs and endMs required' });
 
-  if (!fs.existsSync(FFMPEG)) {
-    return res.status(500).json({ error: 'FFmpeg not found at ' + FFMPEG });
+  // Verify FFmpeg works
+  try {
+    execSync(FFMPEG + ' -version', { stdio: 'pipe' });
+  } catch(e) {
+    // Try finding it again at request time
+    try {
+      const p = execSync('which ffmpeg', { encoding: 'utf8' }).trim();
+      if (p) {
+        console.log('[ClipAI] Found ffmpeg via which:', p);
+        // Use it directly
+        return await cutWithFFmpeg(req, res, p);
+      }
+    } catch(e2) {}
+    return res.status(500).json({ error: 'FFmpeg not available on this server. Path tried: ' + FFMPEG });
   }
 
   // Security: prevent path traversal
