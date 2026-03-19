@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "build": "apt-get install -y ffmpeg 2>/dev/null || true"
   },
   "engines": { "node": ">=18" },
   "dependencies": {
