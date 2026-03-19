@@ -35,10 +35,14 @@ const server = http.createServer(async (req, res) => {
   const parsedUrl = new URL(req.url, `http://localhost:${PORT}`);
   const pathname = parsedUrl.pathname;
 
-  // CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // CORS — allow Vercel frontend and local dev
+  const origin = req.headers.origin || '';
+  const allowed = ['https://clipai-ten.vercel.app', 'http://localhost:3000', 'http://127.0.0.1:3000'];
+  const allowOrigin = allowed.includes(origin) ? origin : allowed[0];
+  res.setHeader('Access-Control-Allow-Origin', allowOrigin);
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,x-filename');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
 
   // ── API ROUTES ──

@@ -754,6 +754,10 @@
 <div id="toast"></div>
 
 <script>
+// ═══ CONFIG ═══
+// Railway handles video cutting (FFmpeg). Vercel handles everything else.
+const RAILWAY_URL = 'https://clipai-production-24ce.up.railway.app';
+
 // ═══ STATE ═══
 const state = {
   transcriptId: null,
@@ -878,7 +882,8 @@ async function uploadFile(file) {
     const xhr = new XMLHttpRequest();
     activeXHR = xhr;
     // Send as raw binary — simpler, faster, no multipart parsing needed
-    xhr.open('POST', '/api/upload-local', true);
+    // Upload goes to Railway (needs local storage for FFmpeg cutting)
+    xhr.open('POST', RAILWAY_URL + '/api/upload-local', true);
     xhr.setRequestHeader('content-type', 'application/octet-stream');
     xhr.setRequestHeader('x-filename', encodeURIComponent(file.name));
 
@@ -1537,7 +1542,7 @@ async function exportTo(platform) {
       if (!state.localFileId) {
         throw new Error('Local video file not found. Please re-upload your video.');
       }
-      const res = await fetch('/api/cut-clip', {
+      const res = await fetch(RAILWAY_URL + '/api/cut-clip', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
