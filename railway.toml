@@ -1,9 +1,3 @@
-[build]
-builder = "nixpacks"
-
-[build.nixpacksPlan.phases.setup]
-nixPkgs = ["ffmpeg"]
-
 [deploy]
 startCommand = "node server.js"
 restartPolicyType = "on_failure"
