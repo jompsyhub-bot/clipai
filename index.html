@@ -1550,9 +1550,7 @@ async function exportTo(platform) {
           startMs: clip.start_ms || 0,
           endMs: clip.end_ms || 0,
           clipTitle: label,
-          clipIndex: idx,
-          captionLines: clip.caption_lines || [],
-          words: state.words ? state.words.filter(w => w.start >= (clip.start_ms || 0) && w.start <= (clip.end_ms || 0)).slice(0, 100) : []
+          clipIndex: idx
         })
       });
 

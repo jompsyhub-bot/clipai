@@ -555,8 +555,23 @@
 
 <nav>
   <div class="logo">clip<span>AI</span></div>
-  <span class="nav-badge">Powered by Claude + AssemblyAI</span>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span class="nav-badge">Powered by Groq + AssemblyAI</span>
+    <div id="nav-auth">
+      <a href="/login.html" style="font-size:13px;color:var(--accent2);text-decoration:none;padding:6px 14px;border:1px solid rgba(124,106,247,0.3);border-radius:8px;font-family:var(--font)">Sign In</a>
+    </div>
+  </div>
 </nav>
+
+<!-- Projects Sidebar -->
+<div id="projects-sidebar" style="display:none;position:fixed;top:0;right:0;width:320px;height:100vh;background:var(--bg2);border-left:1px solid var(--border2);z-index:200;overflow-y:auto;padding:24px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <div style="font-size:16px;font-weight:700;color:#fff">My Projects</div>
+    <button onclick="closeSidebar()" style="background:transparent;border:none;color:var(--text3);font-size:20px;cursor:pointer">✕</button>
+  </div>
+  <div id="projects-list"><div style="color:var(--text3);font-size:13px">Loading...</div></div>
+</div>
+<div id="sidebar-overlay" onclick="closeSidebar()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:199"></div>
 
 <div class="hero">
   <span class="hero-eyebrow">✦ AI Video Repurposing</span>
@@ -699,9 +714,10 @@
       <div class="ai-output" id="clip-ai-out"></div>
     </div>
     <div class="action-row">
-      <button class="btn btn-primary btn-full" onclick="goStage(3)">
-        Continue to export →
-      </button>
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button class="btn btn-ghost" onclick="saveProject()" style="flex:1">💾 Save Project</button>
+        <button class="btn btn-primary" onclick="goStage(3)" style="flex:2">Continue to export →</button>
+      </div>
     </div>
   </div>
 
@@ -1599,9 +1615,93 @@ async function exportTo(platform) {
   }
 }
 
+// ═══ AUTH ═══
+function initAuth() {
+  const token = localStorage.getItem('clipai_token');
+  const user = JSON.parse(localStorage.getItem('clipai_user') || 'null');
+  const navAuth = document.getElementById('nav-auth');
+  if (token && user) {
+    navAuth.innerHTML =
+      '<button onclick="openSidebar()" style="font-size:13px;color:var(--text2);background:var(--bg3);border:1px solid var(--border2);padding:6px 14px;border-radius:8px;cursor:pointer;font-family:var(--font);margin-right:6px">📁 Projects</button>' +
+      '<button onclick="doLogout()" style="font-size:13px;color:var(--text3);background:transparent;border:1px solid var(--border);padding:6px 14px;border-radius:8px;cursor:pointer;font-family:var(--font)">' + (user.email || '').split('@')[0] + ' · Sign out</button>';
+  }
+}
+
+function doLogout() {
+  localStorage.removeItem('clipai_token');
+  localStorage.removeItem('clipai_user');
+  window.location.reload();
+}
+
+async function saveProject() {
+  const token = localStorage.getItem('clipai_token');
+  if (!token) { toast('Sign in to save projects'); window.location.href = '/login.html'; return; }
+  if (!state.transcript) { toast('Nothing to save yet'); return; }
+  try {
+    const res = await fetch('/api/projects', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'authorization': 'Bearer ' + token },
+      body: JSON.stringify({
+        title: state.clips[0]?.title || 'Untitled Project',
+        transcript: state.transcript.substring(0, 5000),
+        clips: state.clips,
+        videoFilename: state.localFileId || '',
+        duration: state.duration
+      })
+    });
+    if (res.ok) toast('Project saved!');
+    else toast('Save failed — are you signed in?');
+  } catch(e) { toast('Save error: ' + e.message); }
+}
+
+async function openSidebar() {
+  const token = localStorage.getItem('clipai_token');
+  if (!token) { window.location.href = '/login.html'; return; }
+  document.getElementById('projects-sidebar').style.display = 'block';
+  document.getElementById('sidebar-overlay').style.display = 'block';
+  const listEl = document.getElementById('projects-list');
+  listEl.innerHTML = '<div style="color:var(--text3);font-size:13px">Loading...</div>';
+  try {
+    const res = await fetch('/api/projects', { headers: { 'authorization': 'Bearer ' + token } });
+    const projects = await res.json();
+    if (!projects.length) {
+      listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">No saved projects yet.<br>Process a video and save it!</div>';
+      return;
+    }
+    listEl.innerHTML = projects.map(p =>
+      '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;cursor:pointer" onclick="loadProject(' + JSON.stringify(JSON.stringify(p)) + ')">' +
+        '<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px">' + (p.title || 'Untitled') + '</div>' +
+        '<div style="font-size:11px;color:var(--text3);font-family:var(--mono)">' + new Date(p.created_at).toLocaleDateString() + ' · ' + (p.clips ? p.clips.length : 0) + ' clips</div>' +
+      '</div>'
+    ).join('');
+  } catch(e) {
+    listEl.innerHTML = '<div style="color:var(--red);font-size:13px">Error loading projects</div>';
+  }
+}
+
+function loadProject(projectJson) {
+  const p = JSON.parse(projectJson);
+  state.transcript = p.transcript || '';
+  state.clips = p.clips || [];
+  state.duration = p.duration || 0;
+  closeSidebar();
+  if (state.clips.length > 0) {
+    unlockStage(1); unlockStage(2); unlockStage(3);
+    goStage(2);
+    renderClips();
+    toast('Project loaded: ' + (p.title || 'Untitled'));
+  }
+}
+
+function closeSidebar() {
+  document.getElementById('projects-sidebar').style.display = 'none';
+  document.getElementById('sidebar-overlay').style.display = 'none';
+}
+
 // Init
 state.unlockedStage = 0;
 goStage(0);
+initAuth();
 </script>
 </body>
 </html>

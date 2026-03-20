@@ -61,18 +61,33 @@ module.exports = async function handler(req, res) {
     const durationSec = ((endMs - startMs) / 1000).toFixed(3);
     console.log('[ClipAI] Cutting:', safeFileId, 'from', startSec, 'to', endSec);
 
-    // Build SRT subtitle file from caption lines
+    // Build SRT from word-level timestamps (word by word, 3 words per subtitle)
     const srtPath = path.join(os.tmpdir(), 'clipai_subs_' + ts + '.srt');
-    const captions = captionLines || [];
-    if (captions.length > 0) {
+    const clipStartMs = startMs;
+    const wordList = (words || []).filter(w => w.start >= clipStartMs && w.start <= endMs);
+
+    if (wordList.length > 0) {
+      // Group into chunks of 3 words
+      const chunks = [];
+      for (let i = 0; i < wordList.length; i += 3) {
+        const group = wordList.slice(i, i + 3);
+        const text = group.map(w => w.text).join(' ');
+        const chunkStart = (group[0].start - clipStartMs) / 1000;
+        const chunkEnd = (group[group.length - 1].end - clipStartMs) / 1000 + 0.1;
+        chunks.push({ text, start: chunkStart, end: chunkEnd });
+      }
+      const srtContent = chunks.map((c, i) =>
+        (i + 1) + '\n' + toSRTTime(c.start) + ' --> ' + toSRTTime(c.end) + '\n' + c.text + '\n'
+      ).join('\n');
+      fs.writeFileSync(srtPath, srtContent);
+    } else if ((captionLines || []).length > 0) {
+      // Fallback: split caption lines evenly if no word timestamps
       const totalDur = parseFloat(durationSec);
-      const segDur = totalDur / captions.length;
-      const srtContent = captions.map((line, i) => {
+      const segDur = totalDur / captionLines.length;
+      const srtContent = captionLines.map((line, i) => {
         const segStart = i * segDur;
         const segEnd = (i + 1) * segDur;
-        return (i + 1) + '\n' +
-          toSRTTime(segStart) + ' --> ' + toSRTTime(segEnd) + '\n' +
-          line + '\n';
+        return (i + 1) + '\n' + toSRTTime(segStart) + ' --> ' + toSRTTime(segEnd) + '\n' + line + '\n';
       }).join('\n');
       fs.writeFileSync(srtPath, srtContent);
     }
