@@ -6,9 +6,7 @@ const os = require('os');
 const UPLOAD_DIR = path.join(os.tmpdir(), 'clipai_uploads');
 
 function getFFmpegPath() {
-  if (process.platform === 'win32') {
-    return 'C:\\ffmpeg\\bin\\ffmpeg.exe';
-  }
+  if (process.platform === 'win32') return 'C:\\ffmpeg\\bin\\ffmpeg.exe';
   try {
     const p = execSync('which ffmpeg', { encoding: 'utf8' }).trim();
     if (p) return p;
@@ -16,9 +14,7 @@ function getFFmpegPath() {
   return 'ffmpeg';
 }
 
-function msToSeconds(ms) {
-  return (ms / 1000).toFixed(3);
-}
+function msToSeconds(ms) { return (ms / 1000).toFixed(3); }
 
 function toSRTTime(seconds) {
   const h = Math.floor(seconds / 3600);
@@ -48,8 +44,9 @@ module.exports = async function handler(req, res) {
   const ts = Date.now();
   const safeTitle = (clipTitle || 'clip').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
   const outputPath = path.join(os.tmpdir(), 'clipai_out_' + ts + '.mp4');
-
   const srtPath = path.join(os.tmpdir(), 'clipai_subs_' + ts + '.srt');
+  let srtCreated = false;
+
   const cleanup = () => {
     try { if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath); } catch(e) {}
     try { if (fs.existsSync(srtPath)) fs.unlinkSync(srtPath); } catch(e) {}
@@ -61,57 +58,52 @@ module.exports = async function handler(req, res) {
     const durationSec = ((endMs - startMs) / 1000).toFixed(3);
     console.log('[ClipAI] Cutting:', safeFileId, 'from', startSec, 'to', endSec);
 
-    // Build SRT from word-level timestamps (word by word, 3 words per subtitle)
-    const srtPath = path.join(os.tmpdir(), 'clipai_subs_' + ts + '.srt');
-    const clipStartMs = startMs;
-    const wordList = (words || []).filter(w => w.start >= clipStartMs && w.start <= endMs);
+    // Build SRT subtitle file
+    const wordList = (words || []).filter(w => w.start >= startMs && w.start <= endMs);
 
     if (wordList.length > 0) {
-      // Group into chunks of 3 words
+      // Word-level karaoke captions — 3 words per subtitle chunk
       const chunks = [];
       for (let i = 0; i < wordList.length; i += 3) {
         const group = wordList.slice(i, i + 3);
         const text = group.map(w => w.text).join(' ');
-        const chunkStart = (group[0].start - clipStartMs) / 1000;
-        const chunkEnd = (group[group.length - 1].end - clipStartMs) / 1000 + 0.1;
-        chunks.push({ text, start: chunkStart, end: chunkEnd });
+        const chunkStart = (group[0].start - startMs) / 1000;
+        const chunkEnd = (group[group.length - 1].end - startMs) / 1000 + 0.1;
+        chunks.push({ text, start: Math.max(0, chunkStart), end: chunkEnd });
       }
       const srtContent = chunks.map((c, i) =>
         (i + 1) + '\n' + toSRTTime(c.start) + ' --> ' + toSRTTime(c.end) + '\n' + c.text + '\n'
       ).join('\n');
       fs.writeFileSync(srtPath, srtContent);
+      srtCreated = true;
+      console.log('[ClipAI] SRT created with', chunks.length, 'word chunks');
     } else if ((captionLines || []).length > 0) {
-      // Fallback: split caption lines evenly if no word timestamps
+      // Fallback: split AI caption lines evenly across duration
       const totalDur = parseFloat(durationSec);
       const segDur = totalDur / captionLines.length;
       const srtContent = captionLines.map((line, i) => {
         const segStart = i * segDur;
-        const segEnd = (i + 1) * segDur;
+        const segEnd = Math.min((i + 1) * segDur, totalDur);
         return (i + 1) + '\n' + toSRTTime(segStart) + ' --> ' + toSRTTime(segEnd) + '\n' + line + '\n';
       }).join('\n');
       fs.writeFileSync(srtPath, srtContent);
+      srtCreated = true;
+      console.log('[ClipAI] SRT created from caption lines');
     }
 
-    // Build video filter — scale to 9:16 + burn captions if available
+    // Build FFmpeg video filter
     let vfFilter = 'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black';
-    if (captions.length > 0 && fs.existsSync(srtPath)) {
+    if (srtCreated) {
       const srtEscaped = srtPath.replace(/\\/g, '/').replace(/:/g, '\\:');
-      vfFilter += ',subtitles=' + srtEscaped + ':force_style=\'FontName=Arial,FontSize=18,PrimaryColour=&Hffffff,OutlineColour=&H000000,Outline=2,Bold=1,Alignment=2,MarginV=60\'';
+      vfFilter += ',subtitles=' + srtEscaped + ':force_style=\'FontName=Arial,FontSize=16,PrimaryColour=&H00ffffff,OutlineColour=&H00000000,Outline=2,Bold=1,Alignment=2,MarginV=50\'';
     }
 
     const ffmpegArgs = [
-      '-y',
-      '-ss', startSec,
-      '-to', endSec,
-      '-i', inputPath,
+      '-y', '-ss', startSec, '-to', endSec, '-i', inputPath,
       '-vf', vfFilter,
-      '-c:v', 'libx264',
-      '-preset', 'ultrafast',
-      '-crf', '28',
-      '-c:a', 'aac',
-      '-b:a', '96k',
-      '-movflags', '+faststart',
-      '-threads', '1',
+      '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28',
+      '-c:a', 'aac', '-b:a', '96k',
+      '-movflags', '+faststart', '-threads', '1',
       outputPath
     ];
 
@@ -127,7 +119,6 @@ module.exports = async function handler(req, res) {
     });
 
     if (!fs.existsSync(outputPath)) throw new Error('Output file not created');
-
     const outSize = fs.statSync(outputPath).size;
     console.log('[ClipAI] Clip ready:', (outSize / 1024 / 1024).toFixed(1), 'MB');
 
