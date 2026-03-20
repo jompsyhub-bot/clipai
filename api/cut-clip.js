@@ -20,10 +20,18 @@ function msToSeconds(ms) {
   return (ms / 1000).toFixed(3);
 }
 
+function toSRTTime(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  const ms = Math.round((seconds % 1) * 1000);
+  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0') + ',' + String(ms).padStart(3,'0');
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { localFileId, startMs, endMs, clipTitle } = req.body;
+  const { localFileId, startMs, endMs, clipTitle, captionLines, words } = req.body;
   if (!localFileId) return res.status(400).json({ error: 'localFileId is required' });
   if (startMs === undefined || endMs === undefined) return res.status(400).json({ error: 'startMs and endMs required' });
 
@@ -41,21 +49,47 @@ module.exports = async function handler(req, res) {
   const safeTitle = (clipTitle || 'clip').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
   const outputPath = path.join(os.tmpdir(), 'clipai_out_' + ts + '.mp4');
 
+  const srtPath = path.join(os.tmpdir(), 'clipai_subs_' + ts + '.srt');
   const cleanup = () => {
     try { if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath); } catch(e) {}
+    try { if (fs.existsSync(srtPath)) fs.unlinkSync(srtPath); } catch(e) {}
   };
 
   try {
     const startSec = msToSeconds(startMs);
     const endSec = msToSeconds(endMs);
+    const durationSec = ((endMs - startMs) / 1000).toFixed(3);
     console.log('[ClipAI] Cutting:', safeFileId, 'from', startSec, 'to', endSec);
+
+    // Build SRT subtitle file from caption lines
+    const srtPath = path.join(os.tmpdir(), 'clipai_subs_' + ts + '.srt');
+    const captions = captionLines || [];
+    if (captions.length > 0) {
+      const totalDur = parseFloat(durationSec);
+      const segDur = totalDur / captions.length;
+      const srtContent = captions.map((line, i) => {
+        const segStart = i * segDur;
+        const segEnd = (i + 1) * segDur;
+        return (i + 1) + '\n' +
+          toSRTTime(segStart) + ' --> ' + toSRTTime(segEnd) + '\n' +
+          line + '\n';
+      }).join('\n');
+      fs.writeFileSync(srtPath, srtContent);
+    }
+
+    // Build video filter — scale to 9:16 + burn captions if available
+    let vfFilter = 'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black';
+    if (captions.length > 0 && fs.existsSync(srtPath)) {
+      const srtEscaped = srtPath.replace(/\\/g, '/').replace(/:/g, '\\:');
+      vfFilter += ',subtitles=' + srtEscaped + ':force_style=\'FontName=Arial,FontSize=18,PrimaryColour=&Hffffff,OutlineColour=&H000000,Outline=2,Bold=1,Alignment=2,MarginV=60\'';
+    }
 
     const ffmpegArgs = [
       '-y',
       '-ss', startSec,
       '-to', endSec,
       '-i', inputPath,
-      '-vf', 'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black',
+      '-vf', vfFilter,
       '-c:v', 'libx264',
       '-preset', 'ultrafast',
       '-crf', '28',
