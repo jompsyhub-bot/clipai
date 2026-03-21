@@ -770,6 +770,16 @@
 <div id="toast"></div>
 
 <script>
+// ═══ AUTH GUARD ═══
+// Redirect to login if not signed in
+(function() {
+  const token = localStorage.getItem('clipai_token');
+  const user = JSON.parse(localStorage.getItem('clipai_user') || 'null');
+  if (!token || !user) {
+    window.location.href = '/login.html';
+  }
+})();
+
 // ═══ CONFIG ═══
 // Railway handles video cutting (FFmpeg). Vercel handles everything else.
 const RAILWAY_URL = 'https://clipai-production-24ce.up.railway.app';
