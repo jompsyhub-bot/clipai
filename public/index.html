@@ -966,36 +966,46 @@ async function submitUrl() {
   if (!url) { toast('Please enter a video URL'); return; }
 
   const isYouTube = /youtube\.com|youtu\.be/.test(url);
-  const isDirect = /\.(mp4|mov|mkv|webm|avi|mp3|m4a|wav)(\/|\?|$)/i.test(url);
 
   if (isYouTube) {
-    // Show resolving message
     document.getElementById('upload-progress').style.display = 'block';
-    document.getElementById('upload-status').textContent = 'Resolving YouTube URL...';
-    document.getElementById('upload-bar').style.width = '30%';
-    document.getElementById('upload-pct').textContent = '30%';
+    document.getElementById('upload-status').textContent = 'Downloading YouTube audio... (1-2 minutes)';
+    document.getElementById('upload-bar').style.width = '5%';
+    document.getElementById('upload-pct').textContent = '5%';
+    document.getElementById('upload-size').textContent = 'Connecting to YouTube...';
+
+    let fakePct = 5;
+    const fakeTimer = setInterval(() => {
+      if (fakePct < 85) {
+        fakePct += (85 - fakePct) * 0.02;
+        document.getElementById('upload-bar').style.width = fakePct.toFixed(1) + '%';
+        document.getElementById('upload-pct').textContent = Math.round(fakePct) + '%';
+      }
+    }, 500);
 
     try {
-      const res = await fetch('/api/resolve-url', {
+      const res = await fetch(RAILWAY_URL + '/api/youtube-upload', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ url })
       });
       const data = await res.json();
+      clearInterval(fakeTimer);
 
-      if (data.error === 'youtube_not_supported') {
-        document.getElementById('upload-progress').style.display = 'none';
-        showYouTubeHelp();
-        return;
-      }
-      if (!res.ok) throw new Error(data.error || 'Failed to resolve URL');
+      if (!res.ok) throw new Error(data.error || 'YouTube download failed');
 
       document.getElementById('upload-bar').style.width = '100%';
       document.getElementById('upload-pct').textContent = '100%';
-      await startTranscription(data.resolvedUrl);
+      document.getElementById('upload-status').textContent = 'YouTube audio ready!';
+      document.getElementById('upload-size').textContent = 'Downloaded and ready to transcribe';
+
+      state.localFileId = data.localFileId;
+      state.sourceVideoUrl = data.uploadUrl;
+      await startTranscription(data.uploadUrl);
     } catch (err) {
+      clearInterval(fakeTimer);
       document.getElementById('upload-progress').style.display = 'none';
-      showYouTubeHelp();
+      toast('YouTube error: ' + err.message, 6000);
     }
     return;
   }
@@ -1004,27 +1014,7 @@ async function submitUrl() {
   await startTranscription(url);
 }
 
-function showYouTubeHelp() {
-  const helpBox = document.getElementById('yt-help');
-  if (helpBox) { helpBox.style.display = 'block'; return; }
-
-  const card = document.querySelector('#p0 .card');
-  const div = document.createElement('div');
-  div.id = 'yt-help';
-  div.style.cssText = 'background:#1a1020;border:1px solid #4a2040;border-radius:12px;padding:18px;margin-top:14px;font-size:14px;line-height:1.7;color:#d0a0c0';
-  div.innerHTML = [
-    '<strong style="color:#f0a0c0">YouTube links need a workaround</strong><br><br>',
-    'AssemblyAI cannot access YouTube directly. You have two easy options:<br><br>',
-    '<strong style="color:#e8e8e8">Option 1 — Download and upload (easiest):</strong><br>',
-    '1. Go to <a href="https://yt1s.com" target="_blank" style="color:#a080ff">yt1s.com</a> or <a href="https://y2mate.com" target="_blank" style="color:#a080ff">y2mate.com</a><br>',
-    '2. Paste your YouTube link and download as MP4<br>',
-    '3. Upload the MP4 file using the upload button above<br><br>',
-    '<strong style="color:#e8e8e8">Option 2 — Use a direct video URL:</strong><br>',
-    'Paste a direct .mp4 link from Dropbox, Google Drive, Loom, etc.<br><br>',
-    '<button onclick="document.getElementById(\'yt-help\').style.display=\'none\'" style="background:transparent;border:1px solid #4a2040;color:#d0a0c0;padding:6px 14px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px">Dismiss</button>'
-  ].join('');
-  card.appendChild(div);
-}
+// YouTube help removed — yt-dlp now handles YouTube directly
 
 async function startTranscription(videoUrl) {
   // Unlock FIRST so goStage can navigate
