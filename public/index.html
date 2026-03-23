@@ -1646,7 +1646,7 @@ async function saveProject() {
     const title = state.clips[0]?.title || 'Untitled Project';
     const res = await fetch('/api/projects', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'authorization': 'Bearer ' + token },
+      headers: { 'content-type': 'application/json', 'authorization': 'Bearer ' + token, 'x-requested-with': 'clipai' },
       body: JSON.stringify({
         title,
         transcript: state.transcript.substring(0, 5000),
@@ -1679,7 +1679,7 @@ async function openSidebar() {
   const listEl = document.getElementById('projects-list');
   listEl.innerHTML = '<div style="color:var(--text3);font-size:13px">Loading...</div>';
   try {
-    const res = await fetch('/api/projects', { headers: { 'authorization': 'Bearer ' + token } });
+    const res = await fetch('/api/projects', { headers: { 'authorization': 'Bearer ' + token, 'x-requested-with': 'clipai' } });
     const projects = await res.json();
     if (!projects.length) {
       listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">No saved projects yet.<br>Process a video and save it!</div>';

@@ -1636,22 +1636,39 @@ function doLogout() {
 async function saveProject() {
   const token = localStorage.getItem('clipai_token');
   if (!token) { toast('Sign in to save projects'); window.location.href = '/login.html'; return; }
-  if (!state.transcript) { toast('Nothing to save yet'); return; }
+  if (!state.transcript) { toast('Complete transcription first before saving'); return; }
+  if (!state.clips || state.clips.length === 0) { toast('Generate clips first before saving'); return; }
+
+  const saveBtn = document.querySelector('[onclick="saveProject()"]');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '💾 Saving...'; }
+
   try {
+    const title = state.clips[0]?.title || 'Untitled Project';
     const res = await fetch('/api/projects', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'authorization': 'Bearer ' + token },
+      headers: { 'content-type': 'application/json', 'authorization': 'Bearer ' + token, 'x-requested-with': 'clipai' },
       body: JSON.stringify({
-        title: state.clips[0]?.title || 'Untitled Project',
+        title,
         transcript: state.transcript.substring(0, 5000),
         clips: state.clips,
         videoFilename: state.localFileId || '',
         duration: state.duration
       })
     });
-    if (res.ok) toast('Project saved!');
-    else toast('Save failed — are you signed in?');
-  } catch(e) { toast('Save error: ' + e.message); }
+    const data = await res.json();
+    if (res.status === 409) {
+      toast('⚠ Project already saved recently — no duplicate created');
+    } else if (res.ok) {
+      toast('✓ Project saved: "' + title + '"');
+      state.lastSavedTitle = title;
+    } else {
+      throw new Error(data.error || 'Save failed');
+    }
+  } catch(e) {
+    toast('Save error: ' + e.message, 5000);
+  } finally {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '💾 Save Project'; }
+  }
 }
 
 async function openSidebar() {
@@ -1662,7 +1679,7 @@ async function openSidebar() {
   const listEl = document.getElementById('projects-list');
   listEl.innerHTML = '<div style="color:var(--text3);font-size:13px">Loading...</div>';
   try {
-    const res = await fetch('/api/projects', { headers: { 'authorization': 'Bearer ' + token } });
+    const res = await fetch('/api/projects', { headers: { 'authorization': 'Bearer ' + token, 'x-requested-with': 'clipai' } });
     const projects = await res.json();
     if (!projects.length) {
       listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">No saved projects yet.<br>Process a video and save it!</div>';
