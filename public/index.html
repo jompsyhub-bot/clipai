@@ -1649,8 +1649,10 @@ async function saveProject() {
       headers: { 'content-type': 'application/json', 'authorization': 'Bearer ' + token, 'x-requested-with': 'clipai' },
       body: JSON.stringify({
         title,
-        transcript: state.transcript.substring(0, 5000),
+        transcript: state.transcript.substring(0, 8000),
         clips: state.clips,
+        utterances: (state.utterances || []).slice(0, 50),
+        highlights: (state.highlights || []).slice(0, 12),
         videoFilename: state.localFileId || '',
         duration: state.duration
       })
@@ -1685,12 +1687,23 @@ async function openSidebar() {
       listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">No saved projects yet.<br>Process a video and save it!</div>';
       return;
     }
-    listEl.innerHTML = projects.map(p =>
-      '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;cursor:pointer" onclick="loadProject(' + JSON.stringify(JSON.stringify(p)) + ')">' +
-        '<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px">' + (p.title || 'Untitled') + '</div>' +
-        '<div style="font-size:11px;color:var(--text3);font-family:var(--mono)">' + new Date(p.created_at).toLocaleDateString() + ' · ' + (p.clips ? p.clips.length : 0) + ' clips</div>' +
-      '</div>'
-    ).join('');
+    listEl.innerHTML = projects.map(p => {
+      const dateStr = new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const clipCount = Array.isArray(p.clips) ? p.clips.length : 0;
+      const wordCount = p.transcript ? p.transcript.split(' ').length.toLocaleString() : '0';
+      const pJson = JSON.stringify(JSON.stringify(p));
+      return '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px">' +
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">' +
+          '<div style="font-size:14px;font-weight:600;color:var(--text);line-height:1.4">' + (p.title || 'Untitled') + '</div>' +
+          '<button onclick="loadProject(' + pJson + ')" style="background:var(--accent);color:#fff;border:none;padding:6px 14px;border-radius:8px;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0">Open →</button>' +
+        '</div>' +
+        '<div style="display:flex;gap:12px;flex-wrap:wrap">' +
+          '<span style="font-size:11px;color:var(--text3);font-family:var(--mono)">📅 ' + dateStr + '</span>' +
+          '<span style="font-size:11px;color:var(--text3);font-family:var(--mono)">✦ ' + clipCount + ' clips</span>' +
+          '<span style="font-size:11px;color:var(--text3);font-family:var(--mono)">◎ ' + wordCount + ' words</span>' +
+        '</div>' +
+      '</div>';
+    }).join('');
   } catch(e) {
     listEl.innerHTML = '<div style="color:var(--red);font-size:13px">Error loading projects</div>';
   }
@@ -1698,15 +1711,60 @@ async function openSidebar() {
 
 function loadProject(projectJson) {
   const p = JSON.parse(projectJson);
+
+  // Restore full state
   state.transcript = p.transcript || '';
   state.clips = p.clips || [];
   state.duration = p.duration || 0;
+  state.utterances = p.utterances || [];
+  state.highlights = p.highlights || [];
+  state.words = p.words || [];
+
   closeSidebar();
+
   if (state.clips.length > 0) {
+    // Unlock all stages
     unlockStage(1); unlockStage(2); unlockStage(3);
+
+    // Restore transcript view
+    const statsEl = document.getElementById('stats-row');
+    if (statsEl) {
+      const words = state.transcript ? state.transcript.split(' ').length : 0;
+      const dur = state.duration ? formatTime(state.duration * 1000) : '--:--';
+      statsEl.innerHTML =
+        '<div class="stat"><div class="stat-val">' + dur + '</div><div class="stat-label">duration</div></div>' +
+        '<div class="stat"><div class="stat-val">' + words.toLocaleString() + '</div><div class="stat-label">words</div></div>' +
+        '<div class="stat"><div class="stat-val">' + state.clips.length + '</div><div class="stat-label">clips</div></div>' +
+        '<div class="stat"><div class="stat-val">' + (state.highlights.length || '?') + '</div><div class="stat-label">moments</div></div>';
+    }
+
+    const tcEl = document.getElementById('transcript-content');
+    if (tcEl && state.transcript) {
+      tcEl.textContent = state.transcript.substring(0, 3000) + (state.transcript.length > 3000 ? '...' : '');
+    }
+
+    // Show transcript results panel
+    const progressEl = document.getElementById('transcribe-progress');
+    const resultsEl = document.getElementById('transcribe-results');
+    if (progressEl) progressEl.style.display = 'none';
+    if (resultsEl) resultsEl.style.display = 'block';
+
+    // Go to clips page and render
     goStage(2);
     renderClips();
-    toast('Project loaded: ' + (p.title || 'Untitled'));
+    toast('✓ Project loaded: "' + (p.title || 'Untitled') + '"', 3000);
+  } else if (state.transcript) {
+    // Has transcript but no clips — go to transcribe page
+    unlockStage(1); unlockStage(2);
+    const progressEl = document.getElementById('transcribe-progress');
+    const resultsEl = document.getElementById('transcribe-results');
+    if (progressEl) progressEl.style.display = 'none';
+    if (resultsEl) resultsEl.style.display = 'block';
+    goStage(1);
+    showTranscriptResults();
+    toast('✓ Project loaded — generate clips to continue', 3000);
+  } else {
+    toast('This project has no data to restore', 4000);
   }
 }
 

@@ -55,8 +55,10 @@ async function handler(req, res) {
         body: JSON.stringify({
           user_id: userId,
           title: title || 'Untitled Project',
-          transcript: (transcript || '').substring(0, 5000),
+          transcript: (transcript || '').substring(0, 8000),
           clips: clips || [],
+          utterances: (req.body.utterances || []).slice(0, 50),
+          highlights: (req.body.highlights || []).slice(0, 12),
           video_filename: videoFilename || '',
           duration: duration || 0,
           created_at: new Date().toISOString()
