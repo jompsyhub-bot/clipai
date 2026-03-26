@@ -714,10 +714,7 @@
       <div class="ai-output" id="clip-ai-out"></div>
     </div>
     <div class="action-row">
-      <div style="display:flex;gap:10px;margin-top:16px">
-        <button class="btn btn-ghost" onclick="saveProject()" style="flex:1">💾 Save Project</button>
-        <button class="btn btn-primary" onclick="goStage(3)" style="flex:2">Continue to export →</button>
-      </div>
+      <button class="btn btn-primary btn-full" onclick="goStage(3)" style="margin-top:16px">Continue to export →</button>
     </div>
   </div>
 
@@ -1633,45 +1630,6 @@ function doLogout() {
   window.location.reload();
 }
 
-async function saveProject() {
-  const token = localStorage.getItem('clipai_token');
-  if (!token) { toast('Sign in to save projects'); window.location.href = '/login.html'; return; }
-  if (!state.transcript) { toast('Complete transcription first before saving'); return; }
-  if (!state.clips || state.clips.length === 0) { toast('Generate clips first before saving'); return; }
-
-  const saveBtn = document.querySelector('[onclick="saveProject()"]');
-  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '💾 Saving...'; }
-
-  try {
-    const title = state.clips[0]?.title || 'Untitled Project';
-    const res = await fetch('/api/projects', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'authorization': 'Bearer ' + token, 'x-requested-with': 'clipai' },
-      body: JSON.stringify({
-        title,
-        transcript: state.transcript.substring(0, 8000),
-        clips: state.clips,
-        utterances: (state.utterances || []).slice(0, 50),
-        highlights: (state.highlights || []).slice(0, 12),
-        videoFilename: state.localFileId || '',
-        duration: state.duration
-      })
-    });
-    const data = await res.json();
-    if (res.status === 409) {
-      toast('⚠ Project already saved recently — no duplicate created');
-    } else if (res.ok) {
-      toast('✓ Project saved: "' + title + '"');
-      state.lastSavedTitle = title;
-    } else {
-      throw new Error(data.error || 'Save failed');
-    }
-  } catch(e) {
-    toast('Save error: ' + e.message, 5000);
-  } finally {
-    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '💾 Save Project'; }
-  }
-}
 
 async function openSidebar() {
   const token = localStorage.getItem('clipai_token');
@@ -1687,15 +1645,21 @@ async function openSidebar() {
       listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">No saved projects yet.<br>Process a video and save it!</div>';
       return;
     }
-    listEl.innerHTML = projects.map(p => {
+    // Store projects in window map to avoid JSON escaping issues in onclick
+    window._projectsMap = {};
+    projects.forEach((p, i) => { window._projectsMap[i] = p; });
+
+    listEl.innerHTML = projects.map((p, i) => {
       const dateStr = new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
       const clipCount = Array.isArray(p.clips) ? p.clips.length : 0;
       const wordCount = p.transcript ? p.transcript.split(' ').length.toLocaleString() : '0';
-      const pJson = JSON.stringify(JSON.stringify(p));
-      return '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px">' +
+      return '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px" id="proj-card-' + i + '">' +
         '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">' +
           '<div style="font-size:14px;font-weight:600;color:var(--text);line-height:1.4">' + (p.title || 'Untitled') + '</div>' +
-          '<button onclick="loadProject(' + pJson + ')" style="background:var(--accent);color:#fff;border:none;padding:6px 14px;border-radius:8px;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0">Open →</button>' +
+          '<div style="display:flex;gap:6px;flex-shrink:0">' +
+            '<button onclick="loadProjectByIndex(' + i + ')" style="background:var(--accent);color:#fff;border:none;padding:6px 14px;border-radius:8px;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer">Open →</button>' +
+            '<button onclick="deleteProject(this,\'' + p.id + '\',' + i + ')" style="background:transparent;color:var(--red);border:1px solid rgba(240,100,100,0.3);padding:6px 10px;border-radius:8px;font-family:var(--font);font-size:12px;cursor:pointer">🗑</button>' +
+          '</div>' +
         '</div>' +
         '<div style="display:flex;gap:12px;flex-wrap:wrap">' +
           '<span style="font-size:11px;color:var(--text3);font-family:var(--mono)">📅 ' + dateStr + '</span>' +
@@ -1709,8 +1673,33 @@ async function openSidebar() {
   }
 }
 
-function loadProject(projectJson) {
-  const p = JSON.parse(projectJson);
+function loadProjectByIndex(i) {
+  const p = window._projectsMap[i];
+  if (!p) { toast('Project not found'); return; }
+  loadProject(p);
+}
+
+async function deleteProject(btn, id, i) {
+  const token = localStorage.getItem('clipai_token');
+  if (!confirm('Delete this project? This cannot be undone.')) return;
+  try {
+    const res = await fetch('/api/projects?id=' + id, {
+      method: 'DELETE',
+      headers: { 'authorization': 'Bearer ' + token }
+    });
+    if (res.ok) {
+      const card = document.getElementById('proj-card-' + i);
+      if (card) card.style.display = 'none';
+      toast('Project deleted');
+    } else {
+      toast('Delete failed');
+    }
+  } catch(e) {
+    toast('Delete error: ' + e.message);
+  }
+}
+
+function loadProject(p) {
 
   // Restore full state
   state.transcript = p.transcript || '';
@@ -1765,6 +1754,29 @@ function loadProject(projectJson) {
     toast('✓ Project loaded — generate clips to continue', 3000);
   } else {
     toast('This project has no data to restore', 4000);
+  }
+}
+
+async function deleteProject(id, index) {
+  if (!confirm('Delete this project? This cannot be undone.')) return;
+  const token = localStorage.getItem('clipai_token');
+  try {
+    await fetch('/api/projects?id=' + id, {
+      method: 'DELETE',
+      headers: { 'authorization': 'Bearer ' + token }
+    });
+    // Remove from memory and UI
+    if (window._loadedProjects) window._loadedProjects.splice(index, 1);
+    const card = document.getElementById('proj-card-' + index);
+    if (card) card.remove();
+    // Reindex remaining cards
+    const listEl = document.getElementById('projects-list');
+    if (listEl.children.length === 0) {
+      listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">No saved projects yet.</div>';
+    }
+    toast('Project deleted');
+  } catch(e) {
+    toast('Delete failed: ' + e.message);
   }
 }
 
