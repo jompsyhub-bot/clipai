@@ -1456,6 +1456,14 @@ async function goToClips() {
   }
 }
 
+function getPreviewUrl() {
+  if (state.localFileId) {
+    return RAILWAY_URL + '/api/preview-source/' + encodeURIComponent(state.localFileId);
+  }
+  return state.sourceVideoUrl || '';
+}
+
+
 function renderClips() {
   document.getElementById('clips-loading').style.display = 'none';
   const grid = document.getElementById('clips-grid');
@@ -1476,7 +1484,8 @@ function renderClips() {
 
     return '<div class="clip-card sel" id="clip' + i + '">' +
       '<div class="clip-preview-wrap">' +
-        '<video class="clip-preview-video" id="preview-video-' + i + '" muted playsinline preload="metadata" src="' + escapeHTML(state.sourceVideoUrl || '') + '"></video>' +
+        '<video class="clip-preview-video" id="preview-video-' + i + '" muted playsinline preload="metadata" src="' + escapeHTML(getPreviewUrl()) + '"
+></video>' +
         '<canvas class="clip-caption-canvas" id="preview-canvas-' + i + '"></canvas>' +
         '<button class="preview-play" onclick="event.stopPropagation(); toggleClipPreview(' + i + ')">▶</button>' +
         '<div class="clip-dur">' + dur + '</div>' +
