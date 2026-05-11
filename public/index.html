@@ -493,6 +493,72 @@
     }
     .clip-captions { margin-top: 8px; }
     .cap-line { font-size: 11px; color: var(--text3); font-style: italic; line-height: 1.5; }
+    
+      /* ── CLIP PREVIEW ── */
+    .clip-preview-wrap {
+      aspect-ratio: 9/16;
+      background: #050507;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .clip-preview-video,
+    .clip-caption-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .clip-preview-video {
+      object-fit: cover;
+      background: #050507;
+    }
+
+    .clip-caption-canvas {
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    .preview-play {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%,-50%);
+      z-index: 4;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.35);
+      background: rgba(8,8,16,0.72);
+      color: #fff;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .caption-presets {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .caption-preset {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text2);
+      border-radius: var(--r);
+      padding: 10px 12px;
+      cursor: pointer;
+      font-family: var(--font);
+      font-size: 13px;
+    }
+
+    .caption-preset.active {
+      border-color: var(--accent);
+      color: #fff;
+      background: var(--accent-dim);
+    }
 
     /* ── EXPORT ── */
     .export-grid {
@@ -722,9 +788,10 @@
   <div class="panel" id="p3">
     <div class="card">
       <div class="card-title">Caption style</div>
+      <div class="caption-presets" id="caption-presets"></div>
       <div class="ai-row">
         <input class="ai-input" id="cap-query"
-          placeholder="Describe caption style: bold yellow, word-by-word pop, minimal white..." />
+          placeholder="Optional: describe a custom caption style..." />
         <button class="btn btn-primary" id="cap-btn" onclick="generateCaptions()">Preview</button>
       </div>
       <div class="ai-output" id="cap-ai-out"></div>
@@ -791,7 +858,9 @@ const state = {
   duration: 0,
   clips: [],
   selectedClips: new Set(),
-  selectedMoments: new Set()
+  selectedMoments: new Set(),
+  captionStyle: 'tiktok'
+
 };
 
 // ═══ UTILS ═══
@@ -843,6 +912,9 @@ function goStage(n) {
     ];
     toast(messages[n] || 'Complete the previous step first.');
     return;
+    if (n === 3) renderCaptionPresets();
+    drawAllVisibleCaptions();
+
   }
 
   document.querySelectorAll('.stage-btn').forEach((b, i) => {
@@ -1283,6 +1355,78 @@ async function askMomentsAI() {
   setBtn('moments-ask-btn', false);
 }
 
+const CAPTION_STYLES = {
+  tiktok: {
+    label: 'TikTok bold',
+    font: '800 28px Syne, Arial',
+    color: '#ffffff',
+    stroke: '#000000',
+    bg: 'rgba(0,0,0,0.35)',
+    highlight: '#7c6af7',
+    y: 0.78,
+    uppercase: false
+  },
+  mrbeast: {
+    label: 'MrBeast yellow',
+    font: '900 30px Arial Black, Arial',
+    color: '#ffe600',
+    stroke: '#000000',
+    bg: 'rgba(0,0,0,0.15)',
+    highlight: '#ff3b30',
+    y: 0.76,
+    uppercase: true
+  },
+  minimal: {
+    label: 'Minimal white',
+    font: '600 24px Arial',
+    color: '#ffffff',
+    stroke: 'rgba(0,0,0,0.55)',
+    bg: 'transparent',
+    highlight: '#ffffff',
+    y: 0.82,
+    uppercase: false
+  },
+  karaoke: {
+    label: 'Karaoke highlight',
+    font: '800 27px Syne, Arial',
+    color: '#ffffff',
+    stroke: '#000000',
+    bg: 'rgba(0,0,0,0.35)',
+    highlight: '#3ecf8e',
+    y: 0.78,
+    uppercase: false,
+    karaoke: true
+  }
+};
+
+function escapeHTML(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[ch]));
+}
+
+function renderCaptionPresets() {
+  const el = document.getElementById('caption-presets');
+  if (!el) return;
+
+  el.innerHTML = Object.entries(CAPTION_STYLES).map(([key, style]) =>
+    '<button class="caption-preset ' + (state.captionStyle === key ? 'active' : '') + '" onclick="setCaptionStyle(\'' + key + '\')">' +
+      escapeHTML(style.label) +
+    '</button>'
+  ).join('');
+}
+
+function setCaptionStyle(key) {
+  state.captionStyle = key;
+  renderCaptionPresets();
+  drawAllVisibleCaptions();
+}
+
+
 // ═══ CLIPS ═══
 async function goToClips() {
   goStage(2);
@@ -1322,53 +1466,39 @@ function renderClips() {
     return;
   }
 
-  const thumbColors = [
-    ['#1a0a2e','#7c6af7'], ['#0a1a2e','#4a9af7'],
-    ['#0a2e1a','#4af7a0'], ['#2e1a0a','#f7a04a'], ['#2e0a1a','#f74a9a']
-  ];
-
   grid.innerHTML = state.clips.map((c, i) => {
     const energyClass = 'energy-' + (c.energy || 'medium');
     const dur = c.duration_s ? c.duration_s + 's' : '?s';
     const platforms = (c.platform_fit || ['tiktok', 'reels']).map(p =>
-      '<span class="plat-tag">' + p + '</span>').join('');
+      '<span class="plat-tag">' + escapeHTML(p) + '</span>').join('');
     const start = c.start_ms ? formatTime(c.start_ms) : '?';
     const end = c.end_ms ? formatTime(c.end_ms) : '?';
-    const [bgColor, accentColor] = thumbColors[i % thumbColors.length];
-    // Generate waveform bars
-    const bars = Array.from({length: 18}, (_, b) => {
-      const h = 20 + Math.abs(Math.sin((i * 7 + b * 1.3))) * 55;
-      return '<div style="width:3px;background:' + accentColor + ';border-radius:2px;height:' + h.toFixed(0) + '%;opacity:' + (0.5 + Math.abs(Math.sin(b * 0.8)) * 0.5).toFixed(2) + '"></div>';
-    }).join('');
-    const firstCaption = (c.caption_lines || [])[0] || c.hook || '';
-    return '<div class="clip-card sel" id="clip' + i + '" onclick="toggleClip(' + i + ')">' +
-      '<div class="clip-thumb" style="background:' + bgColor + '">' +
-        '<div style="display:flex;align-items:flex-end;gap:2px;height:40px;padding:0 8px">' + bars + '</div>' +
-        '<div style="position:absolute;bottom:0;left:0;right:0;padding:10px 10px 8px;background:linear-gradient(transparent,' + bgColor + 'ee)">' +
-          '<div style="font-size:11px;color:' + accentColor + ';font-family:var(--mono);margin-bottom:3px">' + start + ' → ' + end + '</div>' +
-          '<div style="font-size:12px;color:#fff;font-weight:600;line-height:1.3">' + (firstCaption.length > 45 ? firstCaption.slice(0,45)+'...' : firstCaption) + '</div>' +
-        '</div>' +
+
+    return '<div class="clip-card sel" id="clip' + i + '">' +
+      '<div class="clip-preview-wrap">' +
+        '<video class="clip-preview-video" id="preview-video-' + i + '" muted playsinline preload="metadata" src="' + escapeHTML(state.sourceVideoUrl || '') + '"></video>' +
+        '<canvas class="clip-caption-canvas" id="preview-canvas-' + i + '"></canvas>' +
+        '<button class="preview-play" onclick="event.stopPropagation(); toggleClipPreview(' + i + ')">▶</button>' +
         '<div class="clip-dur">' + dur + '</div>' +
-        '<div class="clip-energy ' + energyClass + '">' + (c.energy || 'medium') + '</div>' +
+        '<div class="clip-energy ' + energyClass + '">' + escapeHTML(c.energy || 'medium') + '</div>' +
       '</div>' +
-      '<div class="clip-info">' +
-        '<div class="clip-title">' + (c.title || 'Clip ' + (i+1)) + '</div>' +
-        '<div class="clip-sub">Speaker ' + (c.speaker || '?') + ' · ' + (c.why ? c.why.slice(0,70)+'...' : '') + '</div>' +
+      '<div class="clip-info" onclick="toggleClip(' + i + ')">' +
+        '<div class="clip-title">' + escapeHTML(c.title || 'Clip ' + (i+1)) + '</div>' +
+        '<div class="clip-sub">Speaker ' + escapeHTML(c.speaker || '?') + ' · ' + escapeHTML(start + ' → ' + end) + '</div>' +
+        '<div class="clip-why">' + escapeHTML(c.why ? c.why.slice(0,90) + '...' : '') + '</div>' +
         '<div class="clip-platforms" style="margin-top:6px">' + platforms + '</div>' +
       '</div>' +
     '</div>';
   }).join('');
 
+  state.selectedClips.clear();
   state.clips.forEach((_, i) => state.selectedClips.add(i));
   unlockStage(3);
-  // Auto-advance to export after 4 seconds so user can see clips first
-  setTimeout(() => {
-    if (state.unlockedStage >= 3 && document.querySelector('#p2.active')) {
-      goStage(3);
-      renderExportSummary();
-    }
-  }, 4000);
+  renderCaptionPresets();
+
+  setTimeout(() => drawAllVisibleCaptions(), 300);
 }
+
 
 function toggleClip(i) {
   const el = document.getElementById('clip' + i);
@@ -1414,16 +1544,209 @@ async function askClipAI() {
   setBtn('clip-ask-btn', false);
 }
 
+let activePreviewIndex = null;
+let previewRaf = null;
+
+function getClipCaptionText(clip) {
+  const lines = clip.caption_lines || [];
+  if (lines.length) return lines.join(' ');
+  return clip.hook || clip.title || 'Preview caption';
+}
+
+function getWordsForClip(clip) {
+  const start = clip.start_ms || 0;
+  const end = clip.end_ms || start + 45000;
+  const words = (state.words || [])
+    .filter(w => w.start >= start && w.start <= end)
+    .slice(0, 80);
+
+  if (words.length) return words;
+
+  return getClipCaptionText(clip).split(/\s+/).filter(Boolean).map((text, i) => ({
+    text,
+    start: start + i * 420,
+    end: start + (i + 1) * 420
+  }));
+}
+
+function getCaptionLine(clip, currentMs) {
+  const words = getWordsForClip(clip);
+  const activeIndex = Math.max(0, words.findIndex(w => currentMs >= w.start && currentMs <= w.end));
+  const start = Math.max(0, activeIndex - 3);
+  const visible = words.slice(start, start + 7);
+
+  return {
+    words: visible,
+    activeWord: words[activeIndex]?.text || ''
+  };
+}
+
+function drawCaption(canvas, clip, currentMs) {
+  if (!canvas || !clip) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+  canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, rect.width, rect.height);
+
+  const style = CAPTION_STYLES[state.captionStyle] || CAPTION_STYLES.tiktok;
+  const line = getCaptionLine(clip, currentMs);
+  let text = line.words.map(w => w.text).join(' ') || getClipCaptionText(clip);
+  if (style.uppercase) text = text.toUpperCase();
+
+  const x = rect.width / 2;
+  const y = rect.height * style.y;
+  const maxWidth = rect.width * 0.86;
+
+  ctx.font = style.font;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round';
+
+  const wrapped = wrapCanvasText(ctx, text, maxWidth).slice(0, 2);
+  const lineHeight = 34;
+  const blockHeight = wrapped.length * lineHeight + 14;
+
+  if (style.bg !== 'transparent') {
+    ctx.fillStyle = style.bg;
+    roundRect(ctx, rect.width * 0.07, y - blockHeight / 2, rect.width * 0.86, blockHeight, 10);
+    ctx.fill();
+  }
+
+  wrapped.forEach((row, idx) => {
+    const yy = y + (idx - (wrapped.length - 1) / 2) * lineHeight;
+    ctx.lineWidth = 7;
+    ctx.strokeStyle = style.stroke;
+    ctx.strokeText(row, x, yy);
+    ctx.fillStyle = style.color;
+    ctx.fillText(row, x, yy);
+  });
+
+  if (style.karaoke && line.activeWord) {
+    ctx.font = style.font;
+    ctx.fillStyle = style.highlight;
+    ctx.fillText(style.uppercase ? line.activeWord.toUpperCase() : line.activeWord, x, y + lineHeight);
+  }
+}
+
+function wrapCanvasText(ctx, text, maxWidth) {
+  const words = String(text || '').split(/\s+/).filter(Boolean);
+  const lines = [];
+  let line = '';
+
+  words.forEach(word => {
+    const test = line ? line + ' ' + word : word;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  });
+
+  if (line) lines.push(line);
+  return lines.length ? lines : [''];
+}
+
+function roundRect(ctx, x, y, width, height, radius) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height - radius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  ctx.lineTo(x + radius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+}
+
+function drawAllVisibleCaptions() {
+  state.clips.forEach((clip, i) => {
+    const canvas = document.getElementById('preview-canvas-' + i);
+    if (!canvas) return;
+    drawCaption(canvas, clip, clip.start_ms || 0);
+  });
+}
+
+async function toggleClipPreview(i) {
+  const clip = state.clips[i];
+  const video = document.getElementById('preview-video-' + i);
+  const canvas = document.getElementById('preview-canvas-' + i);
+  if (!clip || !video || !state.sourceVideoUrl) {
+    toast('Preview source not available. Re-upload the video first.');
+    return;
+  }
+
+  if (activePreviewIndex !== null && activePreviewIndex !== i) {
+    const previous = document.getElementById('preview-video-' + activePreviewIndex);
+    if (previous) previous.pause();
+  }
+
+  activePreviewIndex = i;
+  const start = (clip.start_ms || 0) / 1000;
+  const end = (clip.end_ms || ((clip.start_ms || 0) + 45000)) / 1000;
+
+  if (video.paused) {
+    try {
+      if (Math.abs(video.currentTime - start) > 0.5 || video.currentTime >= end) {
+        video.currentTime = start;
+      }
+      await video.play();
+      runPreviewLoop(video, canvas, clip, end);
+    } catch (err) {
+      toast('Preview could not play: ' + err.message, 5000);
+    }
+  } else {
+    video.pause();
+    if (previewRaf) cancelAnimationFrame(previewRaf);
+  }
+}
+
+function runPreviewLoop(video, canvas, clip, endSec) {
+  if (previewRaf) cancelAnimationFrame(previewRaf);
+
+  const tick = () => {
+    if (video.paused) return;
+
+    if (video.currentTime >= endSec) {
+      video.pause();
+      video.currentTime = (clip.start_ms || 0) / 1000;
+      drawCaption(canvas, clip, clip.start_ms || 0);
+      return;
+    }
+
+    drawCaption(canvas, clip, video.currentTime * 1000);
+    previewRaf = requestAnimationFrame(tick);
+  };
+
+  tick();
+}
+
+
 // ═══ EXPORT ═══
 async function generateCaptions() {
   const q = document.getElementById('cap-query').value.trim();
-  if (!q) { toast('Describe your caption style'); return; }
-  setBtn('cap-btn', true, '...');
   const out = document.getElementById('cap-ai-out');
-  out.style.display = 'block';
-  out.textContent = 'Generating caption style...';
-
   const selectedClip = state.clips[Array.from(state.selectedClips)[0]] || null;
+
+  out.style.display = 'block';
+
+  if (!q) {
+    const style = CAPTION_STYLES[state.captionStyle] || CAPTION_STYLES.tiktok;
+    out.textContent = 'Using preset: ' + style.label + '. Play a clip preview to see it live.';
+    drawAllVisibleCaptions();
+    renderExportSummary();
+    return;
+  }
+
+  setBtn('cap-btn', true, '...');
+  out.textContent = 'Generating caption style...';
 
   try {
     const res = await fetch('/api/caption-style', {
@@ -1436,79 +1759,18 @@ async function generateCaptions() {
         startMs: selectedClip?.start_ms || 0
       })
     });
+
     const data = await res.json();
-
-    // Build preview using clip captions + AI style config
-    const s = data.style || {};
-    const desc = data.description || q;
-    const fontFamily = s.fontFamily || 'Arial, sans-serif';
-    const fontSize = s.fontSize || '22px';
-    const fontWeight = s.fontWeight || 'bold';
-    const textColor = s.color || '#ffffff';
-    const bgColor = s.backgroundColor || 'transparent';
-    const textShadow = s.textShadow || '2px 2px 6px rgba(0,0,0,0.9)';
-    const position = s.position || 'bottom';
-    const animation = s.animation || 'word-by-word';
-
-    // Use actual clip captions as preview text
-    const clip = state.clips[Array.from(state.selectedClips)[0]] || null;
-    const captionLines = clip ? (clip.caption_lines || [clip.title || 'Sample caption text']) : ['Sample caption text'];
-
-    // Build word-by-word spans with animation
-    const allWords = captionLines.join(' ').split(' ').filter(Boolean);
-    let wordSpans = allWords.map((word, i) =>
-      '<span class="cap-word" style="display:inline-block;margin:0 3px;' +
-      'animation:capWordIn 0.2s ease forwards;animation-delay:' + (i * 0.12) + 's;opacity:0;' +
-      (i % 5 === 0 ? 'color:' + textColor + ';background:rgba(124,106,247,0.3);padding:2px 6px;border-radius:3px;' : 'color:' + textColor + ';') +
-      '">' + word + '</span>'
-    ).join(' ');
-
-    out.innerHTML =
-      // Style label
-      '<div style="font-size:12px;color:var(--accent);font-family:var(--mono);margin-bottom:12px;letter-spacing:0.05em">' +
-      desc + '</div>' +
-
-      // Phone mockup preview
-      '<div style="position:relative;background:#111;border-radius:16px;overflow:hidden;width:160px;height:284px;margin:0 auto 14px;border:2px solid #333;flex-shrink:0">' +
-        // Gradient background simulating video
-        '<div style="position:absolute;inset:0;background:linear-gradient(160deg,#1a1a2e,#16213e,#0f3460)">' +
-          '<div style="position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(255,255,255,0.02) 0px,transparent 2px,transparent 20px)"></div>' +
-        '</div>' +
-        // Caption overlay at bottom
-        '<div style="position:absolute;' + (position === 'top' ? 'top:20px' : 'bottom:20px') + ';left:0;right:0;' +
-        'text-align:center;padding:8px 10px;' +
-        'font-family:' + fontFamily + ';' +
-        'font-size:13px;' +
-        'font-weight:' + fontWeight + ';' +
-        'text-shadow:' + textShadow + ';' +
-        'line-height:1.5">' + wordSpans + '</div>' +
-        // Play icon
-        '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-70%);width:32px;height:32px;background:rgba(255,255,255,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff">▷</div>' +
-      '</div>' +
-
-      // Style details row
-      '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">' +
-        '<span style="font-size:11px;font-family:var(--mono);background:var(--bg3);border:1px solid var(--border);color:var(--text3);padding:3px 8px;border-radius:6px">font: ' + fontFamily.split(',')[0] + '</span>' +
-        '<span style="font-size:11px;font-family:var(--mono);background:var(--bg3);border:1px solid var(--border);color:var(--text3);padding:3px 8px;border-radius:6px">size: ' + fontSize + '</span>' +
-        '<span style="font-size:11px;font-family:var(--mono);background:var(--bg3);border:1px solid var(--border);color:var(--text3);padding:3px 8px;border-radius:6px">position: ' + position + '</span>' +
-        '<span style="font-size:11px;font-family:var(--mono);background:var(--bg3);border:1px solid var(--border);color:var(--text3);padding:3px 8px;border-radius:6px">anim: ' + animation + '</span>' +
-      '</div>';
-
-    // Add keyframe animation if not already added
-    if (!document.getElementById('cap-anim-style')) {
-      const styleEl = document.createElement('style');
-      styleEl.id = 'cap-anim-style';
-      styleEl.textContent = '@keyframes capWordIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }';
-      document.head.appendChild(styleEl);
-    }
+    out.textContent = data.description || 'Custom caption style ready. Play a clip preview to see it live.';
+    drawAllVisibleCaptions();
   } catch (err) {
     out.textContent = 'Error: ' + err.message;
   }
-  setBtn('cap-btn', false);
 
-  // Update export summary
+  setBtn('cap-btn', false);
   renderExportSummary();
 }
+
 
 function renderExportSummary() {
   const selected = Array.from(state.selectedClips).map(i => state.clips[i]).filter(Boolean);
@@ -1754,29 +2016,6 @@ function loadProject(p) {
     toast('✓ Project loaded — generate clips to continue', 3000);
   } else {
     toast('This project has no data to restore', 4000);
-  }
-}
-
-async function deleteProject(id, index) {
-  if (!confirm('Delete this project? This cannot be undone.')) return;
-  const token = localStorage.getItem('clipai_token');
-  try {
-    await fetch('/api/projects?id=' + id, {
-      method: 'DELETE',
-      headers: { 'authorization': 'Bearer ' + token }
-    });
-    // Remove from memory and UI
-    if (window._loadedProjects) window._loadedProjects.splice(index, 1);
-    const card = document.getElementById('proj-card-' + index);
-    if (card) card.remove();
-    // Reindex remaining cards
-    const listEl = document.getElementById('projects-list');
-    if (listEl.children.length === 0) {
-      listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">No saved projects yet.</div>';
-    }
-    toast('Project deleted');
-  } catch(e) {
-    toast('Delete failed: ' + e.message);
   }
 }
 
