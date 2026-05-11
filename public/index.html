@@ -1476,8 +1476,7 @@ function renderClips() {
 
     return '<div class="clip-card sel" id="clip' + i + '">' +
       '<div class="clip-preview-wrap">' +
-        '<video class="clip-preview-video" id="preview-video-' + i + '" muted playsinline preload="metadata" src="' + escapeHTML(getPreviewUrl()) + '"
-></video>' +
+        '<video class="clip-preview-video" id="preview-video-' + i + '" muted playsinline preload="metadata" src="' + escapeHTML(state.sourceVideoUrl || '') + '"></video>' +
         '<canvas class="clip-caption-canvas" id="preview-canvas-' + i + '"></canvas>' +
         '<button class="preview-play" onclick="event.stopPropagation(); toggleClipPreview(' + i + ')">▶</button>' +
         '<div class="clip-dur">' + dur + '</div>' +
