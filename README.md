@@ -1,177 +1,121 @@
-# ClipAI — AI Video Clip Generator
+# ClipAI
 
-Turn long-form videos (podcasts, Zoom calls, YouTube recordings) into viral short-form clips automatically.
+AI-powered video clip generator for turning long videos, podcasts, Zoom calls, and YouTube videos into short vertical clips.
 
-**Stack:** Plain HTML/JS frontend · Node.js serverless API · AssemblyAI transcription · Claude AI clip intelligence · Vercel hosting
+## Stack
 
----
+- Plain HTML/CSS/JavaScript frontend
+- Node.js API server
+- AssemblyAI for upload hosting and transcription
+- Groq for clip and caption intelligence
+- Supabase for auth and saved projects
+- FFmpeg for 9:16 clip export
+- yt-dlp for YouTube ingestion
 
 ## Features
 
-- **Upload** video files (up to 500MB) or paste any public video URL
-- **Auto-transcribe** with speaker detection via AssemblyAI
-- **Key moment detection** — engagement scoring, sentiment analysis, auto-highlights
-- **AI clip suggestions** — Claude generates 5 optimized 9:16 clips with hooks, captions, and platform fit
-- **Caption style AI** — describe your style in plain English, get CSS + word-level timing
-- **Export** — download MP4 or publish to TikTok / Reels / YouTube Shorts
-
----
+- Upload local video files up to 500MB
+- Paste public video URLs
+- Download YouTube audio for transcription
+- Transcribe with speaker labels, highlights, sentiment, and word timing
+- Generate AI clip suggestions with timestamps, hooks, captions, and platform fit
+- Preview caption styles
+- Save project history to Supabase
+- Export selected clips as vertical MP4 files
 
 ## Project Structure
 
-```
+```text
 clipai/
-├── public/
-│   └── index.html          # Full frontend (single file)
-├── api/
-│   ├── upload.js           # File upload → AssemblyAI hosted URL
-│   ├── transcribe.js       # Submit video URL to AssemblyAI
-│   ├── transcript-status.js # Poll for completed transcript
-│   ├── suggest-clips.js    # Claude AI clip suggestions
-│   └── caption-style.js    # Claude AI caption designer
-├── vercel.json             # Vercel routing config
-├── package.json
-└── .env.example
+  api/
+    auth.js
+    caption-style.js
+    projects.js
+    suggest-clips.js
+    transcribe.js
+    transcript-status.js
+  public/
+    index.html
+    login.html
+  backend-server.js
+  server.js
+  package.json
+  vercel.json
+  railway.toml
+  Dockerfile
 ```
 
----
+`server.js` is the main entry point. It serves the frontend, runs the Vercel-style API route files, and owns the local video routes:
 
-## Deploy to Vercel (10 minutes)
+- `POST /api/upload-local`
+- `POST /api/youtube-upload`
+- `POST /api/cut-clip`
 
-### Step 1 — Get API Keys
+`backend-server.js` is now a compatibility shim for old deployment configs.
 
-**AssemblyAI** (transcription):
-1. Go to https://www.assemblyai.com
-2. Sign up (free tier available)
-3. Copy your API key from the dashboard
+## Environment Variables
 
-**Anthropic Claude** (AI intelligence):
-1. Go to https://console.anthropic.com
-2. Create an account and add a payment method
-3. Go to API Keys → Create Key
-4. Copy your API key
+Copy `.env.example` to `.env.local` and fill in:
 
-### Step 2 — Deploy
-
-**Option A: Deploy via Vercel CLI**
-```bash
-npm install -g vercel
-cd clipai
-vercel
+```env
+ASSEMBLYAI_API_KEY=your_assemblyai_api_key_here
+GROQ_API_KEY=your_groq_api_key_here
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your_supabase_anon_key_here
+CLIPAI_UPLOAD_DIR=
+CLIPAI_MAX_UPLOAD_BYTES=524288000
+FFMPEG_PATH=ffmpeg
+YTDLP_PATH=yt-dlp
 ```
 
-**Option B: Deploy via GitHub**
-1. Push this folder to a GitHub repo
-2. Go to https://vercel.com → New Project
-3. Import your GitHub repo
-4. Vercel auto-detects the config
-
-### Step 3 — Add Environment Variables
-
-In Vercel Dashboard → Your Project → Settings → Environment Variables, add:
-
-| Key | Value |
-|-----|-------|
-| `ASSEMBLYAI_API_KEY` | Your AssemblyAI key |
-| `ANTHROPIC_API_KEY` | Your Anthropic key |
-
-Click **Save** then **Redeploy**.
-
-### Step 4 — Done!
-
-Your app is live at `https://your-project.vercel.app`
-
----
+For local export and YouTube ingest, make sure `ffmpeg` and `yt-dlp` are installed and available on PATH, or set `FFMPEG_PATH` and `YTDLP_PATH`.
 
 ## Local Development
 
 ```bash
-# Install dependencies
 npm install
-
-# Create local env file
-cp .env.example .env.local
-# Edit .env.local with your real API keys
-
-# Run locally
-npx vercel dev
+npm run dev
 ```
 
-Visit http://localhost:3000
+Visit:
 
----
-
-## How It Works
-
-### Upload Flow
-1. User uploads file → `POST /api/upload` → AssemblyAI stores it → returns `uploadUrl`
-2. OR user pastes a public URL directly
-
-### Transcription Flow
-1. `POST /api/transcribe` with `videoUrl` → AssemblyAI creates a transcript job
-2. Frontend polls `GET /api/transcript-status?id=xxx` every 5 seconds
-3. AssemblyAI returns: full transcript, speaker-labeled utterances, auto-highlights, sentiment analysis
-
-### Clip AI Flow
-1. `POST /api/suggest-clips` sends transcript + utterances to Claude
-2. Claude returns 5 structured clip objects with timestamps, hooks, captions, viral reasoning
-3. User can select/deselect clips and request custom clips via natural language
-
-### Caption Flow
-1. `POST /api/caption-style` sends clip text + style description to Claude
-2. Claude returns CSS config + word-level timing with emphasis markers
-
----
-
-## Adding Real Video Export (Phase 2)
-
-The current MVP handles everything except the actual video cutting.
-To add real export, you have two options:
-
-### Option A: FFmpeg on a VPS
-```
-- Spin up a $5/mo Railway or Render server
-- Install FFmpeg
-- Add a POST /api/export endpoint that:
-  1. Downloads the source video
-  2. Cuts it with FFmpeg: ffmpeg -ss {start} -to {end} -i input.mp4 -vf "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920" output.mp4
-  3. Burns in captions with subtitles filter
-  4. Returns download URL
+```text
+http://localhost:3000
 ```
 
-### Option B: Use a Video API
-- **Shotstack** (https://shotstack.io) — video editing API, pay per render
-- **Remotion** (https://remotion.dev) — React-based video rendering
-- **Creatomate** (https://creatomate.com) — template-based video API
+## Supabase Setup
 
----
+Create a `projects` table with columns matching the app payload:
 
-## Roadmap (Phase 2+)
+- `id`
+- `user_id`
+- `title`
+- `transcript`
+- `clips`
+- `utterances`
+- `highlights`
+- `video_filename`
+- `duration`
+- `created_at`
 
-- [ ] Real FFmpeg video cutting + export
-- [ ] Caption burn-in with word-level karaoke timing
-- [ ] Direct TikTok / Instagram / YouTube API publishing
-- [ ] User accounts + project history (add Supabase or PlanetScale)
-- [ ] Custom branding overlays (logo, colors, fonts)
-- [ ] Multi-language caption translation
-- [ ] Music library + auto-matching
-- [ ] B-roll suggestion AI
-- [ ] Batch processing (upload multiple videos)
+Enable Row Level Security and only allow users to read, insert, and delete their own rows.
 
----
+## Production Notes
 
-## Cost Estimates (at scale)
+This repo now has a working first-pass FFmpeg export path. For a real public app, the next production upgrades should be:
 
-| Service | Free Tier | Paid |
-|---------|-----------|------|
-| AssemblyAI | 100 hours free | ~$0.65/hour |
-| Anthropic Claude | Pay per token | ~$0.003 per clip suggestion |
-| Vercel | Generous free tier | $20/mo pro |
+- Move long FFmpeg jobs to a queue
+- Store uploads and exports in object storage
+- Add rate limits and abuse protection
+- Add token refresh and better session handling
+- Add progress polling for long exports
+- Add automated tests for API routes and frontend flows
 
-A typical 1-hour podcast costs ~$0.65 to transcribe and ~$0.01 for AI clip suggestions.
+## Verification
 
----
+Run:
 
-## License
+```bash
+npm run check
+```
 
-MIT — build freely, ship fast.

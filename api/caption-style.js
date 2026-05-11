@@ -46,6 +46,9 @@ JSON only, no markdown.`;
     });
 
     const data = await response.json();
+    if (!response.ok) {
+      return res.status(response.status).json({ error: data.error?.message || data.error || 'Groq caption style failed' });
+    }
     const text = data.choices?.[0]?.message?.content || '{}';
 
     let result;

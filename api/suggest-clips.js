@@ -72,6 +72,9 @@ Only return the JSON array. No other text.`;
     });
 
     const data = await response.json();
+    if (!response.ok) {
+      return res.status(response.status).json({ error: data.error?.message || data.error || 'Groq clip suggestion failed' });
+    }
     const text = data.choices?.[0]?.message?.content || '[]';
 
     let clips;
@@ -80,6 +83,8 @@ Only return the JSON array. No other text.`;
     } catch {
       clips = [];
     }
+
+    if (!Array.isArray(clips)) clips = [];
 
     // Convert seconds to milliseconds and validate duration
     clips = clips.map(c => {

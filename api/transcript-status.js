@@ -8,6 +8,7 @@ async function handler(req, res) {
   if (!id) return res.status(400).json({ error: 'Transcript ID required' });
 
   const ASSEMBLYAI_KEY = process.env.ASSEMBLYAI_API_KEY;
+  if (!ASSEMBLYAI_KEY) return res.status(500).json({ error: 'AssemblyAI key not configured' });
 
   try {
     const response = await fetch(`https://api.assemblyai.com/v2/transcript/${id}`, {

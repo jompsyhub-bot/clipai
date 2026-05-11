@@ -24,7 +24,8 @@ async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const r = await fetch(SUPABASE_URL + '/rest/v1/projects?select=*&order=created_at.desc', { headers });
+      const userId = await getUserId();
+      const r = await fetch(SUPABASE_URL + '/rest/v1/projects?user_id=eq.' + encodeURIComponent(userId) + '&select=*&order=created_at.desc', { headers });
       const data = await r.json();
       if (!r.ok) throw new Error(JSON.stringify(data));
       return res.status(200).json(Array.isArray(data) ? data : []);
@@ -73,7 +74,12 @@ async function handler(req, res) {
     if (req.method === 'DELETE') {
       const id = req.query.id;
       if (!id) return res.status(400).json({ error: 'id required' });
-      await fetch(SUPABASE_URL + '/rest/v1/projects?id=eq.' + id, { method: 'DELETE', headers });
+      const userId = await getUserId();
+      const r = await fetch(
+        SUPABASE_URL + '/rest/v1/projects?id=eq.' + encodeURIComponent(id) + '&user_id=eq.' + encodeURIComponent(userId),
+        { method: 'DELETE', headers }
+      );
+      if (!r.ok) throw new Error(await r.text());
       return res.status(200).json({ deleted: true });
     }
 
