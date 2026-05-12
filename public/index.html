@@ -1640,7 +1640,45 @@ const CAPTION_STYLES = {
     y: 0.78,
     uppercase: false,
     karaoke: true
+  },
+  neon: {
+    label: 'Neon glow',
+    font: '800 26px Arial',
+    color: '#00ff88',
+    stroke: '#00331f',
+    bg: 'transparent',
+    highlight: '#00ff88',
+    y: 0.78,
+    uppercase: true
+  },
+  subtitle: {
+    label: 'Subtitle box',
+    font: '500 22px Arial',
+    color: '#ffffff',
+    stroke: 'transparent',
+    bg: 'rgba(0,0,0,0.75)',
+    highlight: '#ffffff',
+    y: 0.82,
+    uppercase: false
   }
+};
+
+const PRESET_TO_CAPTION_STYLE = {
+  'tiktok-bold': 'tiktok',
+  'yellow-pop': 'mrbeast',
+  'minimal-white': 'minimal',
+  karaoke: 'karaoke',
+  neon: 'neon',
+  subtitle: 'subtitle'
+};
+
+const CAPTION_STYLE_TO_PRESET = {
+  tiktok: 'tiktok-bold',
+  mrbeast: 'yellow-pop',
+  minimal: 'minimal-white',
+  karaoke: 'karaoke',
+  neon: 'neon',
+  subtitle: 'subtitle'
 };
 
 function escapeHTML(value) {
@@ -1666,6 +1704,7 @@ function renderCaptionPresets() {
 
 function setCaptionStyle(key) {
   state.captionStyle = key;
+  selectedPreset = CAPTION_STYLE_TO_PRESET[key] || selectedPreset;
   renderCaptionPresets();
   drawAllVisibleCaptions();
 }
@@ -2076,6 +2115,8 @@ async function exportTo(platform) {
           clipTitle: label,
           clipIndex: idx,
           captionLines: clip.caption_lines || [],
+          captionStyle: state.captionStyle,
+          captionPreset: selectedPreset,
           words: state.words ? state.words.filter(w => w.start >= (clip.start_ms || 0) && w.start <= (clip.end_ms || 0)).slice(0, 300) : []
         })
       });
@@ -2295,6 +2336,9 @@ function selectPreset(el, preset) {
   document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
   selectedPreset = preset;
+  state.captionStyle = PRESET_TO_CAPTION_STYLE[preset] || state.captionStyle;
+  renderCaptionPresets();
+  drawAllVisibleCaptions();
   previewCaptionStyle(CAPTION_PRESETS[preset]);
   toast('Style: ' + CAPTION_PRESETS[preset].description);
 }
