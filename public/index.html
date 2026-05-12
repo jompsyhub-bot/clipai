@@ -61,6 +61,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 12px;
       padding: 16px 32px;
       border-bottom: 1px solid var(--border);
       background: rgba(8,8,16,0.9);
@@ -70,22 +71,16 @@
       z-index: 100;
     }
     body.light nav { background: rgba(255,255,255,0.88); }
-    .logo { font-size: 20px; font-weight: 800; letter-spacing: -1px; color: #fff; }
+    .logo { font-size: 20px; font-weight: 800; letter-spacing: -1px; color: #fff; flex: 0 0 auto; }
     body.light .logo { color: var(--text); }
     .logo span { color: var(--accent); }
-    .nav-badge {
-      font-family: var(--mono);
-      font-size: 11px;
-      background: var(--accent-dim);
-      color: var(--accent2);
-      border: 1px solid rgba(124,106,247,0.3);
-      padding: 4px 12px;
-      border-radius: 20px;
-    }
     .nav-tools {
       display: flex;
       align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
       gap: 8px;
+      min-width: 0;
     }
     .nav-action {
       font-family: var(--font);
@@ -103,6 +98,12 @@
     .nav-action:hover { color: var(--text); border-color: rgba(124,106,247,0.45); }
     .nav-action.primary { color: #fff; background: var(--accent); border-color: var(--accent); }
     .nav-action.hidden { display: none; }
+    #nav-auth {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
 
     /* ── HERO ── */
     .hero {
@@ -651,7 +652,10 @@
     @media (max-width: 600px) {
       .stats-row { grid-template-columns: repeat(2, 1fr); }
       .clips-grid { grid-template-columns: repeat(2, 1fr); }
-      nav { padding: 14px 16px; }
+      nav { padding: 12px 14px; align-items: flex-start; }
+      .logo { font-size: 18px; line-height: 34px; }
+      .nav-tools { gap: 6px; max-width: calc(100% - 74px); }
+      .nav-action { font-size: 12px; padding: 7px 9px; border-radius: 7px; }
       .hero { padding: 48px 16px 40px; }
       .stage-btn span.stage-label { display: none; }
     }
@@ -681,11 +685,10 @@
 <nav>
   <div class="logo">clip<span>AI</span></div>
   <div class="nav-tools">
-    <span class="nav-badge">Powered by Groq + AssemblyAI</span>
     <button class="nav-action" id="theme-toggle" onclick="toggleTheme()" type="button">Light mode</button>
     <button class="nav-action primary hidden" id="new-clips-btn" onclick="createNewClips()" type="button">Create New Clips</button>
     <div id="nav-auth">
-      <a href="/login.html" style="font-size:13px;color:var(--accent2);text-decoration:none;padding:6px 14px;border:1px solid rgba(124,106,247,0.3);border-radius:8px;font-family:var(--font)">Sign In</a>
+      <a href="/login.html" class="nav-action" style="text-decoration:none">Sign In</a>
     </div>
   </div>
 </nav>
@@ -2127,8 +2130,7 @@ function initAuth() {
   const navAuth = document.getElementById('nav-auth');
   if (token && user) {
     navAuth.innerHTML =
-      '<button onclick="openSidebar()" style="font-size:13px;color:var(--text2);background:var(--bg3);border:1px solid var(--border2);padding:6px 14px;border-radius:8px;cursor:pointer;font-family:var(--font);margin-right:6px">📁 Projects</button>' +
-      '<button onclick="doLogout()" style="font-size:13px;color:var(--text3);background:transparent;border:1px solid var(--border);padding:6px 14px;border-radius:8px;cursor:pointer;font-family:var(--font)">' + (user.email || '').split('@')[0] + ' · Sign out</button>';
+      '<button onclick="doLogout()" class="nav-action" type="button">Sign out</button>';
   }
 }
 
