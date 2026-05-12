@@ -677,6 +677,63 @@
 .preview-controls { display: flex; gap: 8px; justify-content: center; margin-bottom: 12px; }
 .preview-btn { background: var(--bg3); border: 1px solid var(--border2); color: var(--text2); padding: 8px 16px; border-radius: 8px; font-family: var(--font); font-size: 13px; cursor: pointer; }
 .preview-btn:hover { background: var(--accent-dim); color: var(--accent2); }
+    .caption-studio {
+      display: grid;
+      gap: 16px;
+    }
+    .caption-control-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .caption-control {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 12px;
+    }
+    .caption-control label {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--text2);
+      margin-bottom: 10px;
+    }
+    .caption-control strong {
+      color: var(--text);
+      font-size: 12px;
+      font-family: var(--mono);
+      font-weight: 500;
+    }
+    .caption-control input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+    .caption-mini-preview {
+      min-height: 96px;
+      background: #08080d;
+      border: 1px solid var(--border2);
+      border-radius: var(--r);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+      overflow: hidden;
+    }
+    .caption-mini-text {
+      color: #fff;
+      text-align: center;
+      line-height: 1.2;
+      max-width: 92%;
+      text-shadow: 2px 2px 0 #000;
+    }
+    #p3 > .card > .card:first-child {
+      display: none;
+    }
+    @media (max-width: 600px) {
+      .caption-control-grid { grid-template-columns: 1fr; }
+    }
 
   </style>
 </head>
@@ -895,12 +952,29 @@
     </div>
   </div>
   <div class="ai-row">
-    <input class="ai-input" id="cap-query" placeholder="Or describe your own: bold yellow, word-by-word pop..." />
-    <button class="btn btn-primary" id="cap-btn" onclick="generateCaptions()">Preview</button>
+    <input class="ai-input" id="cap-query-old" placeholder="Or describe your own: bold yellow, word-by-word pop..." />
+    <button class="btn btn-primary" id="cap-btn-old" onclick="generateCaptions()">Preview</button>
   </div>
-  <div id="cap-ai-out" style="display:none;margin-top:16px"></div>
+  <div id="cap-ai-out-old" style="display:none;margin-top:16px"></div>
 </div>
       <div class="caption-presets" id="caption-presets"></div>
+      <div class="caption-control-grid">
+        <div class="caption-control">
+          <label for="caption-size-range">Size <strong id="caption-size-value">100%</strong></label>
+          <input id="caption-size-range" type="range" min="80" max="125" value="100" oninput="updateCaptionSetting('size', this.value)" />
+        </div>
+        <div class="caption-control">
+          <label for="caption-position-range">Position <strong id="caption-position-value">78%</strong></label>
+          <input id="caption-position-range" type="range" min="62" max="88" value="78" oninput="updateCaptionSetting('position', this.value)" />
+        </div>
+        <div class="caption-control">
+          <label for="caption-density-range">Words <strong id="caption-density-value">3</strong></label>
+          <input id="caption-density-range" type="range" min="2" max="4" value="3" oninput="updateCaptionSetting('words', this.value)" />
+        </div>
+      </div>
+      <div class="caption-mini-preview">
+        <div class="caption-mini-text" id="caption-mini-text">Make every clip feel ready to post</div>
+      </div>
       <div class="ai-row">
         <input class="ai-input" id="cap-query"
           placeholder="Optional: describe a custom caption style..." />
@@ -976,7 +1050,12 @@ const state = {
   transcriptionUrl: '',
   localFileId: null,
   localPreviewUrl: '',
-  captionStyle: 'tiktok'
+  captionStyle: 'tiktok',
+  captionSettings: {
+    size: 100,
+    position: 78,
+    words: 3
+  }
 
 };
 
@@ -1105,6 +1184,7 @@ function createNewClips() {
     transcriptionUrl: '',
     localFileId: null,
     localPreviewUrl: '',
+    captionSettings: { size: 100, position: 78, words: 3 },
     unlockedStage: 0
   });
 
@@ -1706,6 +1786,45 @@ function setCaptionStyle(key) {
   state.captionStyle = key;
   selectedPreset = CAPTION_STYLE_TO_PRESET[key] || selectedPreset;
   renderCaptionPresets();
+  renderCaptionControls();
+  drawAllVisibleCaptions();
+}
+
+function renderCaptionControls() {
+  const settings = state.captionSettings || { size: 100, position: 78, words: 3 };
+  const size = document.getElementById('caption-size-range');
+  const position = document.getElementById('caption-position-range');
+  const words = document.getElementById('caption-density-range');
+  const sizeValue = document.getElementById('caption-size-value');
+  const positionValue = document.getElementById('caption-position-value');
+  const wordsValue = document.getElementById('caption-density-value');
+  const preview = document.getElementById('caption-mini-text');
+  const style = CAPTION_STYLES[state.captionStyle] || CAPTION_STYLES.tiktok;
+
+  if (size) size.value = settings.size;
+  if (position) position.value = settings.position;
+  if (words) words.value = settings.words;
+  if (sizeValue) sizeValue.textContent = settings.size + '%';
+  if (positionValue) positionValue.textContent = settings.position + '%';
+  if (wordsValue) wordsValue.textContent = settings.words;
+  if (preview) {
+    preview.style.color = style.color;
+    preview.style.font = style.font.replace(/(\d+)px/, (_, px) => Math.round(Number(px) * settings.size / 100) + 'px');
+    preview.style.textTransform = style.uppercase ? 'uppercase' : 'none';
+    preview.style.textShadow = style.stroke === 'transparent' ? 'none' : '2px 2px 0 ' + style.stroke;
+    preview.style.background = style.bg === 'transparent' ? 'transparent' : style.bg;
+    preview.style.padding = style.bg === 'transparent' ? '0' : '8px 12px';
+    preview.style.borderRadius = '8px';
+  }
+}
+
+function updateCaptionSetting(key, value) {
+  const next = Number(value);
+  if (!state.captionSettings) state.captionSettings = { size: 100, position: 78, words: 3 };
+  if (key === 'size') state.captionSettings.size = Math.max(80, Math.min(125, next));
+  if (key === 'position') state.captionSettings.position = Math.max(62, Math.min(88, next));
+  if (key === 'words') state.captionSettings.words = Math.max(2, Math.min(4, Math.round(next)));
+  renderCaptionControls();
   drawAllVisibleCaptions();
 }
 
@@ -1783,6 +1902,7 @@ function renderClips() {
   state.clips.forEach((_, i) => state.selectedClips.add(i));
   unlockStage(3);
   renderCaptionPresets();
+  renderCaptionControls();
 
   setTimeout(() => drawAllVisibleCaptions(), 300);
 }
@@ -1860,8 +1980,9 @@ function getWordsForClip(clip) {
 function getCaptionLine(clip, currentMs) {
   const words = getWordsForClip(clip);
   const activeIndex = Math.max(0, words.findIndex(w => currentMs >= w.start && currentMs <= w.end));
-  const start = Math.max(0, activeIndex - 3);
-  const visible = words.slice(start, start + 7);
+  const density = Math.max(2, Math.min(4, state.captionSettings?.words || 3));
+  const start = Math.max(0, activeIndex - Math.floor(density / 2));
+  const visible = words.slice(start, start + density);
 
   return {
     words: visible,
@@ -1882,15 +2003,16 @@ function drawCaption(canvas, clip, currentMs) {
   ctx.clearRect(0, 0, rect.width, rect.height);
 
   const style = CAPTION_STYLES[state.captionStyle] || CAPTION_STYLES.tiktok;
+  const settings = state.captionSettings || { size: 100, position: Math.round(style.y * 100), words: 3 };
   const line = getCaptionLine(clip, currentMs);
   let text = line.words.map(w => w.text).join(' ') || getClipCaptionText(clip);
   if (style.uppercase) text = text.toUpperCase();
 
   const x = rect.width / 2;
-  const y = rect.height * style.y;
+  const y = rect.height * ((settings.position || Math.round(style.y * 100)) / 100);
   const maxWidth = rect.width * 0.86;
 
-  ctx.font = style.font;
+  ctx.font = style.font.replace(/(\d+)px/, (_, px) => Math.round(Number(px) * (settings.size || 100) / 100) + 'px');
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.lineJoin = 'round';
@@ -1915,7 +2037,7 @@ function drawCaption(canvas, clip, currentMs) {
   });
 
   if (style.karaoke && line.activeWord) {
-    ctx.font = style.font;
+    ctx.font = style.font.replace(/(\d+)px/, (_, px) => Math.round(Number(px) * (settings.size || 100) / 100) + 'px');
     ctx.fillStyle = style.highlight;
     ctx.fillText(style.uppercase ? line.activeWord.toUpperCase() : line.activeWord, x, y + lineHeight);
   }
@@ -2117,6 +2239,7 @@ async function exportTo(platform) {
           captionLines: clip.caption_lines || [],
           captionStyle: state.captionStyle,
           captionPreset: selectedPreset,
+          captionSettings: state.captionSettings,
           words: state.words ? state.words.filter(w => w.start >= (clip.start_ms || 0) && w.start <= (clip.end_ms || 0)).slice(0, 300) : []
         })
       });
@@ -2338,6 +2461,7 @@ function selectPreset(el, preset) {
   selectedPreset = preset;
   state.captionStyle = PRESET_TO_CAPTION_STYLE[preset] || state.captionStyle;
   renderCaptionPresets();
+  renderCaptionControls();
   drawAllVisibleCaptions();
   previewCaptionStyle(CAPTION_PRESETS[preset]);
   toast('Style: ' + CAPTION_PRESETS[preset].description);
