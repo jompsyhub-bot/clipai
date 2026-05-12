@@ -98,3 +98,2170 @@
       font-weight: 800;
       letter-spacing: -2px;
       line-height: 1.1;
+      color: #fff;
+      margin-bottom: 16px;
+    }
+    .hero h1 em { font-style: normal; color: var(--accent); }
+    .hero p {
+      font-size: 17px;
+      color: var(--text2);
+      max-width: 500px;
+      margin: 0 auto 40px;
+      line-height: 1.65;
+    }
+    .flow-steps {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      flex-wrap: wrap;
+      margin-bottom: 48px;
+    }
+    .flow-step {
+      font-size: 12px;
+      color: var(--text3);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .flow-step .fs-icon {
+      width: 28px; height: 28px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px;
+    }
+    .flow-step .fs-label { font-size: 11px; }
+    .flow-arrow { color: var(--text3); margin: 0 8px; font-size: 12px; }
+
+    /* ── APP SHELL ── */
+    .app-shell {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 20px 80px;
+    }
+
+    /* ── STAGE TABS ── */
+    .stages {
+      display: flex;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--r2);
+      padding: 6px;
+      gap: 4px;
+      margin-bottom: 24px;
+    }
+    .stage-btn {
+      flex: 1;
+      padding: 10px 6px;
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text3);
+      background: transparent;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      white-space: nowrap;
+    }
+    .stage-btn:hover { color: var(--text2); background: var(--bg3); }
+    .stage-btn.active { color: var(--accent2); background: var(--accent-dim); }
+    .stage-btn.done { color: var(--green); }
+    .stage-btn .snum {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: var(--bg4);
+      border: 1px solid var(--border2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px;
+      font-family: var(--mono);
+    }
+    .stage-btn.active .snum { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .stage-btn.done .snum { background: rgba(62,207,142,0.2); border-color: var(--green); color: var(--green); }
+    .stage-btn.locked { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+    .stage-btn.locked .snum::after { content: '🔒'; font-size: 9px; }
+
+    /* ── PANELS ── */
+    .panel { display: none; animation: fadeIn 0.25s ease; }
+    .panel.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--r2);
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+    .card-title {
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--text3);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    /* ── UPLOAD ── */
+    .upload-zone {
+      border: 1.5px dashed var(--border2);
+      border-radius: var(--r2);
+      padding: 60px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s;
+      background: var(--bg3);
+      position: relative;
+      overflow: hidden;
+    }
+    .upload-zone.drag { border-color: var(--accent); background: var(--accent-dim); }
+    .upload-zone:hover { border-color: rgba(124,106,247,0.5); background: rgba(124,106,247,0.05); }
+    .upload-icon-wrap {
+      width: 60px; height: 60px;
+      background: var(--bg4);
+      border: 1px solid var(--border2);
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 18px;
+      font-size: 26px;
+      transition: transform 0.2s;
+    }
+    .upload-zone:hover .upload-icon-wrap { transform: scale(1.05); }
+    .upload-zone h3 { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+    .upload-zone p { font-size: 14px; color: var(--text2); }
+    .upload-zone p a { color: var(--accent); cursor: pointer; }
+    #file-input { display: none; }
+    .formats {
+      display: flex; gap: 8px; justify-content: center;
+      flex-wrap: wrap; margin-top: 20px;
+    }
+    .fmt {
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 3px 10px;
+      background: var(--bg4);
+      border: 1px solid var(--border);
+      color: var(--text3);
+      border-radius: 6px;
+    }
+
+    /* OR divider */
+    .or-divider {
+      display: flex; align-items: center; gap: 12px;
+      margin: 20px 0; color: var(--text3); font-size: 12px;
+    }
+    .or-divider::before, .or-divider::after {
+      content: ''; flex: 1;
+      height: 1px; background: var(--border);
+    }
+
+    /* URL input row */
+    .url-row { display: flex; gap: 10px; }
+    .url-input {
+      flex: 1;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: var(--r);
+      padding: 12px 16px;
+      font-family: var(--font);
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .url-input:focus { border-color: var(--accent); }
+    .url-input::placeholder { color: var(--text3); }
+
+    /* ── BUTTONS ── */
+    .btn {
+      font-family: var(--font);
+      font-size: 14px;
+      font-weight: 600;
+      padding: 12px 24px;
+      border-radius: var(--r);
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #9080ff; transform: translateY(-1px); }
+    .btn-primary:active { transform: none; }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+    .btn-ghost {
+      background: transparent;
+      color: var(--accent2);
+      border: 1px solid rgba(124,106,247,0.3);
+    }
+    .btn-ghost:hover { background: var(--accent-dim); }
+    .btn-full { width: 100%; justify-content: center; }
+
+    /* ── PROGRESS ── */
+    .progress-wrap { margin: 20px 0; }
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      color: var(--text2);
+      margin-bottom: 8px;
+    }
+    .progress-bar {
+      height: 4px;
+      background: var(--bg4);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 4px;
+      transition: width 0.6s ease;
+    }
+    .progress-steps {
+      display: flex; flex-direction: column; gap: 6px; margin-top: 14px;
+    }
+    .p-step {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 13px; color: var(--text3);
+    }
+    .p-step.done { color: var(--green); }
+    .p-step.active { color: var(--text2); }
+    .p-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--bg4); border: 1px solid var(--border2);
+      flex-shrink: 0;
+    }
+    .p-step.done .p-dot { background: var(--green); border-color: var(--green); }
+    .p-step.active .p-dot { background: var(--accent); border-color: var(--accent); animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    /* ── STATS ROW ── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .stat {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 14px;
+      text-align: center;
+    }
+    .stat-val { font-size: 22px; font-weight: 700; color: var(--accent2); }
+    .stat-label { font-size: 11px; font-family: var(--mono); color: var(--text3); margin-top: 3px; }
+
+    /* ── TRANSCRIPT ── */
+    .transcript-box {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 18px;
+      max-height: 260px;
+      overflow-y: auto;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.8;
+      color: var(--text2);
+    }
+    .transcript-box::-webkit-scrollbar { width: 4px; }
+    .transcript-box::-webkit-scrollbar-track { background: transparent; }
+    .transcript-box::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+    .t-speaker { color: var(--accent); font-weight: 500; display: block; margin-top: 14px; }
+    .t-speaker:first-child { margin-top: 0; }
+
+    /* ── MOMENTS ── */
+    .moments-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .moment-card {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 14px;
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+    .moment-card:hover { border-color: rgba(124,106,247,0.4); }
+    .moment-card.sel { border-color: var(--accent); background: var(--accent-dim); }
+    .moment-time {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+    .moment-text { font-size: 13px; color: var(--text2); line-height: 1.5; }
+    .moment-bar { height: 2px; background: var(--bg4); border-radius: 2px; margin-top: 10px; overflow: hidden; }
+    .moment-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+
+    /* ── AI INPUT ── */
+    .ai-row { display: flex; gap: 8px; margin-top: 16px; }
+    .ai-input {
+      flex: 1;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: var(--r);
+      padding: 11px 16px;
+      font-family: var(--font);
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .ai-input:focus { border-color: var(--accent); }
+    .ai-input::placeholder { color: var(--text3); }
+    .ai-output {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 16px;
+      font-size: 14px;
+      color: var(--text2);
+      line-height: 1.7;
+      margin-top: 12px;
+      white-space: pre-wrap;
+      display: none;
+    }
+
+    /* ── CLIPS ── */
+    .clips-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px;
+    }
+    .clip-card {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--r2);
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .clip-card:hover { border-color: rgba(124,106,247,0.45); transform: translateY(-2px); }
+    .clip-card.sel { border-color: var(--accent); }
+    .clip-thumb {
+      aspect-ratio: 9/16;
+      background: linear-gradient(170deg, #161528 0%, #0d0c1a 100%);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      position: relative;
+    }
+    .clip-play {
+      width: 40px; height: 40px;
+      background: rgba(124,106,247,0.85);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      color: #fff;
+    }
+    .clip-dur {
+      position: absolute; bottom: 8px; right: 8px;
+      font-family: var(--mono); font-size: 11px;
+      background: rgba(0,0,0,0.7); color: var(--accent2);
+      padding: 2px 8px; border-radius: 5px;
+    }
+    .clip-energy {
+      position: absolute; top: 8px; left: 8px;
+      font-size: 10px; font-family: var(--mono);
+      padding: 2px 8px; border-radius: 20px;
+    }
+    .energy-high { background: rgba(240,100,100,0.25); color: #f09090; }
+    .energy-medium { background: rgba(240,168,50,0.2); color: #f0c060; }
+    .energy-calm { background: rgba(62,207,142,0.2); color: #70dfa0; }
+    .clip-info { padding: 14px; }
+    .clip-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .clip-sub { font-size: 12px; color: var(--text3); margin-bottom: 8px; }
+    .clip-why { font-size: 12px; color: var(--text2); line-height: 1.5; margin-bottom: 8px; }
+    .clip-platforms { display: flex; gap: 5px; flex-wrap: wrap; }
+    .plat-tag {
+      font-size: 10px; font-family: var(--mono);
+      background: var(--bg4); border: 1px solid var(--border);
+      color: var(--text3); padding: 2px 7px; border-radius: 5px;
+    }
+    .clip-captions { margin-top: 8px; }
+    .cap-line { font-size: 11px; color: var(--text3); font-style: italic; line-height: 1.5; }
+    
+      /* ── CLIP PREVIEW ── */
+    .clip-preview-wrap {
+      aspect-ratio: 9/16;
+      background: #050507;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .clip-preview-video,
+    .clip-caption-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .clip-preview-video {
+      object-fit: cover;
+      background: #050507;
+    }
+
+    .clip-caption-canvas {
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    .preview-play {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%,-50%);
+      z-index: 4;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.35);
+      background: rgba(8,8,16,0.72);
+      color: #fff;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .caption-presets {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .caption-preset {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text2);
+      border-radius: var(--r);
+      padding: 10px 12px;
+      cursor: pointer;
+      font-family: var(--font);
+      font-size: 13px;
+    }
+
+    .caption-preset.active {
+      border-color: var(--accent);
+      color: #fff;
+      background: var(--accent-dim);
+    }
+
+    /* ── EXPORT ── */
+    .export-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .export-card {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--r2);
+      padding: 20px 14px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .export-card:hover { border-color: rgba(124,106,247,0.4); background: var(--accent-dim); }
+    .ex-icon { font-size: 26px; margin-bottom: 10px; display: block; }
+    .ex-name { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .ex-sub { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+      background: var(--bg2); border: 1px solid var(--border2);
+      color: var(--text); padding: 12px 24px;
+      border-radius: 30px; font-size: 14px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      z-index: 999; opacity: 0; pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    #toast.show { opacity: 1; }
+
+    /* ── LOADING SPINNER ── */
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid var(--border2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── ACTION ROW ── */
+    .action-row { display: flex; gap: 10px; margin-top: 16px; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 600px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .clips-grid { grid-template-columns: repeat(2, 1fr); }
+      nav { padding: 14px 16px; }
+      .hero { padding: 48px 16px 40px; }
+      .stage-btn span.stage-label { display: none; }
+    }
+
+/* CAPTION PRESETS */
+.caption-presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+.preset-btn { background: var(--bg3); border: 2px solid var(--border); border-radius: 10px; padding: 10px 8px; cursor: pointer; transition: all 0.2s; text-align: center; }
+.preset-btn:hover { border-color: var(--accent); }
+.preset-btn.active { border-color: var(--accent); background: var(--accent-dim); }
+.preset-preview { height: 36px; border-radius: 6px; display: flex; align-items: center; justify-content: center; margin-bottom: 6px; font-size: 11px; font-weight: bold; overflow: hidden; }
+.preset-name { font-size: 11px; color: var(--text2); font-family: var(--mono); }
+/* PREVIEW MODAL */
+.preview-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 500; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+.preview-modal.open { display: flex; }
+.preview-inner { background: var(--bg2); border: 1px solid var(--border2); border-radius: 20px; padding: 24px; max-width: 380px; width: 90%; position: relative; }
+.preview-close { position: absolute; top: 16px; right: 16px; background: var(--bg3); border: none; color: var(--text2); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+.preview-phone { width: 180px; height: 320px; background: #000; border-radius: 24px; border: 3px solid #333; margin: 0 auto 16px; overflow: hidden; position: relative; }
+.preview-canvas { width: 100%; height: 100%; display: block; }
+.preview-controls { display: flex; gap: 8px; justify-content: center; margin-bottom: 12px; }
+.preview-btn { background: var(--bg3); border: 1px solid var(--border2); color: var(--text2); padding: 8px 16px; border-radius: 8px; font-family: var(--font); font-size: 13px; cursor: pointer; }
+.preview-btn:hover { background: var(--accent-dim); color: var(--accent2); }
+
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">clip<span>AI</span></div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span class="nav-badge">Powered by Groq + AssemblyAI</span>
+    <div id="nav-auth">
+      <a href="/login.html" style="font-size:13px;color:var(--accent2);text-decoration:none;padding:6px 14px;border:1px solid rgba(124,106,247,0.3);border-radius:8px;font-family:var(--font)">Sign In</a>
+    </div>
+  </div>
+</nav>
+
+<div class="preview-modal" id="preview-modal">
+  <div class="preview-inner">
+    <button class="preview-close" onclick="closePreview()">✕</button>
+    <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:16px" id="preview-title">Clip Preview</div>
+    <div class="preview-phone">
+      <canvas class="preview-canvas" id="preview-canvas" width="180" height="320"></canvas>
+    </div>
+    <div class="preview-controls">
+      <button class="preview-btn" id="prev-play-btn" onclick="togglePreviewPlay()">▷ Play</button>
+      <button class="preview-btn" onclick="closePreview()">Close</button>
+    </div>
+    <div style="font-size:12px;color:var(--text3);text-align:center;font-family:var(--mono)" id="preview-time">0:00 / 0:00</div>
+  </div>
+</div>
+
+<!-- Projects Sidebar -->
+<div id="projects-sidebar" style="display:none;position:fixed;top:0;right:0;width:320px;height:100vh;background:var(--bg2);border-left:1px solid var(--border2);z-index:200;overflow-y:auto;padding:24px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <div style="font-size:16px;font-weight:700;color:#fff">My Projects</div>
+    <button onclick="closeSidebar()" style="background:transparent;border:none;color:var(--text3);font-size:20px;cursor:pointer">✕</button>
+  </div>
+  <div id="projects-list"><div style="color:var(--text3);font-size:13px">Loading...</div></div>
+</div>
+<div id="sidebar-overlay" onclick="closeSidebar()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:199"></div>
+
+<div class="hero">
+  <span class="hero-eyebrow">✦ AI Video Repurposing</span>
+  <h1>Turn long videos into<br><em>viral short clips</em></h1>
+  <p>Upload any podcast, Zoom, or YouTube recording. AI transcribes, finds the best moments, and generates caption-ready 9:16 clips.</p>
+  <div class="flow-steps">
+    <div class="flow-step"><div class="fs-icon">⬆</div><span class="fs-label">Upload</span></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step"><div class="fs-icon">◎</div><span class="fs-label">Transcribe</span></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step"><div class="fs-icon">✦</div><span class="fs-label">AI Clips</span></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step"><div class="fs-icon">Aa</div><span class="fs-label">Captions</span></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step"><div class="fs-icon">⬇</div><span class="fs-label">Export</span></div>
+  </div>
+</div>
+
+<div class="app-shell">
+
+  <!-- STAGE TABS -->
+  <div class="stages" role="tablist">
+    <button class="stage-btn active" id="tab0" onclick="goStage(0)">
+      <span class="snum">1</span>
+      <span class="stage-label">Upload</span>
+    </button>
+    <button class="stage-btn locked" id="tab1" onclick="goStage(1)">
+      <span class="snum">2</span>
+      <span class="stage-label">Transcribe</span>
+    </button>
+    <button class="stage-btn locked" id="tab2" onclick="goStage(2)">
+      <span class="snum">3</span>
+      <span class="stage-label">Clips</span>
+    </button>
+    <button class="stage-btn locked" id="tab3" onclick="goStage(3)">
+      <span class="snum">4</span>
+      <span class="stage-label">Export</span>
+    </button>
+  </div>
+
+  <!-- ═══ PANEL 0: UPLOAD ═══ -->
+  <div class="panel active" id="p0">
+    <div class="card">
+      <div class="card-title">Upload your video</div>
+      <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <input type="file" id="file-input" accept="video/*,audio/*" />
+        <div class="upload-icon-wrap">⬆</div>
+        <h3>Drop your video here</h3>
+        <p>or <a>browse files</a> to select from your device</p>
+        <div class="formats">
+          <span class="fmt">MP4</span><span class="fmt">MOV</span><span class="fmt">MKV</span>
+          <span class="fmt">WEBM</span><span class="fmt">AVI</span><span class="fmt">MP3</span>
+          <span class="fmt">M4A</span>
+        </div>
+      </div>
+
+      <div class="or-divider">or paste a public URL</div>
+
+      <div class="url-row">
+        <input class="url-input" id="url-input" type="url"
+          placeholder="https://example.com/video.mp4  or  YouTube/podcast URL" />
+        <button class="btn btn-primary" onclick="submitUrl()">Analyze</button>
+      </div>
+
+      <div id="upload-progress" style="display:none" class="progress-wrap">
+        <div class="progress-label">
+          <span id="upload-status">Uploading...</span>
+          <div style="display:flex;align-items:center;gap:12px">
+            <span id="upload-pct">0%</span>
+            <button id="cancel-upload-btn" onclick="cancelUpload()" style="background:transparent;border:1px solid var(--red);color:var(--red);font-family:var(--font);font-size:12px;padding:3px 10px;border-radius:6px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='rgba(240,100,100,0.15)'" onmouseout="this.style.background='transparent'">✕ Cancel</button>
+          </div>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="upload-bar" style="width:0%"></div></div>
+        <div id="upload-size" style="font-size:12px;color:var(--text3);margin-top:6px;font-family:var(--mono)"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PANEL 1: TRANSCRIBE ═══ -->
+  <div class="panel" id="p1">
+
+    <div id="transcribe-progress" class="card">
+      <div class="card-title">Processing your video</div>
+      <div class="progress-wrap">
+        <div class="progress-label">
+          <span id="trans-status">Submitting to AssemblyAI...</span>
+          <span id="trans-pct">0%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="trans-bar" style="width:0%"></div></div>
+      </div>
+      <div class="progress-steps">
+        <div class="p-step active" id="step-upload"><div class="p-dot"></div>Uploading media</div>
+        <div class="p-step" id="step-transcribe"><div class="p-dot"></div>Transcribing audio</div>
+        <div class="p-step" id="step-speakers"><div class="p-dot"></div>Detecting speakers</div>
+        <div class="p-step" id="step-moments"><div class="p-dot"></div>Analyzing key moments</div>
+        <div class="p-step" id="step-done"><div class="p-dot"></div>Ready</div>
+      </div>
+    </div>
+
+    <div id="transcribe-results" style="display:none">
+      <div class="stats-row" id="stats-row">
+        <!-- filled by JS -->
+      </div>
+
+      <div class="card">
+        <div class="card-title">Transcript</div>
+        <div class="transcript-box" id="transcript-content"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Key moments — click to select</div>
+        <div class="moments-grid" id="moments-grid"></div>
+        <div class="ai-row">
+          <input class="ai-input" id="moments-query"
+            placeholder="Ask AI: find moments about fundraising, product launches..." />
+          <button class="btn btn-primary" id="moments-ask-btn" onclick="askMomentsAI()">Ask</button>
+        </div>
+        <div class="ai-output" id="moments-ai-out"></div>
+      </div>
+
+      <button class="btn btn-primary btn-full" onclick="goToClips()">
+        Generate clips from selected moments →
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ PANEL 2: CLIPS ═══ -->
+  <div class="panel" id="p2">
+    <div class="card">
+      <div class="card-title">AI clip suggestions — 9:16 vertical format</div>
+      <div id="clips-loading" style="display:flex;align-items:center;gap:12px;padding:20px 0;color:var(--text2);font-size:14px">
+        <div class="spinner"></div> Analyzing transcript and generating clip ideas...
+      </div>
+      <div class="clips-grid" id="clips-grid" style="display:none"></div>
+      <div class="ai-row" style="margin-top:20px">
+        <input class="ai-input" id="clip-query"
+          placeholder="Generate a clip about a specific topic or moment..." />
+        <button class="btn btn-primary" id="clip-ask-btn" onclick="askClipAI()">Generate</button>
+      </div>
+      <div class="ai-output" id="clip-ai-out"></div>
+    </div>
+    <div class="action-row">
+      <button class="btn btn-primary btn-full" onclick="goStage(3)" style="margin-top:16px">Continue to export →</button>
+    </div>
+  </div>
+
+  <!-- ═══ PANEL 3: EXPORT ═══ -->
+  <div class="panel" id="p3">
+    <div class="card">
+      <div class="card">
+  <div class="card-title">Caption style — pick a preset or describe your own</div>
+  <div class="caption-presets">
+    <div class="preset-btn active" onclick="selectPreset(this,'tiktok-bold')">
+      <div class="preset-preview" style="background:#000;color:#fff;font-size:13px;font-weight:900;font-family:Arial Black,sans-serif">BOLD TEXT</div>
+      <div class="preset-name">TikTok Bold</div>
+    </div>
+    <div class="preset-btn" onclick="selectPreset(this,'yellow-pop')">
+      <div class="preset-preview" style="background:#111;color:#FFE600;font-size:13px;font-weight:800">Yellow Pop</div>
+      <div class="preset-name">MrBeast Yellow</div>
+    </div>
+    <div class="preset-btn" onclick="selectPreset(this,'minimal-white')">
+      <div class="preset-preview" style="background:#000;color:#fff;font-size:12px;font-weight:400">minimal clean</div>
+      <div class="preset-name">Minimal White</div>
+    </div>
+    <div class="preset-btn" onclick="selectPreset(this,'karaoke')">
+      <div class="preset-preview" style="background:#1a0a2e;font-size:12px"><span style="color:#fff">word </span><span style="color:#7c6af7;font-weight:800">by </span><span style="color:#fff">word</span></div>
+      <div class="preset-name">Karaoke</div>
+    </div>
+    <div class="preset-btn" onclick="selectPreset(this,'neon')">
+      <div class="preset-preview" style="background:#000;color:#00ff88;font-size:12px;font-weight:700;text-shadow:0 0 8px #00ff88">NEON GLOW</div>
+      <div class="preset-name">Neon Glow</div>
+    </div>
+    <div class="preset-btn" onclick="selectPreset(this,'subtitle')">
+      <div class="preset-preview" style="background:rgba(0,0,0,0.7);color:#fff;font-size:11px;padding:0 4px">Subtitle style</div>
+      <div class="preset-name">Subtitle Box</div>
+    </div>
+  </div>
+  <div class="ai-row">
+    <input class="ai-input" id="cap-query" placeholder="Or describe your own: bold yellow, word-by-word pop..." />
+    <button class="btn btn-primary" id="cap-btn" onclick="generateCaptions()">Preview</button>
+  </div>
+  <div id="cap-ai-out" style="display:none;margin-top:16px"></div>
+</div>
+      <div class="caption-presets" id="caption-presets"></div>
+      <div class="ai-row">
+        <input class="ai-input" id="cap-query"
+          placeholder="Optional: describe a custom caption style..." />
+        <button class="btn btn-primary" id="cap-btn" onclick="generateCaptions()">Preview</button>
+      </div>
+      <div class="ai-output" id="cap-ai-out"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Export & share</div>
+      <div class="export-grid">
+        <div class="export-card" onclick="exportTo('mp4')">
+          <span class="ex-icon">⬇</span>
+          <div class="ex-name">Download MP4</div>
+          <div class="ex-sub">9:16 · 1080×1920</div>
+        </div>
+        <div class="export-card" onclick="exportTo('tiktok')">
+          <span class="ex-icon">▶</span>
+          <div class="ex-name">TikTok</div>
+          <div class="ex-sub">Direct publish</div>
+        </div>
+        <div class="export-card" onclick="exportTo('reels')">
+          <span class="ex-icon">◈</span>
+          <div class="ex-name">Instagram Reels</div>
+          <div class="ex-sub">Direct publish</div>
+        </div>
+        <div class="export-card" onclick="exportTo('shorts')">
+          <span class="ex-icon">▷</span>
+          <div class="ex-name">YouTube Shorts</div>
+          <div class="ex-sub">Direct publish</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Selected clips summary</div>
+      <div id="export-summary" style="color:var(--text2);font-size:14px;line-height:1.7"></div>
+    </div>
+  </div>
+
+</div><!-- /app-shell -->
+
+<div id="toast"></div>
+
+<script>
+// ═══ AUTH GUARD ═══
+// Redirect to login if not signed in
+(function() {
+  const token = localStorage.getItem('clipai_token');
+  const user = JSON.parse(localStorage.getItem('clipai_user') || 'null');
+  if (!token || !user) {
+    window.location.href = '/login.html';
+  }
+})();
+
+// ═══ CONFIG ═══
+// Railway handles video cutting (FFmpeg). Vercel handles everything else.
+const RAILWAY_URL = 'https://clipai-backend-nvwq.onrender.com';
+
+// ═══ STATE ═══
+const state = {
+  transcriptId: null,
+  transcript: null,
+  utterances: [],
+  highlights: [],
+  words: [],
+  duration: 0,
+  clips: [],
+  selectedClips: new Set(),
+  selectedMoments: new Set(),
+  sourceVideoUrl: '',
+  transcriptionUrl: '',
+  localFileId: null,
+  localPreviewUrl: '',
+  captionStyle: 'tiktok'
+
+};
+
+// ═══ UTILS ═══
+function toast(msg, duration = 3000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+function formatTime(ms) {
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function setBtn(id, loading, loadingText = '...') {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  btn.disabled = loading;
+  btn.dataset.origText = btn.dataset.origText || btn.textContent;
+  btn.textContent = loading ? loadingText : btn.dataset.origText;
+}
+
+// ═══ STAGES ═══
+// Track how far the user has legitimately progressed
+state.unlockedStage = 0;
+
+function unlockStage(n) {
+  if (n > state.unlockedStage) state.unlockedStage = n;
+  // Re-render tab lock states without changing active tab
+  document.querySelectorAll('.stage-btn').forEach((b, i) => {
+    if (i <= state.unlockedStage) {
+      b.style.pointerEvents = '';
+      b.classList.remove('locked');
+    }
+  });
+}
+
+function goStage(n) {
+  // Block navigation to stages not yet unlocked
+  if (n > state.unlockedStage) {
+    const messages = [
+      '',
+      'Upload a video first to unlock Transcribe.',
+      'Complete transcription first to unlock Clips.',
+      'Generate clips first to unlock Export.'
+    ];
+    toast(messages[n] || 'Complete the previous step first.');
+    return;
+    if (n === 3) renderCaptionPresets();
+    drawAllVisibleCaptions();
+
+  }
+
+  document.querySelectorAll('.stage-btn').forEach((b, i) => {
+    b.className = 'stage-btn' +
+      (i === n ? ' active' : i < n ? ' done' : i <= state.unlockedStage ? '' : ' locked');
+  });
+  document.querySelectorAll('.panel').forEach((p, i) => {
+    p.className = 'panel' + (i === n ? ' active' : '');
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ═══ UPLOAD ═══
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) uploadFile(file);
+});
+
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) uploadFile(fileInput.files[0]);
+});
+
+// Active XHR so we can cancel it
+let activeXHR = null;
+
+function cancelUpload() {
+  if (activeXHR) {
+    activeXHR.abort();
+    activeXHR = null;
+  }
+  document.getElementById('upload-progress').style.display = 'none';
+  document.getElementById('upload-bar').style.width = '0%';
+  toast('Upload cancelled.');
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+}
+
+function setPreviewVideoUrl(url) {
+  if (state.localPreviewUrl && state.localPreviewUrl.startsWith('blob:')) {
+    URL.revokeObjectURL(state.localPreviewUrl);
+  }
+  state.localPreviewUrl = url || '';
+  state.sourceVideoUrl = state.localPreviewUrl;
+}
+
+async function uploadFile(file) {
+  const maxSize = 500 * 1024 * 1024;
+  if (file.size > maxSize) { toast('File too large. Max 500MB.'); return; }
+
+  setPreviewVideoUrl(URL.createObjectURL(file));
+
+  document.getElementById('upload-progress').style.display = 'block';
+  document.getElementById('upload-status').textContent = 'Uploading ' + file.name + '...';
+  document.getElementById('upload-bar').style.width = '0%';
+  document.getElementById('upload-pct').textContent = '0%';
+  document.getElementById('upload-size').textContent = '0 B / ' + formatBytes(file.size);
+
+  // Upload via our local server (saves file locally for FFmpeg cutting + uploads to AssemblyAI)
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    activeXHR = xhr;
+    // Send as raw binary — simpler, faster, no multipart parsing needed
+    // Upload goes to Railway (needs local storage for FFmpeg cutting)
+    xhr.open('POST', RAILWAY_URL + '/api/upload-local', true);
+    xhr.setRequestHeader('content-type', 'application/octet-stream');
+    xhr.setRequestHeader('x-filename', encodeURIComponent(file.name));
+
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 100);
+        document.getElementById('upload-bar').style.width = pct + '%';
+        document.getElementById('upload-pct').textContent = pct + '%';
+        document.getElementById('upload-size').textContent = formatBytes(e.loaded) + ' / ' + formatBytes(e.total);
+        if (pct === 100) {
+          document.getElementById('upload-status').textContent = 'Processing upload...';
+        }
+      }
+    });
+
+    xhr.addEventListener('load', async () => {
+      activeXHR = null;
+      if (xhr.status === 200) {
+        const data = JSON.parse(xhr.responseText);
+        document.getElementById('upload-bar').style.width = '100%';
+        document.getElementById('upload-pct').textContent = '100%';
+        document.getElementById('upload-status').textContent = 'Upload complete!';
+        document.getElementById('upload-size').textContent = formatBytes(file.size) + ' uploaded';
+        state.localFileId = data.localFileId;
+        state.transcriptionUrl = data.uploadUrl;
+        await startTranscription(state.transcriptionUrl);
+      } else {
+        let errMsg = 'Upload failed';
+        try { errMsg = JSON.parse(xhr.responseText).error || errMsg; } catch(e) {}
+        toast('Upload failed: ' + errMsg);
+        document.getElementById('upload-progress').style.display = 'none';
+      }
+      resolve();
+    });
+
+    xhr.addEventListener('error', () => {
+      activeXHR = null;
+      toast('Upload error — check your internet connection.');
+      document.getElementById('upload-progress').style.display = 'none';
+      resolve();
+    });
+
+    xhr.addEventListener('abort', () => {
+      activeXHR = null;
+      resolve();
+    });
+
+    xhr.send(file);
+  });
+}
+
+async function submitUrl() {
+  const url = document.getElementById('url-input').value.trim();
+  if (!url) { toast('Please enter a video URL'); return; }
+
+  const isYouTube = /youtube\.com|youtu\.be/.test(url);
+
+  if (isYouTube) {
+    document.getElementById('upload-progress').style.display = 'block';
+    document.getElementById('upload-status').textContent = 'Downloading YouTube audio... (1-2 minutes)';
+    document.getElementById('upload-bar').style.width = '5%';
+    document.getElementById('upload-pct').textContent = '5%';
+    document.getElementById('upload-size').textContent = 'Connecting to YouTube...';
+
+    let fakePct = 5;
+    const fakeTimer = setInterval(() => {
+      if (fakePct < 85) {
+        fakePct += (85 - fakePct) * 0.02;
+        document.getElementById('upload-bar').style.width = fakePct.toFixed(1) + '%';
+        document.getElementById('upload-pct').textContent = Math.round(fakePct) + '%';
+      }
+    }, 500);
+
+    try {
+      const res = await fetch(RAILWAY_URL + '/api/youtube-upload', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+      const data = await res.json();
+      clearInterval(fakeTimer);
+
+      if (!res.ok) throw new Error(data.error || 'YouTube download failed');
+
+      document.getElementById('upload-bar').style.width = '100%';
+      document.getElementById('upload-pct').textContent = '100%';
+      document.getElementById('upload-status').textContent = 'YouTube audio ready!';
+      document.getElementById('upload-size').textContent = 'Downloaded and ready to transcribe';
+
+      state.localFileId = data.localFileId;
+      state.transcriptionUrl = data.uploadUrl;
+      setPreviewVideoUrl(data.previewUrl || data.videoUrl || data.localVideoUrl || '');
+      await startTranscription(state.transcriptionUrl);
+    } catch (err) {
+      clearInterval(fakeTimer);
+      document.getElementById('upload-progress').style.display = 'none';
+      toast('YouTube error: ' + err.message, 6000);
+    }
+    return;
+  }
+
+  state.transcriptionUrl = url;
+  setPreviewVideoUrl(url);
+  await startTranscription(state.transcriptionUrl);
+}
+
+// YouTube help removed — yt-dlp now handles YouTube directly
+
+async function startTranscription(videoUrl) {
+  // Unlock FIRST so goStage can navigate
+  unlockStage(1);
+  goStage(1);
+
+  // Now set up the UI (panel is visible now)
+  document.getElementById('transcribe-progress').style.display = 'block';
+  document.getElementById('transcribe-results').style.display = 'none';
+  updateStep('step-upload', 'done');
+  updateStep('step-transcribe', 'active');
+  document.getElementById('trans-bar').style.width = '10%';
+  document.getElementById('trans-pct').textContent = '10%';
+  document.getElementById('trans-status').textContent = 'Submitting to AssemblyAI...';
+
+  try {
+    console.log('[ClipAI] Submitting video URL to transcribe API:', videoUrl.substring(0, 80));
+    const res = await fetch('/api/transcribe', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ videoUrl })
+    });
+
+    let data;
+    const rawText = await res.text();
+    console.log('[ClipAI] Transcribe API raw response:', rawText.substring(0, 300));
+    try { data = JSON.parse(rawText); } catch(e) { throw new Error('Server returned invalid response: ' + rawText.substring(0, 100)); }
+
+    if (!res.ok) throw new Error(data.error || 'Server error ' + res.status);
+
+    state.transcriptId = data.transcriptId || data.id;
+    if (!state.transcriptId) throw new Error('No transcript ID in response: ' + JSON.stringify(data));
+
+    console.log('[ClipAI] Got transcript ID:', state.transcriptId);
+    document.getElementById('trans-bar').style.width = '18%';
+    document.getElementById('trans-pct').textContent = '18%';
+    document.getElementById('trans-status').textContent = 'Queued — waiting for processing...';
+    pollTranscript();
+  } catch (err) {
+    console.error('[ClipAI] Transcription failed:', err.message);
+    // Show error on the transcribe page instead of silently going back
+    document.getElementById('trans-status').textContent = 'Failed: ' + err.message;
+    document.getElementById('trans-status').style.color = 'var(--red)';
+    document.getElementById('trans-bar').style.width = '0%';
+    document.getElementById('trans-bar').style.background = 'var(--red)';
+    toast('Error: ' + err.message, 6000);
+    // Stay on transcribe page so user can see the error
+  }
+}
+
+function updateStep(id, status) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'p-step ' + status;
+}
+
+function setProgress(barId, pctId, pct, label) {
+  document.getElementById(barId).style.width = pct + '%';
+  document.getElementById(pctId).textContent = pct + '%';
+  if (label) document.getElementById('trans-status').textContent = label;
+}
+
+async function pollTranscript() {
+  let attempts = 0;
+  const maxAttempts = 180;
+  let simulatedPct = 18;
+
+  // Smoothly creep the bar forward while we wait so it never looks frozen
+  const animator = setInterval(() => {
+    if (simulatedPct < 85) {
+      simulatedPct += (85 - simulatedPct) * 0.03; // ease toward 85%
+      document.getElementById('trans-bar').style.width = simulatedPct.toFixed(1) + '%';
+      document.getElementById('trans-pct').textContent = Math.round(simulatedPct) + '%';
+    }
+  }, 500);
+
+  const setStatus = (text) => {
+    const el = document.getElementById('trans-status');
+    if (el) el.textContent = text;
+    console.log('[ClipAI]', text);
+  };
+
+  const showError = (msg) => {
+    clearInterval(animator);
+    console.error('[ClipAI] Error:', msg);
+    const el = document.getElementById('trans-status');
+    if (el) { el.textContent = 'Error: ' + msg; el.style.color = 'var(--red)'; }
+    setTimeout(() => { toast('Error: ' + msg); goStage(0); }, 2000);
+  };
+
+  const poll = async () => {
+    try {
+      console.log('[ClipAI] Polling transcript ID:', state.transcriptId, 'attempt', attempts + 1);
+      const res = await fetch('/api/transcript-status?id=' + state.transcriptId);
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error('Server error ' + res.status + ': ' + text);
+      }
+
+      const data = await res.json();
+      console.log('[ClipAI] Poll response:', data.status);
+
+      if (data.status === 'queued') {
+        setStatus('Queued — waiting for processing slot...');
+        updateStep('step-upload', 'done');
+        updateStep('step-transcribe', 'active');
+
+      } else if (data.status === 'processing') {
+        setStatus('Transcribing audio...');
+        updateStep('step-upload', 'done');
+        updateStep('step-transcribe', 'active');
+        if (attempts > 3) {
+          setStatus('Detecting speakers...');
+          updateStep('step-speakers', 'active');
+        }
+
+      } else if (data.status === 'completed') {
+        clearInterval(animator);
+        updateStep('step-transcribe', 'done');
+        updateStep('step-speakers', 'done');
+        updateStep('step-moments', 'active');
+        document.getElementById('trans-bar').style.width = '92%';
+        document.getElementById('trans-pct').textContent = '92%';
+        setStatus('Analyzing key moments...');
+
+        state.transcript = data.text;
+        state.utterances = data.utterances || [];
+        state.highlights = data.highlights || [];
+        state.words = data.words || [];
+        state.duration = data.duration || 0;
+
+        setTimeout(() => {
+          updateStep('step-moments', 'done');
+          updateStep('step-done', 'done');
+          document.getElementById('trans-bar').style.width = '100%';
+          document.getElementById('trans-pct').textContent = '100%';
+          setStatus('Complete!');
+          setTimeout(showTranscriptResults, 700);
+        }, 900);
+        return;
+
+      } else if (data.status === 'error') {
+        showError(data.error || 'AssemblyAI returned an error');
+        return;
+      } else {
+        setStatus('Status: ' + data.status + '...');
+      }
+
+      attempts++;
+      if (attempts < maxAttempts) {
+        setTimeout(poll, 4000);
+      } else {
+        showError('Timed out after 12 minutes. Please try again.');
+      }
+    } catch (err) {
+      showError(err.message);
+    }
+  };
+
+  // Start first poll after 2s
+  setTimeout(poll, 2000);
+}
+
+function showTranscriptResults() {
+  document.getElementById('transcribe-progress').style.display = 'none';
+  document.getElementById('transcribe-results').style.display = 'block';
+  unlockStage(2);
+  toast('Transcription complete! Showing results...');
+
+  // Stats
+  const words = state.transcript ? state.transcript.split(' ').length : 0;
+  const speakers = new Set(state.utterances.map(u => u.speaker)).size;
+  const dur = state.duration ? formatTime(state.duration * 1000) : '--:--';
+
+  document.getElementById('stats-row').innerHTML = `
+    <div class="stat"><div class="stat-val">${dur}</div><div class="stat-label">duration</div></div>
+    <div class="stat"><div class="stat-val">${words.toLocaleString()}</div><div class="stat-label">words</div></div>
+    <div class="stat"><div class="stat-val">${speakers}</div><div class="stat-label">speakers</div></div>
+    <div class="stat"><div class="stat-val">${state.highlights.length}</div><div class="stat-label">key moments</div></div>
+  `;
+
+  // Transcript
+  const tcEl = document.getElementById('transcript-content');
+  if (state.utterances.length > 0) {
+    tcEl.innerHTML = state.utterances.slice(0, 40).map(u =>
+      `<span class="t-speaker">[Speaker ${u.speaker} · ${formatTime(u.start)}]</span>${u.text}`
+    ).join('\n');
+  } else {
+    tcEl.textContent = (state.transcript || '').substring(0, 3000);
+  }
+
+  // Moments
+  renderMoments();
+}
+
+function renderMoments() {
+  const grid = document.getElementById('moments-grid');
+  const moments = state.highlights.length > 0
+    ? state.highlights.slice(0, 9)
+    : buildMomentsFromUtterances();
+
+  grid.innerHTML = moments.map((m, i) => {
+    const ts = m.timestamps?.[0] || { start: m.start_ms || 0, end: m.end_ms || 0 };
+    const rankPct = Math.round((m.rank || 0.7) * 100);
+    return `
+      <div class="moment-card" id="mc${i}" onclick="toggleMoment(${i})">
+        <div class="moment-time">${formatTime(ts.start)} – ${formatTime(ts.end)}</div>
+        <div class="moment-text">"${m.text.slice(0, 90)}${m.text.length > 90 ? '...' : ''}"</div>
+        <div class="moment-bar"><div class="moment-bar-fill" style="width:${rankPct}%"></div></div>
+      </div>
+    `;
+  }).join('');
+}
+
+function buildMomentsFromUtterances() {
+  return state.utterances
+    .filter(u => u.text.length > 50)
+    .slice(0, 9)
+    .map(u => ({
+      text: u.text,
+      rank: u.confidence || 0.7,
+      timestamps: [{ start: u.start, end: u.end }]
+    }));
+}
+
+function toggleMoment(i) {
+  const el = document.getElementById('mc' + i);
+  if (state.selectedMoments.has(i)) {
+    state.selectedMoments.delete(i);
+    el.classList.remove('sel');
+  } else {
+    state.selectedMoments.add(i);
+    el.classList.add('sel');
+  }
+}
+
+async function askMomentsAI() {
+  const q = document.getElementById('moments-query').value.trim();
+  if (!q) { toast('Enter a question first'); return; }
+  setBtn('moments-ask-btn', true, '...');
+  const out = document.getElementById('moments-ai-out');
+  out.style.display = 'block';
+  out.textContent = 'Analyzing...';
+
+  try {
+    const res = await fetch('/api/suggest-clips', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        transcript: state.transcript,
+        utterances: state.utterances.slice(0, 50),
+        highlights: state.highlights.slice(0, 8),
+        duration: state.duration,
+        customPrompt: q
+      })
+    });
+    const data = await res.json();
+    if (data.clips?.length > 0) {
+      out.textContent = data.clips.map((c, i) =>
+        `Clip ${i + 1}: "${c.title}" (${c.start_ms ? formatTime(c.start_ms) : '?'} – ${c.end_ms ? formatTime(c.end_ms) : '?'})\n${c.why}`
+      ).join('\n\n');
+    } else {
+      out.textContent = data.error || 'No results found.';
+    }
+  } catch (err) {
+    out.textContent = 'Error: ' + err.message;
+  }
+  setBtn('moments-ask-btn', false);
+}
+
+const CAPTION_STYLES = {
+  tiktok: {
+    label: 'TikTok bold',
+    font: '800 28px Syne, Arial',
+    color: '#ffffff',
+    stroke: '#000000',
+    bg: 'rgba(0,0,0,0.35)',
+    highlight: '#7c6af7',
+    y: 0.78,
+    uppercase: false
+  },
+  mrbeast: {
+    label: 'MrBeast yellow',
+    font: '900 30px Arial Black, Arial',
+    color: '#ffe600',
+    stroke: '#000000',
+    bg: 'rgba(0,0,0,0.15)',
+    highlight: '#ff3b30',
+    y: 0.76,
+    uppercase: true
+  },
+  minimal: {
+    label: 'Minimal white',
+    font: '600 24px Arial',
+    color: '#ffffff',
+    stroke: 'rgba(0,0,0,0.55)',
+    bg: 'transparent',
+    highlight: '#ffffff',
+    y: 0.82,
+    uppercase: false
+  },
+  karaoke: {
+    label: 'Karaoke highlight',
+    font: '800 27px Syne, Arial',
+    color: '#ffffff',
+    stroke: '#000000',
+    bg: 'rgba(0,0,0,0.35)',
+    highlight: '#3ecf8e',
+    y: 0.78,
+    uppercase: false,
+    karaoke: true
+  }
+};
+
+function escapeHTML(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[ch]));
+}
+
+function renderCaptionPresets() {
+  const el = document.getElementById('caption-presets');
+  if (!el) return;
+
+  el.innerHTML = Object.entries(CAPTION_STYLES).map(([key, style]) =>
+    '<button class="caption-preset ' + (state.captionStyle === key ? 'active' : '') + '" onclick="setCaptionStyle(\'' + key + '\')">' +
+      escapeHTML(style.label) +
+    '</button>'
+  ).join('');
+}
+
+function setCaptionStyle(key) {
+  state.captionStyle = key;
+  renderCaptionPresets();
+  drawAllVisibleCaptions();
+}
+
+
+// ═══ CLIPS ═══
+async function goToClips() {
+  goStage(2);
+  document.getElementById('clips-loading').style.display = 'flex';
+  document.getElementById('clips-grid').style.display = 'none';
+
+  try {
+    const res = await fetch('/api/suggest-clips', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        transcript: state.transcript,
+        utterances: state.utterances.slice(0, 60),
+        highlights: state.highlights.slice(0, 10),
+        duration: state.duration
+      })
+    });
+    const data = await res.json();
+    state.clips = data.clips || [];
+    renderClips();
+    // Auto-advance toast
+    toast('Clips ready! Review and select, then continue to export.');
+  } catch (err) {
+    toast('Error generating clips: ' + err.message);
+    state.clips = [];
+    renderClips();
+  }
+}
+
+function renderClips() {
+  document.getElementById('clips-loading').style.display = 'none';
+  const grid = document.getElementById('clips-grid');
+  grid.style.display = 'grid';
+
+  if (state.clips.length === 0) {
+    grid.innerHTML = '<p style="color:var(--text2);padding:20px 0">No clips generated. Try entering a custom prompt below.</p>';
+    return;
+  }
+
+  grid.innerHTML = state.clips.map((c, i) => {
+    const energyClass = 'energy-' + (c.energy || 'medium');
+    const dur = c.duration_s ? c.duration_s + 's' : '?s';
+    const platforms = (c.platform_fit || ['tiktok', 'reels']).map(p =>
+      '<span class="plat-tag">' + escapeHTML(p) + '</span>').join('');
+    const start = c.start_ms ? formatTime(c.start_ms) : '?';
+    const end = c.end_ms ? formatTime(c.end_ms) : '?';
+
+    return '<div class="clip-card sel" id="clip' + i + '">' +
+      '<div class="clip-preview-wrap">' +
+        '<video class="clip-preview-video" id="preview-video-' + i + '" muted playsinline preload="metadata" src="' + escapeHTML(state.sourceVideoUrl || '') + '"></video>' +
+        '<canvas class="clip-caption-canvas" id="preview-canvas-' + i + '"></canvas>' +
+        '<button class="preview-play" onclick="event.stopPropagation(); toggleClipPreview(' + i + ')">▶</button>' +
+        '<div class="clip-dur">' + dur + '</div>' +
+        '<div class="clip-energy ' + energyClass + '">' + escapeHTML(c.energy || 'medium') + '</div>' +
+      '</div>' +
+      '<div class="clip-info">' +
+ 	'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">' +
+    	'<div onclick="toggleClip(' + i + ')" style="flex:1;cursor:pointer">' +
+        '<div class="clip-title">' + escapeHTML(c.title || 'Clip ' + (i+1)) + '</div>' +
+	'</div>' +
+	'<button onclick="openPreview(' + i + ')" style="background:var(--accent-dim);border:1px solid rgba(124,106,247,0.3);color:var(--accent2);padding:4px 10px;border-radius:6px;font-		family:var(--font);font-size:11px;cursor:pointer;white-space:nowrap">▷ Preview</button>' +
+	'</div>' +
+        '<div class="clip-sub">Speaker ' + escapeHTML(c.speaker || '?') + ' · ' + escapeHTML(start + ' → ' + end) + '</div>' +
+        '<div class="clip-why">' + escapeHTML(c.why ? c.why.slice(0,90) + '...' : '') + '</div>' +
+        '<div class="clip-platforms" style="margin-top:6px">' + platforms + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  state.selectedClips.clear();
+  state.clips.forEach((_, i) => state.selectedClips.add(i));
+  unlockStage(3);
+  renderCaptionPresets();
+
+  setTimeout(() => drawAllVisibleCaptions(), 300);
+}
+
+
+function toggleClip(i) {
+  const el = document.getElementById('clip' + i);
+  if (state.selectedClips.has(i)) {
+    state.selectedClips.delete(i);
+    el.classList.remove('sel');
+  } else {
+    state.selectedClips.add(i);
+    el.classList.add('sel');
+  }
+}
+
+async function askClipAI() {
+  const q = document.getElementById('clip-query').value.trim();
+  if (!q) { toast('Describe what clip you want'); return; }
+  setBtn('clip-ask-btn', true, '...');
+  const out = document.getElementById('clip-ai-out');
+  out.style.display = 'block';
+  out.textContent = 'Generating...';
+
+  try {
+    const res = await fetch('/api/suggest-clips', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        transcript: state.transcript,
+        utterances: state.utterances.slice(0, 60),
+        highlights: state.highlights.slice(0, 10),
+        duration: state.duration,
+        customPrompt: q
+      })
+    });
+    const data = await res.json();
+    if (data.clips?.length > 0) {
+      const c = data.clips[0];
+      out.textContent = `"${c.title}"\n${formatTime(c.start_ms || 0)} – ${formatTime(c.end_ms || 0)} (${c.duration_s}s)\n\n${c.why}\n\nHook: "${c.hook}"\n\nCaptions:\n${(c.caption_lines || []).join('\n')}`;
+    } else {
+      out.textContent = data.error || 'No clip found for that query.';
+    }
+  } catch (err) {
+    out.textContent = 'Error: ' + err.message;
+  }
+  setBtn('clip-ask-btn', false);
+}
+
+let activePreviewIndex = null;
+let previewRaf = null;
+
+function getClipCaptionText(clip) {
+  const lines = clip.caption_lines || [];
+  if (lines.length) return lines.join(' ');
+  return clip.hook || clip.title || 'Preview caption';
+}
+
+function getWordsForClip(clip) {
+  const start = clip.start_ms || 0;
+  const end = clip.end_ms || start + 45000;
+  const words = (state.words || [])
+    .filter(w => w.start >= start && w.start <= end)
+    .slice(0, 80);
+
+  if (words.length) return words;
+
+  return getClipCaptionText(clip).split(/\s+/).filter(Boolean).map((text, i) => ({
+    text,
+    start: start + i * 420,
+    end: start + (i + 1) * 420
+  }));
+}
+
+function getCaptionLine(clip, currentMs) {
+  const words = getWordsForClip(clip);
+  const activeIndex = Math.max(0, words.findIndex(w => currentMs >= w.start && currentMs <= w.end));
+  const start = Math.max(0, activeIndex - 3);
+  const visible = words.slice(start, start + 7);
+
+  return {
+    words: visible,
+    activeWord: words[activeIndex]?.text || ''
+  };
+}
+
+function drawCaption(canvas, clip, currentMs) {
+  if (!canvas || !clip) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+  canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, rect.width, rect.height);
+
+  const style = CAPTION_STYLES[state.captionStyle] || CAPTION_STYLES.tiktok;
+  const line = getCaptionLine(clip, currentMs);
+  let text = line.words.map(w => w.text).join(' ') || getClipCaptionText(clip);
+  if (style.uppercase) text = text.toUpperCase();
+
+  const x = rect.width / 2;
+  const y = rect.height * style.y;
+  const maxWidth = rect.width * 0.86;
+
+  ctx.font = style.font;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round';
+
+  const wrapped = wrapCanvasText(ctx, text, maxWidth).slice(0, 2);
+  const lineHeight = 34;
+  const blockHeight = wrapped.length * lineHeight + 14;
+
+  if (style.bg !== 'transparent') {
+    ctx.fillStyle = style.bg;
+    roundRect(ctx, rect.width * 0.07, y - blockHeight / 2, rect.width * 0.86, blockHeight, 10);
+    ctx.fill();
+  }
+
+  wrapped.forEach((row, idx) => {
+    const yy = y + (idx - (wrapped.length - 1) / 2) * lineHeight;
+    ctx.lineWidth = 7;
+    ctx.strokeStyle = style.stroke;
+    ctx.strokeText(row, x, yy);
+    ctx.fillStyle = style.color;
+    ctx.fillText(row, x, yy);
+  });
+
+  if (style.karaoke && line.activeWord) {
+    ctx.font = style.font;
+    ctx.fillStyle = style.highlight;
+    ctx.fillText(style.uppercase ? line.activeWord.toUpperCase() : line.activeWord, x, y + lineHeight);
+  }
+}
+
+function wrapCanvasText(ctx, text, maxWidth) {
+  const words = String(text || '').split(/\s+/).filter(Boolean);
+  const lines = [];
+  let line = '';
+
+  words.forEach(word => {
+    const test = line ? line + ' ' + word : word;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  });
+
+  if (line) lines.push(line);
+  return lines.length ? lines : [''];
+}
+
+function roundRect(ctx, x, y, width, height, radius) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height - radius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  ctx.lineTo(x + radius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+}
+
+function drawAllVisibleCaptions() {
+  state.clips.forEach((clip, i) => {
+    const canvas = document.getElementById('preview-canvas-' + i);
+    if (!canvas) return;
+    drawCaption(canvas, clip, clip.start_ms || 0);
+  });
+}
+
+async function toggleClipPreview(i) {
+  const clip = state.clips[i];
+  const video = document.getElementById('preview-video-' + i);
+  const canvas = document.getElementById('preview-canvas-' + i);
+  if (!clip || !video || !state.sourceVideoUrl) {
+    toast('Preview source not available. Re-upload the video first.');
+    return;
+  }
+
+  if (activePreviewIndex !== null && activePreviewIndex !== i) {
+    const previous = document.getElementById('preview-video-' + activePreviewIndex);
+    if (previous) previous.pause();
+  }
+
+  activePreviewIndex = i;
+  const start = (clip.start_ms || 0) / 1000;
+  const end = (clip.end_ms || ((clip.start_ms || 0) + 45000)) / 1000;
+
+  if (video.paused) {
+    try {
+      if (Math.abs(video.currentTime - start) > 0.5 || video.currentTime >= end) {
+        video.currentTime = start;
+      }
+      await video.play();
+      runPreviewLoop(video, canvas, clip, end);
+    } catch (err) {
+      toast('Preview could not play: ' + err.message, 5000);
+    }
+  } else {
+    video.pause();
+    if (previewRaf) cancelAnimationFrame(previewRaf);
+  }
+}
+
+function runPreviewLoop(video, canvas, clip, endSec) {
+  if (previewRaf) cancelAnimationFrame(previewRaf);
+
+  const tick = () => {
+    if (video.paused) return;
+
+    if (video.currentTime >= endSec) {
+      video.pause();
+      video.currentTime = (clip.start_ms || 0) / 1000;
+      drawCaption(canvas, clip, clip.start_ms || 0);
+      return;
+    }
+
+    drawCaption(canvas, clip, video.currentTime * 1000);
+    previewRaf = requestAnimationFrame(tick);
+  };
+
+  tick();
+}
+
+
+// ═══ EXPORT ═══
+async function generateCaptions() {
+  const q = document.getElementById('cap-query').value.trim();
+  const out = document.getElementById('cap-ai-out');
+  const selectedClip = state.clips[Array.from(state.selectedClips)[0]] || null;
+
+  out.style.display = 'block';
+
+  if (!q) {
+    const style = CAPTION_STYLES[state.captionStyle] || CAPTION_STYLES.tiktok;
+    out.textContent = 'Using preset: ' + style.label + '. Play a clip preview to see it live.';
+    drawAllVisibleCaptions();
+    renderExportSummary();
+    return;
+  }
+
+  setBtn('cap-btn', true, '...');
+  out.textContent = 'Generating caption style...';
+
+  try {
+    const res = await fetch('/api/caption-style', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        clipText: selectedClip ? (selectedClip.caption_lines || []).join(' ') : (state.transcript || '').slice(0, 200),
+        words: state.words.slice(0, 50),
+        stylePrompt: q,
+        startMs: selectedClip?.start_ms || 0
+      })
+    });
+
+    const data = await res.json();
+    out.textContent = data.description || 'Custom caption style ready. Play a clip preview to see it live.';
+    drawAllVisibleCaptions();
+  } catch (err) {
+    out.textContent = 'Error: ' + err.message;
+  }
+
+  setBtn('cap-btn', false);
+  renderExportSummary();
+}
+
+
+function renderExportSummary() {
+  const selected = Array.from(state.selectedClips).map(i => state.clips[i]).filter(Boolean);
+  const el = document.getElementById('export-summary');
+  if (selected.length === 0) {
+    el.textContent = 'No clips selected. Go back to Clips tab to select clips.';
+    return;
+  }
+  el.innerHTML = selected.map((c, i) =>
+    `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <strong style="color:var(--text)">${i + 1}. ${c.title}</strong>
+      <span style="color:var(--text3);font-size:12px;margin-left:8px">${c.duration_s}s · Speaker ${c.speaker}</span>
+      <div style="color:var(--text2);font-size:13px;margin-top:4px">${c.why}</div>
+    </div>`
+  ).join('') + `<div style="padding-top:12px;color:var(--text3);font-size:13px">${selected.length} clip${selected.length !== 1 ? 's' : ''} ready to export</div>`;
+}
+
+// Track ongoing export so we can show progress
+let exportInProgress = false;
+
+async function exportTo(platform) {
+  const selected = Array.from(state.selectedClips).map(i => state.clips[i]).filter(Boolean);
+  if (selected.length === 0) { toast('Select at least one clip first'); return; }
+  if (exportInProgress) { toast('Export already in progress...'); return; }
+
+  // The backend cuts from its saved local file, not the AssemblyAI upload URL.
+  if (!state.localFileId) {
+    toast('Local video file not found. Please re-upload your video.', 5000);
+    return;
+  }
+
+  exportInProgress = true;
+  const summaryEl = document.getElementById('export-summary');
+
+  // Cut each selected clip one by one
+  for (let idx = 0; idx < selected.length; idx++) {
+    const clip = selected[idx];
+    const label = clip.title || ('Clip ' + (idx + 1));
+
+    summaryEl.innerHTML = '<div style="padding:16px;color:var(--text2);font-size:14px;display:flex;align-items:center;gap:12px">' +
+      '<div class="spinner"></div> Cutting "' + label + '" (' + (idx+1) + '/' + selected.length + ')... this may take a minute</div>';
+
+    try {
+      if (!state.localFileId) {
+        throw new Error('Local video file not found. Please re-upload your video.');
+      }
+      const res = await fetch(RAILWAY_URL + '/api/cut-clip', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          localFileId: state.localFileId,
+          startMs: clip.start_ms || 0,
+          endMs: clip.end_ms || 0,
+          clipTitle: label,
+          clipIndex: idx,
+          captionLines: clip.caption_lines || [],
+          words: state.words ? state.words.filter(w => w.start >= (clip.start_ms || 0) && w.start <= (clip.end_ms || 0)).slice(0, 100) : []
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Cut failed');
+      }
+
+      // Stream the blob and trigger download
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safeTitle = label.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+      a.download = safeTitle + '_9x16.mp4';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast('"' + label + '" downloaded!', 3000);
+
+    } catch (err) {
+      toast('Error cutting "' + label + '": ' + err.message, 6000);
+      console.error('[ClipAI] Export error:', err);
+    }
+  }
+
+  exportInProgress = false;
+
+  // Show social platform instructions after download
+  if (platform !== 'mp4') {
+    const instructions = {
+      tiktok: 'Your clips are downloaded! Upload them at tiktok.com/upload or via the TikTok mobile app.',
+      reels: 'Your clips are downloaded! Upload via the Instagram app or creators.instagram.com.',
+      shorts: 'Your clips are downloaded! Upload at youtube.com/upload and add #Shorts to the title.'
+    };
+    summaryEl.innerHTML = '<div style="background:#0f1a10;border:1px solid #2a4030;border-radius:10px;padding:16px;color:#80c090;font-size:13px;line-height:1.8">' +
+      '<strong style="color:#a0e0b0;display:block;margin-bottom:6px">Clips downloaded!</strong>' +
+      (instructions[platform] || '') +
+      '</div>';
+  } else {
+    renderExportSummary();
+  }
+}
+
+// ═══ AUTH ═══
+function initAuth() {
+  const token = localStorage.getItem('clipai_token');
+  const user = JSON.parse(localStorage.getItem('clipai_user') || 'null');
+  const navAuth = document.getElementById('nav-auth');
+  if (token && user) {
+    navAuth.innerHTML =
+      '<button onclick="openSidebar()" style="font-size:13px;color:var(--text2);background:var(--bg3);border:1px solid var(--border2);padding:6px 14px;border-radius:8px;cursor:pointer;font-family:var(--font);margin-right:6px">📁 Projects</button>' +
+      '<button onclick="doLogout()" style="font-size:13px;color:var(--text3);background:transparent;border:1px solid var(--border);padding:6px 14px;border-radius:8px;cursor:pointer;font-family:var(--font)">' + (user.email || '').split('@')[0] + ' · Sign out</button>';
+  }
+}
+
+function doLogout() {
+  localStorage.removeItem('clipai_token');
+  localStorage.removeItem('clipai_user');
+  window.location.reload();
+}
+
+
+async function openSidebar() {
+  const token = localStorage.getItem('clipai_token');
+  if (!token) { window.location.href = '/login.html'; return; }
+  document.getElementById('projects-sidebar').style.display = 'block';
+  document.getElementById('sidebar-overlay').style.display = 'block';
+  const listEl = document.getElementById('projects-list');
+  listEl.innerHTML = '<div style="color:var(--text3);font-size:13px">Loading...</div>';
+  try {
+    const res = await fetch('/api/projects', { headers: { 'authorization': 'Bearer ' + token, 'x-requested-with': 'clipai' } });
+    const projects = await res.json();
+    if (!projects.length) {
+      listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">No saved projects yet.<br>Process a video and save it!</div>';
+      return;
+    }
+    // Store projects in window map to avoid JSON escaping issues in onclick
+    window._projectsMap = {};
+    projects.forEach((p, i) => { window._projectsMap[i] = p; });
+
+    listEl.innerHTML = projects.map((p, i) => {
+      const dateStr = new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const clipCount = Array.isArray(p.clips) ? p.clips.length : 0;
+      const wordCount = p.transcript ? p.transcript.split(' ').length.toLocaleString() : '0';
+      return '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px" id="proj-card-' + i + '">' +
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">' +
+          '<div style="font-size:14px;font-weight:600;color:var(--text);line-height:1.4">' + (p.title || 'Untitled') + '</div>' +
+          '<div style="display:flex;gap:6px;flex-shrink:0">' +
+            '<button onclick="loadProjectByIndex(' + i + ')" style="background:var(--accent);color:#fff;border:none;padding:6px 14px;border-radius:8px;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer">Open →</button>' +
+            '<button onclick="deleteProject(this,\'' + p.id + '\',' + i + ')" style="background:transparent;color:var(--red);border:1px solid rgba(240,100,100,0.3);padding:6px 10px;border-radius:8px;font-family:var(--font);font-size:12px;cursor:pointer">🗑</button>' +
+          '</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:12px;flex-wrap:wrap">' +
+          '<span style="font-size:11px;color:var(--text3);font-family:var(--mono)">📅 ' + dateStr + '</span>' +
+          '<span style="font-size:11px;color:var(--text3);font-family:var(--mono)">✦ ' + clipCount + ' clips</span>' +
+          '<span style="font-size:11px;color:var(--text3);font-family:var(--mono)">◎ ' + wordCount + ' words</span>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  } catch(e) {
+    listEl.innerHTML = '<div style="color:var(--red);font-size:13px">Error loading projects</div>';
+  }
+}
+
+function loadProjectByIndex(i) {
+  const p = window._projectsMap[i];
+  if (!p) { toast('Project not found'); return; }
+  loadProject(p);
+}
+
+async function deleteProject(btn, id, i) {
+  const token = localStorage.getItem('clipai_token');
+  if (!confirm('Delete this project? This cannot be undone.')) return;
+  try {
+    const res = await fetch('/api/projects?id=' + id, {
+      method: 'DELETE',
+      headers: { 'authorization': 'Bearer ' + token }
+    });
+    if (res.ok) {
+      const card = document.getElementById('proj-card-' + i);
+      if (card) card.style.display = 'none';
+      toast('Project deleted');
+    } else {
+      toast('Delete failed');
+    }
+  } catch(e) {
+    toast('Delete error: ' + e.message);
+  }
+}
+
+function loadProject(p) {
+
+  // Restore full state
+  state.transcript = p.transcript || '';
+  state.clips = p.clips || [];
+  state.duration = p.duration || 0;
+  state.utterances = p.utterances || [];
+  state.highlights = p.highlights || [];
+  state.words = p.words || [];
+
+  closeSidebar();
+
+  if (state.clips.length > 0) {
+    // Unlock all stages
+    unlockStage(1); unlockStage(2); unlockStage(3);
+
+    // Restore transcript view
+    const statsEl = document.getElementById('stats-row');
+    if (statsEl) {
+      const words = state.transcript ? state.transcript.split(' ').length : 0;
+      const dur = state.duration ? formatTime(state.duration * 1000) : '--:--';
+      statsEl.innerHTML =
+        '<div class="stat"><div class="stat-val">' + dur + '</div><div class="stat-label">duration</div></div>' +
+        '<div class="stat"><div class="stat-val">' + words.toLocaleString() + '</div><div class="stat-label">words</div></div>' +
+        '<div class="stat"><div class="stat-val">' + state.clips.length + '</div><div class="stat-label">clips</div></div>' +
+        '<div class="stat"><div class="stat-val">' + (state.highlights.length || '?') + '</div><div class="stat-label">moments</div></div>';
+    }
+
+    const tcEl = document.getElementById('transcript-content');
+    if (tcEl && state.transcript) {
+      tcEl.textContent = state.transcript.substring(0, 3000) + (state.transcript.length > 3000 ? '...' : '');
+    }
+
+    // Show transcript results panel
+    const progressEl = document.getElementById('transcribe-progress');
+    const resultsEl = document.getElementById('transcribe-results');
+    if (progressEl) progressEl.style.display = 'none';
+    if (resultsEl) resultsEl.style.display = 'block';
+
+    // Go to clips page and render
+    goStage(2);
+    renderClips();
+    toast('✓ Project loaded: "' + (p.title || 'Untitled') + '"', 3000);
+  } else if (state.transcript) {
+    // Has transcript but no clips — go to transcribe page
+    unlockStage(1); unlockStage(2);
+    const progressEl = document.getElementById('transcribe-progress');
+    const resultsEl = document.getElementById('transcribe-results');
+    if (progressEl) progressEl.style.display = 'none';
+    if (resultsEl) resultsEl.style.display = 'block';
+    goStage(1);
+    showTranscriptResults();
+    toast('✓ Project loaded — generate clips to continue', 3000);
+  } else {
+    toast('This project has no data to restore', 4000);
+  }
+}
+
+function closeSidebar() {
+  document.getElementById('projects-sidebar').style.display = 'none';
+  document.getElementById('sidebar-overlay').style.display = 'none';
+}
+
+// Init
+state.unlockedStage = 0;
+goStage(0);
+initAuth();
+
+
+// ═══ CAPTION PRESETS ═══
+const CAPTION_PRESETS = {
+  'tiktok-bold': { fontFamily: 'Arial Black, Arial, sans-serif', fontSize: '18px', fontWeight: '900', color: '#ffffff', backgroundColor: 'transparent', textShadow: '2px 2px 0px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000', position: 'bottom', animation: 'word-by-word', description: 'TikTok Bold — thick black outline' },
+  'yellow-pop': { fontFamily: 'Arial Black, Arial, sans-serif', fontSize: '18px', fontWeight: '800', color: '#FFE600', backgroundColor: 'transparent', textShadow: '2px 2px 4px rgba(0,0,0,0.9)', position: 'bottom', animation: 'pop', description: 'MrBeast Yellow — bold yellow pop' },
+  'minimal-white': { fontFamily: 'Helvetica Neue, Arial, sans-serif', fontSize: '15px', fontWeight: '400', color: '#ffffff', backgroundColor: 'transparent', textShadow: '1px 1px 3px rgba(0,0,0,0.8)', position: 'bottom', animation: 'fade', description: 'Minimal White — clean and simple' },
+  'karaoke': { fontFamily: 'Arial, sans-serif', fontSize: '16px', fontWeight: '700', color: '#ffffff', backgroundColor: 'transparent', textShadow: '1px 1px 3px #000', position: 'bottom', animation: 'karaoke', accentColor: '#7c6af7', description: 'Karaoke — highlight each word' },
+  'neon': { fontFamily: 'Arial Black, Arial, sans-serif', fontSize: '16px', fontWeight: '700', color: '#00ff88', backgroundColor: 'transparent', textShadow: '0 0 10px #00ff88, 0 0 20px #00ff88', position: 'bottom', animation: 'word-by-word', description: 'Neon Glow — electric green glow' },
+  'subtitle': { fontFamily: 'Arial, sans-serif', fontSize: '14px', fontWeight: '400', color: '#ffffff', backgroundColor: 'rgba(0,0,0,0.75)', textShadow: 'none', position: 'bottom', animation: 'fade', description: 'Subtitle Box — classic dark background' }
+};
+
+let selectedPreset = 'tiktok-bold';
+
+function selectPreset(el, preset) {
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  selectedPreset = preset;
+  previewCaptionStyle(CAPTION_PRESETS[preset]);
+  toast('Style: ' + CAPTION_PRESETS[preset].description);
+}
+
+function previewCaptionStyle(style) {
+  const out = document.getElementById('cap-ai-out');
+  out.style.display = 'block';
+  const clip = state.clips[Array.from(state.selectedClips)[0]] || null;
+  const captionLines = clip ? (clip.caption_lines || [clip.title || 'Sample caption text']) : ['Sample caption text'];
+  const allWords = captionLines.join(' ').split(' ').filter(Boolean);
+  const wordSpans = allWords.map((word, i) =>
+    '<span style="display:inline-block;margin:0 2px;animation:capWordIn 0.15s ease forwards;animation-delay:' + (i * 0.1) + 's;opacity:0;color:' + style.color + (style.animation === 'karaoke' && i === 0 ? ';font-weight:900' : '') + '">' + word + '</span>'
+  ).join(' ');
+  out.innerHTML =
+    '<div style="font-size:12px;color:var(--accent);font-family:var(--mono);margin-bottom:12px">' + style.description + '</div>' +
+    '<div style="position:relative;background:#111;border-radius:16px;overflow:hidden;width:160px;height:284px;margin:0 auto 14px;border:2px solid #333">' +
+      '<div style="position:absolute;inset:0;background:linear-gradient(160deg,#1a1a2e,#16213e,#0f3460)"></div>' +
+      '<div style="position:absolute;bottom:20px;left:0;right:0;text-align:center;padding:8px 10px;' +
+        (style.backgroundColor !== 'transparent' ? 'background:' + style.backgroundColor + ';margin:0 8px;border-radius:4px;' : '') +
+        'font-family:' + style.fontFamily + ';font-size:14px;font-weight:' + style.fontWeight + ';text-shadow:' + style.textShadow + ';line-height:1.5">' + wordSpans + '</div>' +
+      '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-70%);width:32px;height:32px;background:rgba(255,255,255,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff">▷</div>' +
+    '</div>' +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center">' +
+      '<span style="font-size:11px;font-family:var(--mono);background:var(--bg3);border:1px solid var(--border);color:var(--text3);padding:3px 8px;border-radius:6px">' + style.fontFamily.split(',')[0] + '</span>' +
+      '<span style="font-size:11px;font-family:var(--mono);background:var(--bg3);border:1px solid var(--border);color:var(--text3);padding:3px 8px;border-radius:6px">' + style.animation + '</span>' +
+    '</div>';
+  if (!document.getElementById('cap-anim-style')) {
+    const s = document.createElement('style');
+    s.id = 'cap-anim-style';
+    s.textContent = '@keyframes capWordIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }';
+    document.head.appendChild(s);
+  }
+}
+
+// ═══ CLIP PREVIEW ═══
+let previewAnim = null, previewPlaying = false, previewClip = null, previewFrame = 0;
+
+function openPreview(clipIndex) {
+  previewClip = state.clips[clipIndex];
+  if (!previewClip) return;
+  previewFrame = 0; previewPlaying = false;
+  document.getElementById('preview-title').textContent = previewClip.title || 'Clip Preview';
+  document.getElementById('preview-modal').classList.add('open');
+  document.getElementById('prev-play-btn').textContent = '▷ Play';
+  drawPreviewFrame(0);
+}
+
+function closePreview() {
+  document.getElementById('preview-modal').classList.remove('open');
+  if (previewAnim) { cancelAnimationFrame(previewAnim); previewAnim = null; }
+  previewPlaying = false;
+}
+
+function togglePreviewPlay() {
+  previewPlaying = !previewPlaying;
+  document.getElementById('prev-play-btn').textContent = previewPlaying ? '⏸ Pause' : '▷ Play';
+  if (previewPlaying) animatePreview();
+  else if (previewAnim) { cancelAnimationFrame(previewAnim); previewAnim = null; }
+}
+
+function animatePreview() {
+  if (!previewPlaying) return;
+  previewFrame++;
+  if (previewFrame > 300) previewFrame = 0;
+  drawPreviewFrame(previewFrame);
+  previewAnim = requestAnimationFrame(animatePreview);
+}
+
+function drawPreviewFrame(frame) {
+  const canvas = document.getElementById('preview-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const clip = previewClip;
+  if (!clip) return;
+  const style = CAPTION_PRESETS[selectedPreset] || CAPTION_PRESETS['tiktok-bold'];
+  const dur = clip.duration_s || 30;
+  const progress = (frame % 300) / 300;
+  const currentSec = progress * dur;
+
+  // Background
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#1a1a2e'); grad.addColorStop(0.5, '#16213e'); grad.addColorStop(1, '#0f3460');
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+
+  // Waveform bars
+  const bars = 20;
+  ctx.fillStyle = style.color || '#7c6af7';
+  ctx.globalAlpha = 0.5;
+  for (let b = 0; b < bars; b++) {
+    const h = 8 + Math.abs(Math.sin(b * 0.4 + frame * 0.08)) * 28;
+    const x = 10 + b * ((W - 20) / bars);
+    ctx.fillRect(x, H * 0.45 - h / 2, 3, h);
+  }
+  ctx.globalAlpha = 1;
+
+  // Progress bar
+  ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(14, H - 18, W - 28, 3);
+  ctx.fillStyle = style.color || '#7c6af7'; ctx.fillRect(14, H - 18, (W - 28) * progress, 3);
+
+  // Time
+  const e = Math.floor(currentSec), t = Math.floor(dur);
+  document.getElementById('preview-time').textContent = Math.floor(e/60) + ':' + String(e%60).padStart(2,'0') + ' / ' + Math.floor(t/60) + ':' + String(t%60).padStart(2,'0');
+
+  // Captions
+  const captions = clip.caption_lines || [clip.title || ''];
+  const allWords = captions.join(' ').split(' ').filter(Boolean);
+  const wordIndex = Math.floor(progress * allWords.length);
+  const displayText = allWords.slice(Math.max(0, wordIndex - 2), wordIndex + 3).join(' ');
+
+  if (style.backgroundColor && style.backgroundColor !== 'transparent') {
+    ctx.fillStyle = style.backgroundColor;
+    ctx.fillRect(8, H - 52, W - 16, 24);
+  }
+  ctx.textAlign = 'center';
+  ctx.font = style.fontWeight + ' 12px ' + style.fontFamily;
+  ctx.shadowColor = '#000'; ctx.shadowBlur = 4; ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1;
+  ctx.fillStyle = style.color || '#fff';
+  ctx.fillText(displayText, W / 2, H - 34);
+  ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+
+  // Pause overlay
+  if (!previewPlaying) {
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.beginPath(); ctx.moveTo(W/2 - 10, H/2 - 14); ctx.lineTo(W/2 + 14, H/2); ctx.lineTo(W/2 - 10, H/2 + 14); ctx.closePath(); ctx.fill();
+  }
+}
+</script>
+</body>
+</html>
