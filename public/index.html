@@ -29,6 +29,23 @@
       --r: 12px;
       --r2: 16px;
     }
+    body.light {
+      --bg: #f7f7fb;
+      --bg2: #ffffff;
+      --bg3: #f0f1f7;
+      --bg4: #e6e8f2;
+      --border: rgba(20,24,40,0.09);
+      --border2: rgba(20,24,40,0.16);
+      --accent: #6254d9;
+      --accent2: #574bd0;
+      --accent-dim: rgba(98,84,217,0.12);
+      --text: #151622;
+      --text2: #52566f;
+      --text3: #7a7f98;
+      --green: #178a5d;
+      --red: #c73c3c;
+      --amber: #b97408;
+    }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
     body {
@@ -52,7 +69,9 @@
       top: 0;
       z-index: 100;
     }
+    body.light nav { background: rgba(255,255,255,0.88); }
     .logo { font-size: 20px; font-weight: 800; letter-spacing: -1px; color: #fff; }
+    body.light .logo { color: var(--text); }
     .logo span { color: var(--accent); }
     .nav-badge {
       font-family: var(--mono);
@@ -63,6 +82,27 @@
       padding: 4px 12px;
       border-radius: 20px;
     }
+    .nav-tools {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .nav-action {
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text2);
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      padding: 7px 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .nav-action:hover { color: var(--text); border-color: rgba(124,106,247,0.45); }
+    .nav-action.primary { color: #fff; background: var(--accent); border-color: var(--accent); }
+    .nav-action.hidden { display: none; }
 
     /* ── HERO ── */
     .hero {
@@ -640,8 +680,10 @@
 
 <nav>
   <div class="logo">clip<span>AI</span></div>
-  <div style="display:flex;align-items:center;gap:10px">
+  <div class="nav-tools">
     <span class="nav-badge">Powered by Groq + AssemblyAI</span>
+    <button class="nav-action" id="theme-toggle" onclick="toggleTheme()" type="button">Light mode</button>
+    <button class="nav-action primary hidden" id="new-clips-btn" onclick="createNewClips()" type="button">Create New Clips</button>
     <div id="nav-auth">
       <a href="/login.html" style="font-size:13px;color:var(--accent2);text-decoration:none;padding:6px 14px;border:1px solid rgba(124,106,247,0.3);border-radius:8px;font-family:var(--font)">Sign In</a>
     </div>
@@ -893,6 +935,7 @@
     <div class="card">
       <div class="card-title">Selected clips summary</div>
       <div id="export-summary" style="color:var(--text2);font-size:14px;line-height:1.7"></div>
+      <button class="btn btn-ghost btn-full" onclick="createNewClips()" style="margin-top:16px">Create New Clips</button>
     </div>
   </div>
 
@@ -942,6 +985,28 @@ function toast(msg, duration = 3000) {
   setTimeout(() => t.classList.remove('show'), duration);
 }
 
+function applyTheme(theme) {
+  const nextTheme = theme === 'light' ? 'light' : 'dark';
+  document.body.classList.toggle('light', nextTheme === 'light');
+  localStorage.setItem('clipai_theme', nextTheme);
+  const btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = nextTheme === 'light' ? 'Dark mode' : 'Light mode';
+}
+
+function toggleTheme() {
+  applyTheme(document.body.classList.contains('light') ? 'dark' : 'light');
+}
+
+function initTheme() {
+  applyTheme(localStorage.getItem('clipai_theme') || 'dark');
+}
+
+function updateNewClipsButton() {
+  const btn = document.getElementById('new-clips-btn');
+  if (!btn) return;
+  btn.classList.toggle('hidden', state.unlockedStage === 0 && !state.transcript && state.clips.length === 0);
+}
+
 function formatTime(ms) {
   const totalSec = Math.floor(ms / 1000);
   const m = Math.floor(totalSec / 60);
@@ -970,6 +1035,7 @@ function unlockStage(n) {
       b.classList.remove('locked');
     }
   });
+  updateNewClipsButton();
 }
 
 function goStage(n) {
@@ -995,7 +1061,99 @@ function goStage(n) {
   document.querySelectorAll('.panel').forEach((p, i) => {
     p.className = 'panel' + (i === n ? ' active' : '');
   });
+  updateNewClipsButton();
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function resetProgressSteps() {
+  ['step-upload', 'step-transcribe', 'step-speakers', 'step-moments', 'step-done'].forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.className = 'p-step' + (i === 0 ? ' active' : '');
+  });
+}
+
+function createNewClips() {
+  if (activeXHR) {
+    activeXHR.abort();
+    activeXHR = null;
+  }
+  if (state.localPreviewUrl && state.localPreviewUrl.startsWith('blob:')) {
+    URL.revokeObjectURL(state.localPreviewUrl);
+  }
+  if (activePreviewIndex !== null) {
+    const activeVideo = document.getElementById('preview-video-' + activePreviewIndex);
+    if (activeVideo) activeVideo.pause();
+  }
+  activePreviewIndex = null;
+  exportInProgress = false;
+
+  Object.assign(state, {
+    transcriptId: null,
+    transcript: null,
+    utterances: [],
+    highlights: [],
+    words: [],
+    duration: 0,
+    clips: [],
+    selectedClips: new Set(),
+    selectedMoments: new Set(),
+    sourceVideoUrl: '',
+    transcriptionUrl: '',
+    localFileId: null,
+    localPreviewUrl: '',
+    unlockedStage: 0
+  });
+
+  const idsToClear = ['url-input', 'moments-query', 'clip-query', 'cap-query'];
+  idsToClear.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+
+  const fileEl = document.getElementById('file-input');
+  if (fileEl) fileEl.value = '';
+  const uploadProgress = document.getElementById('upload-progress');
+  if (uploadProgress) uploadProgress.style.display = 'none';
+  const uploadBar = document.getElementById('upload-bar');
+  if (uploadBar) uploadBar.style.width = '0%';
+  const uploadPct = document.getElementById('upload-pct');
+  if (uploadPct) uploadPct.textContent = '0%';
+  const uploadSize = document.getElementById('upload-size');
+  if (uploadSize) uploadSize.textContent = '';
+  const transBar = document.getElementById('trans-bar');
+  if (transBar) transBar.style.width = '0%';
+  const transPct = document.getElementById('trans-pct');
+  if (transPct) transPct.textContent = '0%';
+  const transStatus = document.getElementById('trans-status');
+  if (transStatus) {
+    transStatus.textContent = 'Submitting to AssemblyAI...';
+    transStatus.style.color = '';
+  }
+
+  const transProgress = document.getElementById('transcribe-progress');
+  if (transProgress) transProgress.style.display = 'block';
+  const transResults = document.getElementById('transcribe-results');
+  if (transResults) transResults.style.display = 'none';
+  const clipsLoading = document.getElementById('clips-loading');
+  if (clipsLoading) clipsLoading.style.display = 'flex';
+  const clipsGrid = document.getElementById('clips-grid');
+  if (clipsGrid) {
+    clipsGrid.style.display = 'none';
+    clipsGrid.innerHTML = '';
+  }
+  ['stats-row', 'transcript-content', 'moments-grid', 'moments-ai-out', 'clip-ai-out', 'cap-ai-out', 'export-summary'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.innerHTML = '';
+      if (el.classList.contains('ai-output') || id === 'cap-ai-out') el.style.display = 'none';
+    }
+  });
+
+  resetProgressSteps();
+  goStage(0);
+  updateNewClipsButton();
+  toast('Ready for a new video.');
 }
 
 // ═══ UPLOAD ═══
@@ -2114,6 +2272,7 @@ function closeSidebar() {
 
 // Init
 state.unlockedStage = 0;
+initTheme();
 goStage(0);
 initAuth();
 
