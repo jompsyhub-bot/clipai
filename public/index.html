@@ -557,6 +557,70 @@
     .ghost-plan-row strong { color: var(--text); font-size: 13px; }
     .ghost-plan-row span { color: var(--text3); font-family: var(--mono); font-size: 11px; white-space: nowrap; }
 
+    /* Hook Lab */
+    .hook-lab-card {
+      border-color: rgba(240,168,50,0.24);
+      background:
+        linear-gradient(135deg, rgba(240,168,50,0.10), transparent 46%),
+        var(--bg2);
+    }
+    .hook-lab-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+    .hook-lab-title { font-size: 18px; font-weight: 800; color: var(--text); line-height: 1.25; }
+    .hook-lab-sub { color: var(--text2); font-size: 13px; margin-top: 4px; max-width: 560px; }
+    .hook-lab-output {
+      display: none;
+      margin-top: 14px;
+      gap: 10px;
+    }
+    .hook-lab-output.show { display: grid; }
+    .hook-variant {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 14px;
+    }
+    .hook-variant-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+    .hook-type {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--amber);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .hook-score {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text3);
+      white-space: nowrap;
+    }
+    .hook-line { font-size: 16px; font-weight: 700; color: var(--text); line-height: 1.35; margin-bottom: 8px; }
+    .hook-note { color: var(--text2); font-size: 12px; line-height: 1.55; margin-bottom: 10px; }
+    .hook-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .hook-mini-btn {
+      border: 1px solid rgba(240,168,50,0.34);
+      color: var(--amber);
+      background: transparent;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-family: var(--font);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .hook-mini-btn:hover { background: rgba(240,168,50,0.10); }
+
     /* ── CLIPS ── */
     .clips-grid {
       display: grid;
@@ -1031,6 +1095,17 @@
       </div>
       <div class="ai-output" id="clip-ai-out"></div>
     </div>
+    <div class="card hook-lab-card">
+      <div class="hook-lab-head">
+        <div>
+          <div class="hook-lab-title">Hook Lab</div>
+          <div class="hook-lab-sub">Generate alternate openings for the selected clips: curiosity, controversy, pain-point, story, and comment-driven variants.</div>
+        </div>
+        <div class="ghost-badge">Premium</div>
+      </div>
+      <button class="btn btn-ghost btn-full" id="hook-lab-btn" type="button" onclick="runHookLab()">Generate Hook Variants</button>
+      <div class="hook-lab-output" id="hook-lab-output"></div>
+    </div>
     <div class="action-row">
       <button class="btn btn-primary btn-full" onclick="goStage(3)" style="margin-top:16px">Continue to export →</button>
     </div>
@@ -1175,8 +1250,9 @@ const state = {
   ghostBrief: '',
   ghostPlan: null,
   ghostAutoRun: false,
-  ghostBusy: false
-
+  ghostBusy: false,
+  hookVariants: [],
+  hookBusy: false
 };
 
 // ═══ UTILS ═══
@@ -1315,6 +1391,8 @@ function createNewClips() {
     ghostPlan: null,
     ghostAutoRun: false,
     ghostBusy: false,
+    hookVariants: [],
+    hookBusy: false,
     unlockedStage: 0
   });
 
@@ -1323,7 +1401,7 @@ function createNewClips() {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
-  ['ghost-status', 'ghost-upload-status'].forEach(id => {
+  ['ghost-status', 'ghost-upload-status', 'hook-lab-output'].forEach(id => {
     const el = document.getElementById(id);
     if (el) { el.classList.remove('show'); el.textContent = ''; }
   });
@@ -2224,6 +2302,120 @@ async function askClipAI() {
     out.textContent = 'Error: ' + err.message;
   }
   setBtn('clip-ask-btn', false);
+}
+
+function getSelectedHookLabClips() {
+  const selected = Array.from(state.selectedClips).map(i => ({
+    index: i,
+    clip: state.clips[i]
+  })).filter(item => item.clip);
+  if (selected.length) return selected;
+  return state.clips.slice(0, 3).map((clip, index) => ({ index, clip }));
+}
+
+function renderHookLab(variants) {
+  const out = document.getElementById('hook-lab-output');
+  if (!out) return;
+  state.hookVariants = variants || [];
+  if (!state.hookVariants.length) {
+    out.classList.add('show');
+    out.innerHTML = '<div class="hook-variant"><div class="hook-note">No hook variants returned. Try generating clips first.</div></div>';
+    return;
+  }
+
+  out.classList.add('show');
+  out.innerHTML = state.hookVariants.map((variant, i) => {
+    const clipTitle = state.clips[variant.clip_index]?.title || ('Clip ' + (variant.clip_index + 1));
+    return '<div class="hook-variant">' +
+      '<div class="hook-variant-top">' +
+        '<div><div class="hook-type">' + escapeHTML(variant.angle || 'hook') + '</div>' +
+        '<div class="hook-score">For ' + escapeHTML(clipTitle) + '</div></div>' +
+        '<div class="hook-score">' + escapeHTML(variant.predicted_reaction || 'strong opener') + '</div>' +
+      '</div>' +
+      '<div class="hook-line">' + escapeHTML(variant.hook || '') + '</div>' +
+      '<div class="hook-note">' + escapeHTML(variant.why || '') + '</div>' +
+      '<div class="hook-actions">' +
+        '<button class="hook-mini-btn" type="button" onclick="applyHookVariant(' + i + ')">Apply to clip</button>' +
+        '<button class="hook-mini-btn" type="button" onclick="copyHookVariant(' + i + ')">Copy hook</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+async function runHookLab() {
+  const selected = getSelectedHookLabClips();
+  if (!selected.length) { toast('Generate clips first'); return; }
+  if (state.hookBusy) return;
+  state.hookBusy = true;
+  setBtn('hook-lab-btn', true, 'Generating...');
+  const out = document.getElementById('hook-lab-output');
+  if (out) {
+    out.classList.add('show');
+    out.innerHTML = '<div class="hook-variant"><div style="display:flex;align-items:center;gap:10px;color:var(--text2)"><div class="spinner"></div>Building hook variants from your selected clips...</div></div>';
+  }
+
+  try {
+    const res = await fetch(RAILWAY_URL + '/api/hook-lab', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        transcript: state.transcript,
+        words: state.words.slice(0, 1000),
+        clips: selected.map(item => ({
+          index: item.index,
+          title: item.clip.title,
+          hook: item.clip.hook,
+          why: item.clip.why,
+          caption_lines: item.clip.caption_lines || [],
+          start_ms: item.clip.start_ms,
+          end_ms: item.clip.end_ms,
+          duration_s: item.clip.duration_s,
+          speaker: item.clip.speaker
+        }))
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Hook Lab failed');
+    renderHookLab(data.variants || []);
+    toast('Hook variants ready');
+  } catch (err) {
+    if (out) out.innerHTML = '<div class="hook-variant"><div class="hook-note" style="color:var(--red)">Hook Lab error: ' + escapeHTML(err.message) + '</div></div>';
+    toast('Hook Lab error: ' + err.message, 6000);
+  }
+
+  state.hookBusy = false;
+  setBtn('hook-lab-btn', false);
+}
+
+function applyHookVariant(i) {
+  const variant = state.hookVariants[i];
+  if (!variant) return;
+  const clip = state.clips[variant.clip_index];
+  if (!clip) { toast('Clip not found for this hook'); return; }
+
+  clip.hook = variant.hook || clip.hook;
+  clip.title = variant.title || variant.hook || clip.title;
+  clip.why = variant.why || clip.why;
+  clip.caption_lines = [
+    variant.first_caption || variant.hook,
+    ...(clip.caption_lines || []).slice(0, 3)
+  ].filter(Boolean).slice(0, 4);
+  if (variant.energy) clip.energy = variant.energy;
+  renderClips();
+  renderHookLab(state.hookVariants);
+  renderExportSummary();
+  toast('Hook applied to clip');
+}
+
+async function copyHookVariant(i) {
+  const variant = state.hookVariants[i];
+  if (!variant?.hook) return;
+  try {
+    await navigator.clipboard.writeText(variant.hook);
+    toast('Hook copied');
+  } catch (err) {
+    toast('Copy failed: ' + err.message);
+  }
 }
 
 let activePreviewIndex = null;
