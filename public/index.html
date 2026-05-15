@@ -572,7 +572,23 @@
       margin-bottom: 12px;
     }
     .hook-lab-title { font-size: 18px; font-weight: 800; color: var(--text); line-height: 1.25; }
-    .hook-lab-sub { color: var(--text2); font-size: 13px; margin-top: 4px; max-width: 560px; }
+    .hook-lab-sub { color: var(--text2); font-size: 13px; margin-top: 4px; max-width: 620px; }
+    .hook-lab-benefits {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 8px;
+      margin: 12px 0 14px;
+    }
+    .hook-benefit {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 10px;
+      color: var(--text2);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .hook-benefit strong { display: block; color: var(--text); font-size: 12px; margin-bottom: 2px; }
     .hook-lab-output {
       display: none;
       margin-top: 14px;
@@ -606,6 +622,15 @@
       white-space: nowrap;
     }
     .hook-line { font-size: 16px; font-weight: 700; color: var(--text); line-height: 1.35; margin-bottom: 8px; }
+    .hook-applied {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--green);
+      font-family: var(--mono);
+      font-size: 10px;
+      margin-top: 8px;
+    }
     .hook-note { color: var(--text2); font-size: 12px; line-height: 1.55; margin-bottom: 10px; }
     .hook-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .hook-mini-btn {
@@ -1099,9 +1124,14 @@
       <div class="hook-lab-head">
         <div>
           <div class="hook-lab-title">Hook Lab</div>
-          <div class="hook-lab-sub">Generate alternate openings for the selected clips: curiosity, controversy, pain-point, story, and comment-driven variants.</div>
+          <div class="hook-lab-sub">Create and apply the first 2 seconds that make people stop scrolling. Applied hooks are burned into exported MP4s as an opening overlay.</div>
         </div>
         <div class="ghost-badge">Premium</div>
+      </div>
+      <div class="hook-lab-benefits">
+        <div class="hook-benefit"><strong>Visible in export</strong>Burns the chosen hook into the start of the MP4.</div>
+        <div class="hook-benefit"><strong>Better retention</strong>Tests curiosity, conflict, pain, story, and comment angles.</div>
+        <div class="hook-benefit"><strong>One-click apply</strong>Updates title, hook overlay, first caption, and filename.</div>
       </div>
       <button class="btn btn-ghost btn-full" id="hook-lab-btn" type="button" onclick="runHookLab()">Generate Hook Variants</button>
       <div class="hook-lab-output" id="hook-lab-output"></div>
@@ -2227,6 +2257,9 @@ function renderClips() {
       '<span class="plat-tag">' + escapeHTML(p) + '</span>').join('');
     const start = c.start_ms ? formatTime(c.start_ms) : '?';
     const end = c.end_ms ? formatTime(c.end_ms) : '?';
+    const hookBadge = c.hook_overlay
+      ? '<div class="hook-applied">Hook overlay: ' + escapeHTML(c.hook_overlay.slice(0, 52)) + (c.hook_overlay.length > 52 ? '...' : '') + '</div>'
+      : '';
 
     return '<div class="clip-card sel" id="clip' + i + '">' +
       '<div class="clip-preview-wrap">' +
@@ -2245,6 +2278,7 @@ function renderClips() {
 	'</div>' +
         '<div class="clip-sub">Speaker ' + escapeHTML(c.speaker || '?') + ' · ' + escapeHTML(start + ' → ' + end) + '</div>' +
         '<div class="clip-why">' + escapeHTML(c.why ? c.why.slice(0,90) + '...' : '') + '</div>' +
+        hookBadge +
         '<div class="clip-platforms" style="margin-top:6px">' + platforms + '</div>' +
       '</div>' +
     '</div>';
@@ -2325,7 +2359,9 @@ function renderHookLab(variants) {
 
   out.classList.add('show');
   out.innerHTML = state.hookVariants.map((variant, i) => {
-    const clipTitle = state.clips[variant.clip_index]?.title || ('Clip ' + (variant.clip_index + 1));
+    const clip = state.clips[variant.clip_index];
+    const clipTitle = clip?.title || ('Clip ' + (variant.clip_index + 1));
+    const applied = clip?.hook_overlay && clip.hook_overlay === variant.hook;
     return '<div class="hook-variant">' +
       '<div class="hook-variant-top">' +
         '<div><div class="hook-type">' + escapeHTML(variant.angle || 'hook') + '</div>' +
@@ -2334,8 +2370,9 @@ function renderHookLab(variants) {
       '</div>' +
       '<div class="hook-line">' + escapeHTML(variant.hook || '') + '</div>' +
       '<div class="hook-note">' + escapeHTML(variant.why || '') + '</div>' +
+      (applied ? '<div class="hook-applied">Applied to export overlay</div>' : '') +
       '<div class="hook-actions">' +
-        '<button class="hook-mini-btn" type="button" onclick="applyHookVariant(' + i + ')">Apply to clip</button>' +
+        '<button class="hook-mini-btn" type="button" onclick="applyHookVariant(' + i + ')">Apply to export</button>' +
         '<button class="hook-mini-btn" type="button" onclick="copyHookVariant(' + i + ')">Copy hook</button>' +
       '</div>' +
     '</div>';
@@ -2394,6 +2431,8 @@ function applyHookVariant(i) {
   if (!clip) { toast('Clip not found for this hook'); return; }
 
   clip.hook = variant.hook || clip.hook;
+  clip.hook_overlay = variant.hook || clip.hook_overlay;
+  clip.hook_angle = variant.angle || clip.hook_angle;
   clip.title = variant.title || variant.hook || clip.title;
   clip.why = variant.why || clip.why;
   clip.caption_lines = [
@@ -2404,7 +2443,7 @@ function applyHookVariant(i) {
   renderClips();
   renderHookLab(state.hookVariants);
   renderExportSummary();
-  toast('Hook applied to clip');
+  toast('Hook will appear at the start of exported video');
 }
 
 async function copyHookVariant(i) {
@@ -2470,6 +2509,8 @@ function drawCaption(canvas, clip, currentMs) {
 
   const style = CAPTION_STYLES[state.captionStyle] || CAPTION_STYLES.tiktok;
   const settings = state.captionSettings || { size: 100, position: Math.round(style.y * 100), words: 3 };
+  const relativeMs = Math.max(0, currentMs - (clip.start_ms || 0));
+  const hookOverlay = relativeMs <= 2800 ? (clip.hook_overlay || '') : '';
   const line = getCaptionLine(clip, currentMs);
   let text = line.words.map(w => w.text).join(' ') || getClipCaptionText(clip);
   if (style.uppercase) text = text.toUpperCase();
@@ -2506,6 +2547,27 @@ function drawCaption(canvas, clip, currentMs) {
     ctx.font = style.font.replace(/(\d+)px/, (_, px) => Math.round(Number(px) * (settings.size || 100) / 100) + 'px');
     ctx.fillStyle = style.highlight;
     ctx.fillText(style.uppercase ? line.activeWord.toUpperCase() : line.activeWord, x, y + lineHeight);
+  }
+
+  if (hookOverlay) {
+    ctx.font = '900 26px Syne, Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const hookRows = wrapCanvasText(ctx, hookOverlay.toUpperCase(), rect.width * 0.82).slice(0, 3);
+    const hookLineHeight = 31;
+    const hookBlockHeight = hookRows.length * hookLineHeight + 18;
+    const hookY = rect.height * 0.18;
+    ctx.fillStyle = 'rgba(0,0,0,0.62)';
+    roundRect(ctx, rect.width * 0.07, hookY - hookBlockHeight / 2, rect.width * 0.86, hookBlockHeight, 10);
+    ctx.fill();
+    hookRows.forEach((row, idx) => {
+      const yy = hookY + (idx - (hookRows.length - 1) / 2) * hookLineHeight;
+      ctx.lineWidth = 8;
+      ctx.strokeStyle = '#000';
+      ctx.strokeText(row, x, yy);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(row, x, yy);
+    });
   }
 }
 
@@ -2660,6 +2722,7 @@ function renderExportSummary() {
       <strong style="color:var(--text)">${i + 1}. ${c.title}</strong>
       <span style="color:var(--text3);font-size:12px;margin-left:8px">${c.duration_s}s · Speaker ${c.speaker}</span>
       <div style="color:var(--text2);font-size:13px;margin-top:4px">${c.why}</div>
+      ${c.hook_overlay ? `<div style="color:var(--green);font-size:12px;margin-top:6px;font-family:var(--mono)">Hook overlay: ${escapeHTML(c.hook_overlay)}</div>` : ''}
     </div>`
   ).join('') + `<div style="padding-top:12px;color:var(--text3);font-size:13px">${selected.length} clip${selected.length !== 1 ? 's' : ''} ready to export</div>`;
 }
@@ -2706,6 +2769,8 @@ async function exportTo(platform) {
           captionStyle: state.captionStyle,
           captionPreset: selectedPreset,
           captionSettings: state.captionSettings,
+          hookOverlay: clip.hook_overlay || clip.hook || '',
+          hookAngle: clip.hook_angle || '',
           words: state.words ? state.words.filter(w => w.start >= (clip.start_ms || 0) && w.start <= (clip.end_ms || 0)).slice(0, 300) : []
         })
       });
