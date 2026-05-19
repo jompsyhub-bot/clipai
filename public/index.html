@@ -646,6 +646,86 @@
     }
     .hook-mini-btn:hover { background: rgba(240,168,50,0.10); }
 
+    /* Viral Memory */
+    .memory-card {
+      border-color: rgba(62,207,142,0.24);
+      background:
+        linear-gradient(135deg, rgba(62,207,142,0.10), transparent 45%),
+        var(--bg2);
+    }
+    .memory-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+    .memory-title { font-size: 18px; font-weight: 800; color: var(--text); line-height: 1.25; }
+    .memory-sub { color: var(--text2); font-size: 13px; margin-top: 4px; max-width: 620px; }
+    .memory-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 8px;
+      margin: 12px 0;
+    }
+    .memory-stat {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+    }
+    .memory-stat strong { display:block; color:var(--text); font-size:17px; line-height:1; }
+    .memory-stat span { color:var(--text3); font-family:var(--mono); font-size:10px; text-transform:uppercase; }
+    .memory-form {
+      display: grid;
+      grid-template-columns: 1.3fr repeat(4, minmax(76px, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .memory-form input,
+    .memory-form select {
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 10px 11px;
+      min-width: 0;
+      font-family: var(--font);
+      font-size: 12px;
+      outline: none;
+    }
+    .memory-form input:focus,
+    .memory-form select:focus { border-color: var(--green); }
+    .memory-output {
+      display: none;
+      margin-top: 14px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 14px;
+      color: var(--text2);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+    .memory-output.show { display:block; }
+    .memory-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border: 1px solid rgba(62,207,142,0.28);
+      color: var(--green);
+      background: rgba(62,207,142,0.08);
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-family: var(--mono);
+      font-size: 10px;
+      margin-top: 8px;
+    }
+    @media (max-width: 720px) {
+      .memory-form { grid-template-columns: 1fr 1fr; }
+      .memory-form input:first-child { grid-column: 1 / -1; }
+    }
+
     /* ── CLIPS ── */
     .clips-grid {
       display: grid;
@@ -1136,6 +1216,34 @@
       <button class="btn btn-ghost btn-full" id="hook-lab-btn" type="button" onclick="runHookLab()">Generate Hook Variants</button>
       <div class="hook-lab-output" id="hook-lab-output"></div>
     </div>
+    <div class="card memory-card">
+      <div class="memory-head">
+        <div>
+          <div class="memory-title">Viral Memory Engine</div>
+          <div class="memory-sub">ClipAI remembers which clips performed for you, then scores new clips against your audience patterns instead of generic viral guesses.</div>
+        </div>
+        <div class="ghost-badge">Learning</div>
+      </div>
+      <div class="memory-stats" id="memory-stats"></div>
+      <div class="memory-form">
+        <input id="memory-title" placeholder="Clip title or topic" />
+        <select id="memory-platform">
+          <option value="tiktok">TikTok</option>
+          <option value="reels">Reels</option>
+          <option value="shorts">Shorts</option>
+          <option value="linkedin">LinkedIn</option>
+        </select>
+        <input id="memory-views" type="number" min="0" placeholder="Views" />
+        <input id="memory-likes" type="number" min="0" placeholder="Likes" />
+        <input id="memory-comments" type="number" min="0" placeholder="Comments" />
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button class="btn btn-ghost" type="button" onclick="saveMemoryEntry()">Save Result</button>
+        <button class="btn btn-ghost" id="memory-analyze-btn" type="button" onclick="runViralMemory()">Score Current Clips</button>
+        <button class="btn btn-ghost" type="button" onclick="prefillMemoryFromSelectedClip()">Use Selected Clip</button>
+      </div>
+      <div class="memory-output" id="memory-output"></div>
+    </div>
     <div class="action-row">
       <button class="btn btn-primary btn-full" onclick="goStage(3)" style="margin-top:16px">Continue to export →</button>
     </div>
@@ -1282,7 +1390,10 @@ const state = {
   ghostAutoRun: false,
   ghostBusy: false,
   hookVariants: [],
-  hookBusy: false
+  hookBusy: false,
+  viralMemory: [],
+  memoryProfile: null,
+  memoryBusy: false
 };
 
 // ═══ UTILS ═══
@@ -1423,6 +1534,8 @@ function createNewClips() {
     ghostBusy: false,
     hookVariants: [],
     hookBusy: false,
+    memoryProfile: null,
+    memoryBusy: false,
     unlockedStage: 0
   });
 
@@ -1431,7 +1544,7 @@ function createNewClips() {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
-  ['ghost-status', 'ghost-upload-status', 'hook-lab-output'].forEach(id => {
+  ['ghost-status', 'ghost-upload-status', 'hook-lab-output', 'memory-output'].forEach(id => {
     const el = document.getElementById(id);
     if (el) { el.classList.remove('show'); el.textContent = ''; }
   });
@@ -2260,6 +2373,9 @@ function renderClips() {
     const hookBadge = c.hook_overlay
       ? '<div class="hook-applied">Hook overlay: ' + escapeHTML(c.hook_overlay.slice(0, 52)) + (c.hook_overlay.length > 52 ? '...' : '') + '</div>'
       : '';
+    const memoryBadge = c.memory_score
+      ? '<div class="memory-pill">Memory fit ' + escapeHTML(String(c.memory_score)) + '/100' + (c.memory_reason ? ' · ' + escapeHTML(c.memory_reason.slice(0, 42)) : '') + '</div>'
+      : '';
 
     return '<div class="clip-card sel" id="clip' + i + '">' +
       '<div class="clip-preview-wrap">' +
@@ -2279,6 +2395,7 @@ function renderClips() {
         '<div class="clip-sub">Speaker ' + escapeHTML(c.speaker || '?') + ' · ' + escapeHTML(start + ' → ' + end) + '</div>' +
         '<div class="clip-why">' + escapeHTML(c.why ? c.why.slice(0,90) + '...' : '') + '</div>' +
         hookBadge +
+        memoryBadge +
         '<div class="clip-platforms" style="margin-top:6px">' + platforms + '</div>' +
       '</div>' +
     '</div>';
@@ -2455,6 +2572,168 @@ async function copyHookVariant(i) {
   } catch (err) {
     toast('Copy failed: ' + err.message);
   }
+}
+
+// Viral Memory Engine keeps creator-specific performance memory in localStorage.
+const MEMORY_KEY = 'clipai_viral_memory_v1';
+
+function loadViralMemory() {
+  try {
+    state.viralMemory = JSON.parse(localStorage.getItem(MEMORY_KEY) || '[]').filter(Boolean).slice(-80);
+  } catch (err) {
+    state.viralMemory = [];
+  }
+  renderMemoryStats();
+}
+
+function persistViralMemory() {
+  localStorage.setItem(MEMORY_KEY, JSON.stringify((state.viralMemory || []).slice(-80)));
+  renderMemoryStats();
+}
+
+function memoryEngagementScore(item) {
+  const views = Math.max(1, Number(item.views) || 0);
+  const likes = Number(item.likes) || 0;
+  const comments = Number(item.comments) || 0;
+  const shares = Number(item.shares) || 0;
+  return Math.round(((likes + comments * 3 + shares * 4) / views) * 10000) / 100;
+}
+
+function summarizeViralMemory() {
+  const memory = state.viralMemory || [];
+  const best = memory.slice().sort((a, b) => memoryEngagementScore(b) - memoryEngagementScore(a)).slice(0, 5);
+  const platforms = {};
+  memory.forEach(item => { platforms[item.platform || 'unknown'] = (platforms[item.platform || 'unknown'] || 0) + 1; });
+  const topPlatform = Object.entries(platforms).sort((a, b) => b[1] - a[1])[0]?.[0] || 'none';
+  const avgScore = memory.length
+    ? Math.round(memory.reduce((sum, item) => sum + memoryEngagementScore(item), 0) / memory.length * 10) / 10
+    : 0;
+  return { count: memory.length, best, topPlatform, avgScore };
+}
+
+function renderMemoryStats() {
+  const el = document.getElementById('memory-stats');
+  if (!el) return;
+  const summary = summarizeViralMemory();
+  el.innerHTML =
+    '<div class="memory-stat"><strong>' + summary.count + '</strong><span>saved results</span></div>' +
+    '<div class="memory-stat"><strong>' + escapeHTML(summary.topPlatform) + '</strong><span>top platform</span></div>' +
+    '<div class="memory-stat"><strong>' + summary.avgScore + '%</strong><span>avg signal</span></div>';
+}
+
+function prefillMemoryFromSelectedClip() {
+  const idx = Array.from(state.selectedClips)[0] ?? 0;
+  const clip = state.clips[idx];
+  if (!clip) { toast('Select or generate a clip first'); return; }
+  const title = document.getElementById('memory-title');
+  if (title) title.value = clip.title || clip.hook || 'Clip result';
+  toast('Selected clip loaded into memory form');
+}
+
+function saveMemoryEntry() {
+  const title = (document.getElementById('memory-title')?.value || '').trim();
+  const platform = document.getElementById('memory-platform')?.value || 'tiktok';
+  const views = Number(document.getElementById('memory-views')?.value || 0);
+  const likes = Number(document.getElementById('memory-likes')?.value || 0);
+  const comments = Number(document.getElementById('memory-comments')?.value || 0);
+  if (!title) { toast('Add the clip title or topic first'); return; }
+  if (!views) { toast('Add view count so memory can learn'); return; }
+
+  state.viralMemory.push({
+    id: Date.now(),
+    title,
+    platform,
+    views,
+    likes,
+    comments,
+    shares: 0,
+    saved_at: new Date().toISOString()
+  });
+  persistViralMemory();
+  ['memory-title', 'memory-views', 'memory-likes', 'memory-comments'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  toast('Performance saved to Viral Memory');
+}
+
+function renderMemoryProfile(profile) {
+  const out = document.getElementById('memory-output');
+  if (!out) return;
+  out.classList.add('show');
+  const scores = profile.clip_scores || [];
+  const topLessons = (profile.audience_patterns || []).map(p => '<li>' + escapeHTML(p) + '</li>').join('');
+  const recommendations = (profile.recommendations || []).map(p => '<li>' + escapeHTML(p) + '</li>').join('');
+  const scoreRows = scores.map(score =>
+    '<div class="ghost-plan-row"><strong>' + escapeHTML((score.clip_index + 1) + '. ' + (state.clips[score.clip_index]?.title || 'Clip')) + '</strong><span>' + escapeHTML(score.score + '/100') + '</span></div>' +
+    '<div style="color:var(--text2);font-size:12px;margin-bottom:8px">' + escapeHTML(score.reason || '') + '</div>'
+  ).join('');
+  out.innerHTML =
+    '<div style="color:var(--green);font-family:var(--mono);font-size:11px;margin-bottom:8px">Creator memory profile</div>' +
+    '<div style="color:var(--text);font-weight:700;margin-bottom:8px">' + escapeHTML(profile.summary || 'Memory analysis ready.') + '</div>' +
+    (topLessons ? '<div style="margin-top:8px"><strong style="color:var(--text)">Audience patterns</strong><ul style="margin:6px 0 0 18px">' + topLessons + '</ul></div>' : '') +
+    (recommendations ? '<div style="margin-top:10px"><strong style="color:var(--text)">Next edits</strong><ul style="margin:6px 0 0 18px">' + recommendations + '</ul></div>' : '') +
+    (scoreRows ? '<div class="ghost-plan" style="margin-top:12px">' + scoreRows + '</div>' : '');
+}
+
+function applyMemoryScores(profile) {
+  (profile.clip_scores || []).forEach(score => {
+    const clip = state.clips[score.clip_index];
+    if (!clip) return;
+    clip.memory_score = Math.max(0, Math.min(100, Number(score.score) || 0));
+    clip.memory_reason = score.reason || '';
+    if (score.suggested_hook && !clip.hook_overlay) {
+      clip.hook_overlay = score.suggested_hook;
+      clip.hook = score.suggested_hook;
+    }
+  });
+}
+
+async function runViralMemory() {
+  if (!state.clips.length) { toast('Generate clips first'); return; }
+  if (!state.viralMemory.length) { toast('Save at least one past result first'); return; }
+  if (state.memoryBusy) return;
+  state.memoryBusy = true;
+  setBtn('memory-analyze-btn', true, 'Scoring...');
+  const out = document.getElementById('memory-output');
+  if (out) {
+    out.classList.add('show');
+    out.innerHTML = '<div style="display:flex;align-items:center;gap:10px"><div class="spinner"></div>Comparing current clips to your saved audience memory...</div>';
+  }
+
+  try {
+    const res = await fetch(RAILWAY_URL + '/api/viral-memory', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        memory: state.viralMemory.slice(-40),
+        clips: state.clips.map((clip, index) => ({
+          index,
+          title: clip.title,
+          hook: clip.hook_overlay || clip.hook,
+          why: clip.why,
+          caption_lines: clip.caption_lines || [],
+          platform_fit: clip.platform_fit || [],
+          energy: clip.energy,
+          duration_s: clip.duration_s
+        }))
+      })
+    });
+    const profile = await res.json();
+    if (!res.ok) throw new Error(profile.error || 'Viral Memory failed');
+    state.memoryProfile = profile;
+    applyMemoryScores(profile);
+    renderClips();
+    renderMemoryProfile(profile);
+    renderExportSummary();
+    toast('Viral Memory scored your clips');
+  } catch (err) {
+    if (out) out.innerHTML = '<span style="color:var(--red)">Viral Memory error: ' + escapeHTML(err.message) + '</span>';
+    toast('Viral Memory error: ' + err.message, 6000);
+  }
+
+  state.memoryBusy = false;
+  setBtn('memory-analyze-btn', false);
 }
 
 let activePreviewIndex = null;
@@ -2970,6 +3249,7 @@ function closeSidebar() {
 // Init
 state.unlockedStage = 0;
 initTheme();
+loadViralMemory();
 goStage(0);
 initAuth();
 
