@@ -1711,7 +1711,7 @@ async function submitUrl() {
   const url = document.getElementById('url-input').value.trim();
   if (!url) { toast('Please enter a video URL'); return; }
 
-  const isYouTube = /youtube\.com|youtu\.be/.test(url);
+  const isYouTube = /youtube\.com|youtu\.be|youtube-nocookie\.com/.test(url);
 
   if (isYouTube) {
     document.getElementById('upload-progress').style.display = 'block';
@@ -1735,19 +1735,24 @@ async function submitUrl() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ url })
       });
-      const data = await res.json();
+      const raw = await res.text();
+      let data;
+      try { data = JSON.parse(raw); } catch(e) { throw new Error('Backend returned invalid response: ' + raw.slice(0, 120)); }
       clearInterval(fakeTimer);
 
       if (!res.ok) throw new Error(data.error || 'YouTube download failed');
 
       document.getElementById('upload-bar').style.width = '100%';
       document.getElementById('upload-pct').textContent = '100%';
-      document.getElementById('upload-status').textContent = 'YouTube audio ready!';
-      document.getElementById('upload-size').textContent = 'Downloaded and ready to transcribe';
+      document.getElementById('upload-status').textContent = 'YouTube video ready!';
+      document.getElementById('upload-size').textContent = 'Downloaded, saved, and ready to transcribe';
 
       state.localFileId = data.localFileId;
       state.transcriptionUrl = data.uploadUrl;
       setPreviewVideoUrl(data.previewUrl || data.videoUrl || data.localVideoUrl || '');
+      if (!state.sourceVideoUrl) {
+        toast('Video imported, but preview URL was not returned by backend.', 5000);
+      }
       await startTranscription(state.transcriptionUrl);
     } catch (err) {
       clearInterval(fakeTimer);
