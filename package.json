@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "check": "node --check server.js && node --check api/transcribe.js && node --check api/transcript-status.js && node --check api/suggest-clips.js && node --check api/caption-style.js && node --check api/auth.js && node --check api/projects.js"
+    "check": "node --check server.js && node --check api/transcribe.js && node --check api/transcript-status.js && node --check api/suggest-clips.js && node --check api/caption-style.js && node --check api/auth.js && node --check api/projects.js && node --check api/compilation-plan.js"
   },
   "engines": { "node": ">=18" },
   "dependencies": {
