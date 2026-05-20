@@ -68,13 +68,15 @@
   </div>
 
   <div id="msg" class="msg"></div>
-  <a href="/" class="back">← Back to ClipAI</a>
+  <a href="index.html" class="back">← Back to ClipAI</a>
 </div>
 
 <script>
+  const API_URL = 'https://clipai-ten.vercel.app';
+
   // Redirect if already logged in
   if (localStorage.getItem('clipai_token')) {
-    window.location.href = '/';
+    window.location.href = 'index.html';
   }
 
   function switchTab(tab) {
@@ -98,23 +100,32 @@
     if (!btn.dataset.label) btn.dataset.label = btn.textContent;
   }
 
+  async function readJsonResponse(res) {
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch (err) {
+      throw new Error('Login server returned HTML instead of JSON. Check that the APK is calling ' + API_URL + '/api/auth');
+    }
+  }
+
   async function doLogin() {
     const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
     if (!email || !password) return showMsg('Please fill in all fields', 'error');
     setLoading('login-btn', true);
     try {
-      const res = await fetch('/api/auth', {
+      const res = await fetch(API_URL + '/api/auth', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ action: 'login', email, password })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const data = await readJsonResponse(res);
+      if (!res.ok) throw new Error(data.error || 'Login failed');
       localStorage.setItem('clipai_token', data.token);
       localStorage.setItem('clipai_user', JSON.stringify(data.user));
       showMsg('Welcome back! Redirecting...', 'success');
-      setTimeout(() => window.location.href = '/', 1000);
+      setTimeout(() => window.location.href = 'index.html', 1000);
     } catch(err) {
       showMsg(err.message, 'error');
       setLoading('login-btn', false);
@@ -128,13 +139,13 @@
     if (password.length < 6) return showMsg('Password must be at least 6 characters', 'error');
     setLoading('signup-btn', true);
     try {
-      const res = await fetch('/api/auth', {
+      const res = await fetch(API_URL + '/api/auth', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ action: 'signup', email, password })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const data = await readJsonResponse(res);
+      if (!res.ok) throw new Error(data.error || 'Signup failed');
       showMsg(data.message || 'Account created! You can now sign in.', 'success');
       setLoading('signup-btn', false);
       setTimeout(() => switchTab('login'), 2000);
