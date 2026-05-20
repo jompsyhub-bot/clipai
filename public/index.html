@@ -897,8 +897,80 @@
     /* ── ACTION ROW ── */
     .action-row { display: flex; gap: 10px; margin-top: 16px; }
 
+    /* ── MODE CHOOSER + COMPILATION STUDIO ── */
+    .mode-chooser {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .mode-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--r2);
+      padding: 18px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .mode-card:hover,
+    .mode-card.active {
+      border-color: rgba(124,106,247,0.65);
+      background: var(--accent-dim);
+      transform: translateY(-1px);
+    }
+    .mode-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    .mode-icon {
+      width: 38px; height: 38px; border-radius: 12px;
+      background: var(--bg4); border: 1px solid var(--border2);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--accent); font-family: var(--mono); font-size: 13px;
+    }
+    .mode-badge {
+      font-family: var(--mono); font-size: 10px; color: var(--green);
+      background: rgba(63, 212, 146, 0.12); border: 1px solid rgba(63, 212, 146, 0.22);
+      border-radius: 999px; padding: 4px 8px;
+    }
+    .mode-title { color: var(--text); font-weight: 800; font-size: 16px; margin-bottom: 6px; }
+    .mode-sub { color: var(--text2); font-size: 13px; line-height: 1.55; }
+    .compilation-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+      gap: 16px;
+    }
+    .compilation-links {
+      width: 100%; min-height: 180px; resize: vertical;
+      background: var(--bg3); border: 1px solid var(--border2);
+      color: var(--text); border-radius: var(--r2);
+      padding: 14px; font-family: var(--mono); font-size: 13px; line-height: 1.6;
+      outline: none;
+    }
+    .compilation-links:focus { border-color: var(--accent); }
+    .compilation-options { display: grid; gap: 10px; }
+    .compilation-options label { font-size: 12px; color: var(--text3); font-family: var(--mono); }
+    .compilation-options select,
+    .compilation-options input {
+      width: 100%; background: var(--bg3); color: var(--text);
+      border: 1px solid var(--border2); border-radius: 10px;
+      padding: 11px 12px; font-family: var(--font); outline: none;
+    }
+    .compilation-status {
+      display: none; margin-top: 14px; padding: 14px;
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: var(--r2); color: var(--text2); font-size: 13px; line-height: 1.7;
+    }
+    .compilation-status.show { display: block; }
+    .compilation-plan { display: grid; gap: 10px; margin-top: 12px; }
+    .compilation-segment {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px;
+    }
+    .compilation-segment strong { color: var(--text); display: block; margin-bottom: 4px; }
+    .compilation-segment span { color: var(--text3); font-size: 12px; font-family: var(--mono); }
+
     /* ── RESPONSIVE ── */
     @media (max-width: 600px) {
+      .mode-chooser,
+      .compilation-grid { grid-template-columns: 1fr; }
       .stats-row { grid-template-columns: repeat(2, 1fr); }
       .clips-grid { grid-template-columns: repeat(2, 1fr); }
       nav { padding: 12px 14px; align-items: flex-start; }
@@ -994,7 +1066,7 @@
     <button class="nav-action" id="theme-toggle" onclick="toggleTheme()" type="button">Light mode</button>
     <button class="nav-action primary hidden" id="new-clips-btn" onclick="createNewClips()" type="button">Create New Clips</button>
     <div id="nav-auth">
-      <a href="/login.html" class="nav-action" style="text-decoration:none">Sign In</a>
+      <a href="login.html" class="nav-action" style="text-decoration:none">Sign In</a>
     </div>
   </div>
 </nav>
@@ -1043,6 +1115,25 @@
 
 <div class="app-shell">
 
+  <div class="mode-chooser" id="mode-chooser">
+    <div class="mode-card active" id="mode-clips" onclick="chooseCreationMode('clips')">
+      <div class="mode-top">
+        <div class="mode-icon">9:16</div>
+        <span class="mode-badge">Fast clips</span>
+      </div>
+      <div class="mode-title">Create Short Clips</div>
+      <div class="mode-sub">Upload one video or paste one YouTube link. ClipAI finds viral moments, captions them, and exports short clips.</div>
+    </div>
+    <div class="mode-card" id="mode-compilation" onclick="chooseCreationMode('compilation')">
+      <div class="mode-top">
+        <div class="mode-icon">30m</div>
+        <span class="mode-badge">New</span>
+      </div>
+      <div class="mode-title">Compilation Studio</div>
+      <div class="mode-sub">Paste multiple YouTube links and let Ghost Editor plan a longer compilation from the best moments across all sources.</div>
+    </div>
+  </div>
+
   <!-- STAGE TABS -->
   <div class="stages" role="tablist">
     <button class="stage-btn active" id="tab0" onclick="goStage(0)">
@@ -1061,6 +1152,54 @@
       <span class="snum">4</span>
       <span class="stage-label">Export</span>
     </button>
+  </div>
+
+  <div id="compilation-studio" style="display:none">
+    <div class="card">
+      <div class="card-title">Compilation Studio</div>
+      <p style="color:var(--text2);font-size:14px;line-height:1.7;margin-bottom:16px">
+        Build a long-form compilation from multiple YouTube videos. Start by creating the AI edit plan; after the downloader pipeline is connected, this same workspace will render the final MP4.
+      </p>
+      <div class="compilation-grid">
+        <div>
+          <label style="display:block;color:var(--text3);font-family:var(--mono);font-size:12px;margin-bottom:8px">YouTube links, one per line</label>
+          <textarea id="compilation-links" class="compilation-links" placeholder="https://www.youtube.com/watch?v=...&#10;https://youtu.be/...&#10;https://www.youtube.com/shorts/..."></textarea>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+            <button class="ghost-chip" type="button" onclick="useCompilationExample('funny')">Funny moments</button>
+            <button class="ghost-chip" type="button" onclick="useCompilationExample('educational')">Educational breakdown</button>
+            <button class="ghost-chip" type="button" onclick="useCompilationExample('motivation')">Motivation mix</button>
+          </div>
+        </div>
+        <div class="compilation-options">
+          <div>
+            <label for="compilation-style">Compilation style</label>
+            <select id="compilation-style">
+              <option value="funniest">Funniest moments</option>
+              <option value="educational">Educational explainer</option>
+              <option value="controversial">Controversial takes</option>
+              <option value="motivational">Motivational story</option>
+              <option value="documentary">Documentary flow</option>
+            </select>
+          </div>
+          <div>
+            <label for="compilation-length">Target length</label>
+            <select id="compilation-length">
+              <option value="10">10 minutes</option>
+              <option value="20">20 minutes</option>
+              <option value="30" selected>30 minutes</option>
+              <option value="45">45 minutes</option>
+            </select>
+          </div>
+          <div>
+            <label for="compilation-brief">Ghost Editor instruction</label>
+            <input id="compilation-brief" placeholder="Start with the strongest hook, remove boring parts, keep high energy" />
+          </div>
+          <button class="btn btn-full" type="button" onclick="createCompilationPlan()">Create Compilation Plan</button>
+          <button class="btn btn-ghost btn-full" type="button" onclick="explainCompilationBuild()">Build Final Video</button>
+        </div>
+      </div>
+      <div class="compilation-status" id="compilation-status"></div>
+    </div>
   </div>
 
   <!-- ═══ PANEL 0: UPLOAD ═══ -->
@@ -1356,13 +1495,15 @@
   const token = localStorage.getItem('clipai_token');
   const user = JSON.parse(localStorage.getItem('clipai_user') || 'null');
   if (!token || !user) {
-    window.location.href = '/login.html';
+    window.location.href = 'login.html';
   }
 })();
 
 // ═══ CONFIG ═══
 // Railway handles video cutting (FFmpeg). Vercel handles everything else.
+const API_URL = 'https://clipai-ten.vercel.app';
 const RAILWAY_URL = 'https://clipai-backend-nvwq.onrender.com';
+let currentCreationMode = 'clips';
 
 // ═══ STATE ═══
 const state = {
@@ -1396,12 +1537,144 @@ const state = {
   memoryBusy: false
 };
 
+const compilationState = {
+  links: [],
+  plan: null,
+  busy: false
+};
+
 // ═══ UTILS ═══
 function toast(msg, duration = 3000) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), duration);
+}
+
+function chooseCreationMode(mode) {
+  currentCreationMode = mode === 'compilation' ? 'compilation' : 'clips';
+  const isCompilation = currentCreationMode === 'compilation';
+  document.getElementById('mode-clips')?.classList.toggle('active', !isCompilation);
+  document.getElementById('mode-compilation')?.classList.toggle('active', isCompilation);
+  document.querySelector('.stages')?.style.setProperty('display', isCompilation ? 'none' : 'flex');
+  document.querySelectorAll('.panel').forEach(panel => {
+    panel.style.display = isCompilation ? 'none' : '';
+  });
+  const studio = document.getElementById('compilation-studio');
+  if (studio) studio.style.display = isCompilation ? 'block' : 'none';
+  if (!isCompilation) goStage(state.currentStage || 0);
+}
+
+function parseCompilationLinks() {
+  const raw = document.getElementById('compilation-links')?.value || '';
+  return raw
+    .split(/\r?\n/)
+    .map(link => link.trim())
+    .filter(Boolean)
+    .filter((link, index, arr) => arr.indexOf(link) === index);
+}
+
+function useCompilationExample(kind) {
+  const examples = {
+    funny: {
+      style: 'funniest',
+      brief: 'Find the funniest moments, start with punchlines, keep pacing fast, remove dead air.'
+    },
+    educational: {
+      style: 'educational',
+      brief: 'Turn the best explanations into a clear learning compilation with smooth topic order.'
+    },
+    motivation: {
+      style: 'motivational',
+      brief: 'Find emotional and inspiring moments, build a story arc, end with the strongest quote.'
+    }
+  };
+  const selected = examples[kind] || examples.funny;
+  document.getElementById('compilation-style').value = selected.style;
+  document.getElementById('compilation-brief').value = selected.brief;
+  toast('Compilation style loaded');
+}
+
+function renderCompilationPlan(plan) {
+  const out = document.getElementById('compilation-status');
+  if (!out) return;
+  const segments = Array.isArray(plan.segments) ? plan.segments : [];
+  const segmentHtml = segments.map((segment, index) => `
+    <div class="compilation-segment">
+      <strong>${index + 1}. ${escapeHTML(segment.title || 'Source segment')}</strong>
+      <span>${escapeHTML(segment.source || '')}</span>
+      <div style="margin-top:6px;color:var(--text2)">${escapeHTML(segment.direction || segment.reason || '')}</div>
+    </div>
+  `).join('');
+  out.classList.add('show');
+  out.innerHTML = `
+    <strong style="color:var(--text);display:block;margin-bottom:6px">${escapeHTML(plan.title || 'Compilation plan ready')}</strong>
+    <div>${escapeHTML(plan.summary || 'ClipAI created the first compilation blueprint.')}</div>
+    <div style="margin-top:10px;font-family:var(--mono);font-size:12px;color:var(--text3)">
+      ${plan.source_count || compilationState.links.length} sources · ${plan.target_minutes || '?'} min target · ${escapeHTML(plan.style || 'custom')}
+    </div>
+    <div class="compilation-plan">${segmentHtml}</div>
+    <div style="margin-top:12px;color:var(--green);font-size:13px">
+      Next: connect this plan to the downloader/FFmpeg compilation renderer so ClipAI can cut and join the final long video.
+    </div>
+  `;
+}
+
+async function createCompilationPlan() {
+  if (compilationState.busy) return;
+  const links = parseCompilationLinks();
+  if (links.length < 2) {
+    toast('Paste at least two YouTube links for a compilation', 5000);
+    return;
+  }
+  if (links.length > 8) {
+    toast('Start with 2 to 8 links. We can raise this after the downloader is stable.', 5000);
+    return;
+  }
+
+  const out = document.getElementById('compilation-status');
+  compilationState.busy = true;
+  compilationState.links = links;
+  if (out) {
+    out.classList.add('show');
+    out.innerHTML = '<div style="display:flex;align-items:center;gap:10px"><div class="spinner"></div>Ghost Editor is building your compilation blueprint...</div>';
+  }
+
+  try {
+    const res = await fetch(API_URL + '/api/compilation-plan', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        links,
+        style: document.getElementById('compilation-style').value,
+        targetMinutes: Number(document.getElementById('compilation-length').value || 30),
+        brief: document.getElementById('compilation-brief').value.trim()
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not create compilation plan');
+    compilationState.plan = data;
+    renderCompilationPlan(data);
+    toast('Compilation plan ready');
+  } catch (err) {
+    if (out) out.innerHTML = '<span style="color:var(--red)">Compilation error: ' + escapeHTML(err.message) + '</span>';
+    toast('Compilation error: ' + err.message, 6000);
+  } finally {
+    compilationState.busy = false;
+  }
+}
+
+function explainCompilationBuild() {
+  const out = document.getElementById('compilation-status');
+  if (out) {
+    out.classList.add('show');
+    out.innerHTML = `
+      <strong style="color:var(--text);display:block;margin-bottom:6px">Renderer connection is next</strong>
+      <div>Compilation Studio is ready for planning. The final build needs the downloader upgrade we discussed: download each YouTube source, transcribe it, let Ghost Editor pick segments, then FFmpeg joins those cuts into one MP4.</div>
+      <div style="margin-top:10px;color:var(--text3)">Once the downloader is stable, this button will start the long-running compilation job.</div>
+    `;
+  }
+  toast('We need the downloader renderer before final video build', 6000);
 }
 
 function applyTheme(theme) {
@@ -1785,7 +2058,7 @@ async function startTranscription(videoUrl) {
 
   try {
     console.log('[ClipAI] Submitting video URL to transcribe API:', videoUrl.substring(0, 80));
-    const res = await fetch('/api/transcribe', {
+    const res = await fetch(API_URL + '/api/transcribe', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ videoUrl })
@@ -1861,7 +2134,7 @@ async function pollTranscript() {
   const poll = async () => {
     try {
       console.log('[ClipAI] Polling transcript ID:', state.transcriptId, 'attempt', attempts + 1);
-      const res = await fetch('/api/transcript-status?id=' + state.transcriptId);
+      const res = await fetch(API_URL + '/api/transcript-status?id=' + state.transcriptId);
 
       if (!res.ok) {
         const text = await res.text();
@@ -2018,7 +2291,7 @@ async function askMomentsAI() {
   out.textContent = 'Analyzing...';
 
   try {
-    const res = await fetch('/api/suggest-clips', {
+    const res = await fetch(API_URL + '/api/suggest-clips', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -2336,7 +2609,7 @@ async function goToClips() {
   document.getElementById('clips-grid').style.display = 'none';
 
   try {
-    const res = await fetch('/api/suggest-clips', {
+    const res = await fetch(API_URL + '/api/suggest-clips', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -2436,7 +2709,7 @@ async function askClipAI() {
   out.textContent = 'Generating...';
 
   try {
-    const res = await fetch('/api/suggest-clips', {
+    const res = await fetch(API_URL + '/api/suggest-clips', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -2971,7 +3244,7 @@ async function generateCaptions() {
   out.textContent = 'Generating caption style...';
 
   try {
-    const res = await fetch('/api/caption-style', {
+    const res = await fetch(API_URL + '/api/caption-style', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -3122,13 +3395,13 @@ function doLogout() {
 
 async function openSidebar() {
   const token = localStorage.getItem('clipai_token');
-  if (!token) { window.location.href = '/login.html'; return; }
+  if (!token) { window.location.href = 'login.html'; return; }
   document.getElementById('projects-sidebar').style.display = 'block';
   document.getElementById('sidebar-overlay').style.display = 'block';
   const listEl = document.getElementById('projects-list');
   listEl.innerHTML = '<div style="color:var(--text3);font-size:13px">Loading...</div>';
   try {
-    const res = await fetch('/api/projects', { headers: { 'authorization': 'Bearer ' + token, 'x-requested-with': 'clipai' } });
+    const res = await fetch(API_URL + '/api/projects', { headers: { 'authorization': 'Bearer ' + token, 'x-requested-with': 'clipai' } });
     const projects = await res.json();
     if (!projects.length) {
       listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">No saved projects yet.<br>Process a video and save it!</div>';
@@ -3172,7 +3445,7 @@ async function deleteProject(btn, id, i) {
   const token = localStorage.getItem('clipai_token');
   if (!confirm('Delete this project? This cannot be undone.')) return;
   try {
-    const res = await fetch('/api/projects?id=' + id, {
+    const res = await fetch(API_URL + '/api/projects?id=' + id, {
       method: 'DELETE',
       headers: { 'authorization': 'Bearer ' + token }
     });
