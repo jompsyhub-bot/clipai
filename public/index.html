@@ -1664,17 +1664,78 @@ async function createCompilationPlan() {
   }
 }
 
-function explainCompilationBuild() {
+async function explainCompilationBuild() {
   const out = document.getElementById('compilation-status');
+  const links = parseCompilationLinks();
+  if (links.length < 2) {
+    toast('Paste at least two YouTube links first', 5000);
+    return;
+  }
+  if (compilationState.busy) return;
+  compilationState.busy = true;
   if (out) {
     out.classList.add('show');
-    out.innerHTML = `
-      <strong style="color:var(--text);display:block;margin-bottom:6px">Renderer connection is next</strong>
-      <div>Compilation Studio is ready for planning. The final build needs the downloader upgrade we discussed: download each YouTube source, transcribe it, let Ghost Editor pick segments, then FFmpeg joins those cuts into one MP4.</div>
-      <div style="margin-top:10px;color:var(--text3)">Once the downloader is stable, this button will start the long-running compilation job.</div>
-    `;
+    out.innerHTML = '<div style="display:flex;align-items:center;gap:10px"><div class="spinner"></div>Starting compilation renderer...</div>';
   }
-  toast('We need the downloader renderer before final video build', 6000);
+
+  try {
+    const res = await fetch(RAILWAY_URL + '/api/compilation/start', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        links,
+        style: document.getElementById('compilation-style').value,
+        targetMinutes: Number(document.getElementById('compilation-length').value || 30),
+        brief: document.getElementById('compilation-brief').value.trim(),
+        plan: compilationState.plan
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not start compilation');
+    pollCompilationJob(data.jobId);
+    toast('Compilation build started');
+  } catch (err) {
+    compilationState.busy = false;
+    if (out) out.innerHTML = '<span style="color:var(--red)">Compilation build error: ' + escapeHTML(err.message) + '</span>';
+    toast('Compilation build error: ' + err.message, 6000);
+  }
+}
+
+async function pollCompilationJob(jobId) {
+  const out = document.getElementById('compilation-status');
+  try {
+    const res = await fetch(RAILWAY_URL + '/api/compilation/status/' + encodeURIComponent(jobId));
+    const job = await res.json();
+    if (!res.ok) throw new Error(job.error || 'Could not read compilation status');
+    if (out) {
+      const pct = Math.max(0, Math.min(100, Number(job.progress) || 0));
+      out.classList.add('show');
+      out.innerHTML = `
+        <strong style="color:var(--text);display:block;margin-bottom:8px">Building compilation</strong>
+        <div>${escapeHTML(job.phase || 'Working...')}</div>
+        <div class="progress-bar" style="margin-top:12px"><div class="progress-fill" style="width:${pct}%"></div></div>
+        <div style="margin-top:8px;font-family:var(--mono);font-size:12px;color:var(--text3)">${pct}% complete</div>
+      `;
+    }
+    if (job.status === 'completed') {
+      compilationState.busy = false;
+      if (out) {
+        out.innerHTML = `
+          <strong style="color:var(--green);display:block;margin-bottom:8px">Compilation ready</strong>
+          <div>Your long-form compilation has been rendered.</div>
+          <a class="btn btn-full" style="margin-top:14px;text-decoration:none;display:flex" href="${escapeHTML(job.downloadUrl)}" target="_blank" rel="noopener">Download Compilation MP4</a>
+        `;
+      }
+      toast('Compilation ready to download');
+      return;
+    }
+    if (job.status === 'failed') throw new Error(job.error || 'Compilation failed');
+    setTimeout(() => pollCompilationJob(jobId), 3500);
+  } catch (err) {
+    compilationState.busy = false;
+    if (out) out.innerHTML = '<span style="color:var(--red)">Compilation failed: ' + escapeHTML(err.message) + '</span>';
+    toast('Compilation failed: ' + err.message, 7000);
+  }
 }
 
 function applyTheme(theme) {
