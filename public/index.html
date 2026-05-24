@@ -1664,6 +1664,16 @@ async function createCompilationPlan() {
   }
 }
 
+async function readApiJson(res, label) {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    const shortText = text.replace(/\s+/g, ' ').slice(0, 140);
+    throw new Error(`${label || 'Server'} returned HTML instead of JSON. Check that ${RAILWAY_URL} has the compilation routes deployed. Response: ${shortText}`);
+  }
+}
+
 async function explainCompilationBuild() {
   const out = document.getElementById('compilation-status');
   const links = parseCompilationLinks();
@@ -1690,7 +1700,7 @@ async function explainCompilationBuild() {
         plan: compilationState.plan
       })
     });
-    const data = await res.json();
+    const data = await readApiJson(res, 'Compilation backend');
     if (!res.ok) throw new Error(data.error || 'Could not start compilation');
     pollCompilationJob(data.jobId);
     toast('Compilation build started');
@@ -1705,7 +1715,7 @@ async function pollCompilationJob(jobId) {
   const out = document.getElementById('compilation-status');
   try {
     const res = await fetch(RAILWAY_URL + '/api/compilation/status/' + encodeURIComponent(jobId));
-    const job = await res.json();
+    const job = await readApiJson(res, 'Compilation status');
     if (!res.ok) throw new Error(job.error || 'Could not read compilation status');
     if (out) {
       const pct = Math.max(0, Math.min(100, Number(job.progress) || 0));
