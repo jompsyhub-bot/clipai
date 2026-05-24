@@ -3,78 +3,575 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ClipAI — Sign In</title>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <title>ClipAI - Sign In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #080810; --bg2: #0d0c1a; --bg3: #11101e;
-      --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.12);
-      --accent: #7c6af7; --accent2: #a394ff; --accent-dim: rgba(124,106,247,0.15);
-      --text: #e8e6f5; --text2: #8b88b5; --text3: #4a4870;
-      --red: #f06464; --green: #3ecf8e;
-      --font: 'Syne', sans-serif; --mono: 'DM Mono', monospace; --r: 12px;
+      --bg: #07080d;
+      --panel: #10121a;
+      --panel2: #151824;
+      --ink: #f4f1ff;
+      --muted: #a7a3bc;
+      --soft: #6f6a86;
+      --line: rgba(255,255,255,0.1);
+      --line2: rgba(255,255,255,0.16);
+      --violet: #8d7cff;
+      --cyan: #3ee7ff;
+      --green: #3ecf8e;
+      --red: #ff6b7a;
+      --font: 'Syne', sans-serif;
+      --body: 'DM Sans', sans-serif;
+      --mono: 'DM Mono', monospace;
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-    .glow { position: fixed; top: -200px; left: 50%; transform: translateX(-50%); width: 600px; height: 400px; background: radial-gradient(ellipse, rgba(124,106,247,0.1) 0%, transparent 70%); pointer-events: none; }
-    .card { background: var(--bg2); border: 1px solid var(--border2); border-radius: 20px; padding: 40px; width: 100%; max-width: 420px; position: relative; }
-    .logo { font-size: 24px; font-weight: 800; color: #fff; letter-spacing: -1px; text-align: center; margin-bottom: 8px; }
-    .logo span { color: var(--accent); }
-    .tagline { font-size: 13px; color: var(--text3); text-align: center; margin-bottom: 32px; font-family: var(--mono); }
-    .tabs { display: flex; background: var(--bg3); border-radius: 10px; padding: 4px; gap: 4px; margin-bottom: 28px; }
-    .tab { flex: 1; padding: 9px; text-align: center; font-size: 13px; font-weight: 600; color: var(--text3); border: none; background: transparent; border-radius: 8px; cursor: pointer; transition: all 0.2s; font-family: var(--font); }
-    .tab.active { background: var(--accent); color: #fff; }
-    .field { margin-bottom: 16px; }
-    label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 6px; font-family: var(--mono); }
-    input { width: 100%; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--r); padding: 12px 16px; font-family: var(--font); font-size: 14px; color: var(--text); outline: none; transition: border-color 0.2s; }
-    input:focus { border-color: var(--accent); }
-    input::placeholder { color: var(--text3); }
-    .btn { width: 100%; background: var(--accent); color: #fff; border: none; padding: 14px; border-radius: var(--r); font-family: var(--font); font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.2s; margin-top: 8px; }
-    .btn:hover { background: #9080ff; }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .msg { margin-top: 16px; padding: 12px 16px; border-radius: 10px; font-size: 13px; display: none; }
-    .msg.error { background: rgba(240,100,100,0.1); border: 1px solid rgba(240,100,100,0.3); color: #f09090; display: block; }
-    .msg.success { background: rgba(62,207,142,0.1); border: 1px solid rgba(62,207,142,0.3); color: #70dfa0; display: block; }
-    .divider { text-align: center; color: var(--text3); font-size: 12px; margin: 20px 0; position: relative; }
-    .divider::before, .divider::after { content: ''; position: absolute; top: 50%; width: 42%; height: 1px; background: var(--border); }
-    .divider::before { left: 0; } .divider::after { right: 0; }
-    .back { display: block; text-align: center; margin-top: 20px; color: var(--text3); font-size: 13px; text-decoration: none; }
-    .back:hover { color: var(--accent2); }
-    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
+
+    body {
+      min-height: 100vh;
+      font-family: var(--body);
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 18% 20%, rgba(62,231,255,0.13), transparent 28%),
+        radial-gradient(circle at 82% 10%, rgba(141,124,255,0.18), transparent 32%),
+        linear-gradient(135deg, #07080d 0%, #0c0d15 48%, #07080d 100%);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+      background-size: 46px 46px;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent 80%);
+      pointer-events: none;
+    }
+
+    .shell {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(380px, 0.95fr);
+      gap: 28px;
+      align-items: center;
+      width: min(1120px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 34px 0;
+    }
+
+    .showcase {
+      min-height: 620px;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: linear-gradient(160deg, rgba(255,255,255,0.08), rgba(255,255,255,0.025));
+      overflow: hidden;
+      position: relative;
+      padding: 34px;
+      box-shadow: 0 28px 90px rgba(0,0,0,0.38);
+    }
+
+    .showcase::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, transparent 0%, rgba(7,8,13,0.74) 100%);
+      pointer-events: none;
+    }
+
+    .brand {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: var(--font);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      font-size: 26px;
+    }
+
+    .mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, var(--cyan), var(--violet));
+      color: #05060a;
+      font-family: var(--mono);
+      font-size: 13px;
+      box-shadow: 0 18px 40px rgba(62,231,255,0.24);
+    }
+
+    .brand span { color: var(--cyan); }
+
+    .hero-copy {
+      position: relative;
+      z-index: 2;
+      max-width: 520px;
+      margin-top: 58px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border: 1px solid rgba(62,231,255,0.28);
+      border-radius: 999px;
+      color: #b7f7ff;
+      background: rgba(62,231,255,0.08);
+      font-family: var(--mono);
+      font-size: 11px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      font-family: var(--font);
+      font-size: clamp(42px, 6vw, 72px);
+      line-height: 0.92;
+      letter-spacing: -0.07em;
+      max-width: 580px;
+    }
+
+    h1 em {
+      color: transparent;
+      background: linear-gradient(90deg, #fff, #b8afff 55%, #77f0ff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      font-style: normal;
+    }
+
+    .hero-copy p {
+      max-width: 430px;
+      color: var(--muted);
+      line-height: 1.7;
+      margin-top: 18px;
+      font-size: 15px;
+    }
+
+    .motion-card {
+      position: absolute;
+      z-index: 2;
+      right: 34px;
+      bottom: 32px;
+      width: min(420px, calc(100% - 68px));
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 22px;
+      background: rgba(12,14,22,0.76);
+      backdrop-filter: blur(18px);
+      padding: 16px;
+      box-shadow: 0 28px 70px rgba(0,0,0,0.4);
+    }
+
+    .timeline {
+      height: 210px;
+      border-radius: 16px;
+      background:
+        linear-gradient(135deg, rgba(141,124,255,0.2), rgba(62,231,255,0.08)),
+        #090a10;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .timeline::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(90deg, rgba(255,255,255,0.08) 0 1px, transparent 1px 52px);
+      opacity: 0.6;
+    }
+
+    .playhead {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 12%;
+      width: 2px;
+      background: var(--cyan);
+      box-shadow: 0 0 26px var(--cyan);
+      animation: scrub 4.8s ease-in-out infinite;
+    }
+
+    @keyframes scrub {
+      0%, 100% { transform: translateX(0); }
+      50% { transform: translateX(290px); }
+    }
+
+    .clip {
+      position: absolute;
+      left: 22px;
+      right: 22px;
+      height: 34px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.09);
+      border: 1px solid rgba(255,255,255,0.12);
+      overflow: hidden;
+    }
+
+    .clip::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+      transform: translateX(-100%);
+      animation: sheen 3.3s infinite;
+    }
+
+    @keyframes sheen {
+      0% { transform: translateX(-100%); }
+      55%, 100% { transform: translateX(100%); }
+    }
+
+    .clip.one { top: 34px; width: 70%; }
+    .clip.two { top: 88px; width: 84%; background: rgba(141,124,255,0.16); }
+    .clip.three { top: 142px; width: 58%; background: rgba(62,231,255,0.12); }
+
+    .caption-chip {
+      position: absolute;
+      left: 50%;
+      top: 49%;
+      transform: translate(-50%, -50%);
+      padding: 9px 14px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.72);
+      border: 1px solid rgba(255,255,255,0.16);
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0;
+      color: #fff;
+      animation: pop 2.4s ease-in-out infinite;
+      white-space: nowrap;
+    }
+
+    @keyframes pop {
+      0%, 100% { transform: translate(-50%, -50%) scale(0.96); }
+      50% { transform: translate(-50%, -50%) scale(1.04); }
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .stat {
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 11px 10px;
+      background: rgba(255,255,255,0.04);
+    }
+
+    .stat strong {
+      display: block;
+      font-family: var(--font);
+      font-size: 18px;
+      color: #fff;
+    }
+
+    .stat span {
+      display: block;
+      color: var(--soft);
+      font-family: var(--mono);
+      font-size: 10px;
+      margin-top: 3px;
+    }
+
+    .form-wrap {
+      border: 1px solid var(--line2);
+      border-radius: 28px;
+      background: rgba(16,18,26,0.86);
+      backdrop-filter: blur(20px);
+      padding: 34px;
+      box-shadow: 0 28px 90px rgba(0,0,0,0.38);
+    }
+
+    .form-head { margin-bottom: 24px; }
+    .form-head h2 {
+      font-family: var(--font);
+      font-size: 32px;
+      line-height: 1;
+      letter-spacing: -0.05em;
+      margin-bottom: 9px;
+    }
+    .form-head p {
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 14px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 6px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 5px;
+      margin-bottom: 22px;
+    }
+
+    .tab {
+      flex: 1;
+      border: 0;
+      border-radius: 10px;
+      padding: 11px 12px;
+      color: var(--muted);
+      background: transparent;
+      font-family: var(--font);
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tab.active {
+      color: #05060a;
+      background: linear-gradient(135deg, #f7f5ff, #bcb4ff);
+      box-shadow: 0 14px 30px rgba(141,124,255,0.22);
+    }
+
+    .field { margin-bottom: 15px; }
+
+    label {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+
+    input {
+      width: 100%;
+      border: 1px solid var(--line2);
+      border-radius: 14px;
+      background: rgba(255,255,255,0.055);
+      color: var(--ink);
+      padding: 14px 15px;
+      outline: none;
+      font-family: var(--body);
+      font-size: 15px;
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+
+    input:focus {
+      border-color: rgba(62,231,255,0.58);
+      box-shadow: 0 0 0 4px rgba(62,231,255,0.08);
+      background: rgba(255,255,255,0.075);
+    }
+
+    input::placeholder { color: #6a657c; }
+
+    .btn {
+      width: 100%;
+      border: 0;
+      border-radius: 14px;
+      padding: 15px;
+      color: #05060a;
+      background: linear-gradient(135deg, #7ef1ff, #b7adff 65%, #ffffff);
+      font-family: var(--font);
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+      margin-top: 6px;
+      box-shadow: 0 18px 36px rgba(62,231,255,0.14);
+    }
+
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 22px 42px rgba(141,124,255,0.24); }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+    .msg {
+      display: none;
+      margin-top: 16px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .msg.error {
+      display: block;
+      color: #ffadb6;
+      border: 1px solid rgba(255,107,122,0.32);
+      background: rgba(255,107,122,0.1);
+    }
+
+    .msg.success {
+      display: block;
+      color: #8af1be;
+      border: 1px solid rgba(62,207,142,0.3);
+      background: rgba(62,207,142,0.1);
+    }
+
+    .back {
+      display: block;
+      text-align: center;
+      margin-top: 20px;
+      color: var(--soft);
+      text-decoration: none;
+      font-size: 13px;
+    }
+
+    .back:hover { color: var(--cyan); }
+
+    .trust-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+
+    .trust-row span {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--soft);
+      background: rgba(255,255,255,0.035);
+      padding: 7px 9px;
+      font-family: var(--mono);
+      font-size: 10px;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(0,0,0,0.22);
+      border-top-color: #05060a;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 880px) {
+      body { overflow: auto; }
+      .shell {
+        grid-template-columns: 1fr;
+        width: min(560px, calc(100% - 28px));
+        padding: 16px 0 28px;
+      }
+      .showcase {
+        min-height: 390px;
+        padding: 24px;
+      }
+      .hero-copy { margin-top: 34px; }
+      .motion-card {
+        position: relative;
+        right: auto;
+        bottom: auto;
+        width: 100%;
+        margin-top: 28px;
+      }
+      .timeline { height: 150px; }
+      @keyframes scrub {
+        0%, 100% { transform: translateX(0); }
+        50% { transform: translateX(210px); }
+      }
+      .form-wrap { padding: 24px; }
+    }
+
+    @media (max-width: 520px) {
+      .showcase { display: none; }
+      .shell {
+        min-height: 100vh;
+        align-items: center;
+      }
+      .form-wrap {
+        border-radius: 22px;
+        padding: 22px;
+      }
+      .form-head h2 { font-size: 28px; }
+    }
   </style>
 </head>
 <body>
-<div class="glow"></div>
-<div class="card">
-  <div class="logo">clip<span>AI</span></div>
-  <div class="tagline">Turn long videos into viral clips</div>
+  <main class="shell">
+    <section class="showcase" aria-label="ClipAI preview">
+      <div class="brand">
+        <div class="mark">AI</div>
+        <div>clip<span>AI</span></div>
+      </div>
 
-  <div class="tabs">
-    <button class="tab active" id="tab-login" onclick="switchTab('login')">Sign In</button>
-    <button class="tab" id="tab-signup" onclick="switchTab('signup')">Create Account</button>
-  </div>
+      <div class="hero-copy">
+        <div class="eyebrow">Live creator workspace</div>
+        <h1>Turn raw video into <em>ready-to-post moments.</em></h1>
+        <p>Sign in to generate short clips, build compilations, test hooks, and keep your creator workflow moving from one place.</p>
+      </div>
 
-  <div id="form-login">
-    <div class="field"><label>Email</label><input type="email" id="login-email" placeholder="you@example.com" /></div>
-    <div class="field"><label>Password</label><input type="password" id="login-password" placeholder="••••••••" /></div>
-    <button class="btn" id="login-btn" onclick="doLogin()">Sign In</button>
-  </div>
+      <div class="motion-card" aria-hidden="true">
+        <div class="timeline">
+          <div class="clip one"></div>
+          <div class="clip two"></div>
+          <div class="clip three"></div>
+          <div class="playhead"></div>
+          <div class="caption-chip">START WITH THE HOOK</div>
+        </div>
+        <div class="stats">
+          <div class="stat"><strong>3x</strong><span>faster edits</span></div>
+          <div class="stat"><strong>AI</strong><span>hook lab</span></div>
+          <div class="stat"><strong>9:16</strong><span>export ready</span></div>
+        </div>
+      </div>
+    </section>
 
-  <div id="form-signup" style="display:none">
-    <div class="field"><label>Email</label><input type="email" id="signup-email" placeholder="you@example.com" /></div>
-    <div class="field"><label>Password (min 6 characters)</label><input type="password" id="signup-password" placeholder="••••••••" /></div>
-    <button class="btn" id="signup-btn" onclick="doSignup()">Create Account</button>
-  </div>
+    <section class="form-wrap" aria-label="Account access">
+      <div class="form-head">
+        <h2>Welcome back</h2>
+        <p>Access your clips, Ghost Editor briefs, saved projects, and Compilation Studio.</p>
+      </div>
 
-  <div id="msg" class="msg"></div>
-  <a href="index.html" class="back">← Back to ClipAI</a>
-</div>
+      <div class="tabs">
+        <button class="tab active" id="tab-login" onclick="switchTab('login')">Sign In</button>
+        <button class="tab" id="tab-signup" onclick="switchTab('signup')">Create Account</button>
+      </div>
+
+      <div id="form-login">
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="login-email" placeholder="you@example.com" autocomplete="email" />
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" />
+        </div>
+        <button class="btn" id="login-btn" onclick="doLogin()">Sign In</button>
+      </div>
+
+      <div id="form-signup" style="display:none">
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="signup-email" placeholder="you@example.com" autocomplete="email" />
+        </div>
+        <div class="field">
+          <label>Password (min 6 characters)</label>
+          <input type="password" id="signup-password" placeholder="••••••••" autocomplete="new-password" />
+        </div>
+        <button class="btn" id="signup-btn" onclick="doSignup()">Create Account</button>
+      </div>
+
+      <div id="msg" class="msg"></div>
+
+      <div class="trust-row" aria-hidden="true">
+        <span>Ghost Editor</span>
+        <span>Hook Lab</span>
+        <span>Compilation Studio</span>
+      </div>
+
+      <a href="index.html" class="back">← Back to ClipAI</a>
+    </section>
+  </main>
 
 <script>
   const API_URL = 'https://clipai-ten.vercel.app';
 
-  // Redirect if already logged in
   if (localStorage.getItem('clipai_token')) {
     window.location.href = 'index.html';
   }
@@ -84,6 +581,10 @@
     document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
     document.getElementById('form-login').style.display = tab === 'login' ? 'block' : 'none';
     document.getElementById('form-signup').style.display = tab === 'signup' ? 'block' : 'none';
+    document.querySelector('.form-head h2').textContent = tab === 'login' ? 'Welcome back' : 'Create your workspace';
+    document.querySelector('.form-head p').textContent = tab === 'login'
+      ? 'Access your clips, Ghost Editor briefs, saved projects, and Compilation Studio.'
+      : 'Start turning long videos into clips, hooks, and compilation plans.';
     document.getElementById('msg').className = 'msg';
   }
 
@@ -95,9 +596,9 @@
 
   function setLoading(btnId, loading) {
     const btn = document.getElementById(btnId);
+    if (!btn.dataset.label) btn.dataset.label = btn.textContent;
     btn.disabled = loading;
     btn.innerHTML = loading ? '<span class="spinner"></span>Please wait...' : btn.dataset.label;
-    if (!btn.dataset.label) btn.dataset.label = btn.textContent;
   }
 
   async function readJsonResponse(res) {
@@ -124,8 +625,8 @@
       if (!res.ok) throw new Error(data.error || 'Login failed');
       localStorage.setItem('clipai_token', data.token);
       localStorage.setItem('clipai_user', JSON.stringify(data.user));
-      showMsg('Welcome back! Redirecting...', 'success');
-      setTimeout(() => window.location.href = 'index.html', 1000);
+      showMsg('Welcome back. Redirecting...', 'success');
+      setTimeout(() => window.location.href = 'index.html', 900);
     } catch(err) {
       showMsg(err.message, 'error');
       setLoading('login-btn', false);
@@ -146,16 +647,15 @@
       });
       const data = await readJsonResponse(res);
       if (!res.ok) throw new Error(data.error || 'Signup failed');
-      showMsg(data.message || 'Account created! You can now sign in.', 'success');
+      showMsg(data.message || 'Account created. You can now sign in.', 'success');
       setLoading('signup-btn', false);
-      setTimeout(() => switchTab('login'), 2000);
+      setTimeout(() => switchTab('login'), 1800);
     } catch(err) {
       showMsg(err.message, 'error');
       setLoading('signup-btn', false);
     }
   }
 
-  // Allow Enter key
   document.addEventListener('keydown', e => {
     if (e.key === 'Enter') {
       const active = document.getElementById('form-login').style.display !== 'none' ? 'login' : 'signup';
