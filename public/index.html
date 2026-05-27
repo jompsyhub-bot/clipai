@@ -3465,8 +3465,15 @@ async function exportTo(platform) {
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Cut failed');
+        const raw = await res.text();
+        let err = {};
+        try { err = JSON.parse(raw); } catch(e) {}
+        const message = err.error || err.message || (
+          raw.trim().startsWith('<!DOCTYPE') || raw.trim().startsWith('<html')
+            ? 'Backend returned an HTML error page. Check Render logs and make sure the backend was redeployed.'
+            : raw.slice(0, 220)
+        );
+        throw new Error(message || 'Cut failed');
       }
 
       // Stream the blob and trigger download
