@@ -3391,10 +3391,10 @@ function setExportQuality(quality) {
 
 function getExportSettingsForPlatform(platform) {
   const base = state.exportSettings || { preset: 'vertical', quality: '720p' };
-  if (['tiktok', 'reels', 'shorts'].includes(platform)) {
-    return { ...base, preset: 'vertical' };
-  }
-  return base;
+  return {
+    preset: EXPORT_FORMATS[base.preset] ? base.preset : 'vertical',
+    quality: base.quality === '1080p' ? '1080p' : '720p'
+  };
 }
 
 function renderExportControls() {
