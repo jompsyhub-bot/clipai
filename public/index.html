@@ -867,9 +867,45 @@
       transition: all 0.2s;
     }
     .export-card:hover { border-color: rgba(124,106,247,0.4); background: var(--accent-dim); }
+    .export-card.active { border-color: var(--accent); background: var(--accent-dim); }
     .ex-icon { font-size: 26px; margin-bottom: 10px; display: block; }
     .ex-name { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
     .ex-sub { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+    .export-control-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: start;
+      margin-bottom: 16px;
+    }
+    .quality-toggle {
+      display: flex;
+      gap: 6px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 6px;
+    }
+    .quality-toggle button {
+      font-family: var(--font);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text3);
+      background: transparent;
+      border: 0;
+      border-radius: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+    .quality-toggle button.active {
+      color: #fff;
+      background: var(--accent);
+    }
+    @media (max-width: 600px) {
+      .export-control-row { grid-template-columns: 1fr; }
+      .quality-toggle { width: 100%; }
+      .quality-toggle button { flex: 1; }
+    }
 
     /* ── TOAST ── */
     #toast {
@@ -1453,6 +1489,29 @@
 
     <div class="card">
       <div class="card-title">Export & share</div>
+      <div class="export-control-row">
+        <div class="export-grid" style="margin-bottom:0">
+          <div class="export-card active" id="export-preset-vertical" onclick="setExportPreset('vertical')">
+            <span class="ex-icon">9:16</span>
+            <div class="ex-name">Vertical</div>
+            <div class="ex-sub">TikTok · Reels · Shorts</div>
+          </div>
+          <div class="export-card" id="export-preset-square" onclick="setExportPreset('square')">
+            <span class="ex-icon">1:1</span>
+            <div class="ex-name">Square</div>
+            <div class="ex-sub">Feeds · LinkedIn</div>
+          </div>
+          <div class="export-card" id="export-preset-landscape" onclick="setExportPreset('landscape')">
+            <span class="ex-icon">16:9</span>
+            <div class="ex-name">Landscape</div>
+            <div class="ex-sub">YouTube · Web</div>
+          </div>
+        </div>
+        <div class="quality-toggle" aria-label="Export quality">
+          <button id="export-quality-720p" class="active" type="button" onclick="setExportQuality('720p')">720p</button>
+          <button id="export-quality-1080p" type="button" onclick="setExportQuality('1080p')">1080p</button>
+        </div>
+      </div>
       <div class="export-grid">
         <div class="export-card" onclick="exportTo('mp4')">
           <span class="ex-icon">⬇</span>
@@ -1525,6 +1584,10 @@ const state = {
     size: 100,
     position: 78,
     words: 3
+  },
+  exportSettings: {
+    preset: 'vertical',
+    quality: '720p'
   },
   ghostBrief: '',
   ghostPlan: null,
@@ -1664,88 +1727,17 @@ async function createCompilationPlan() {
   }
 }
 
-async function readApiJson(res, label) {
-  const text = await res.text();
-  try {
-    return JSON.parse(text);
-  } catch (err) {
-    const shortText = text.replace(/\s+/g, ' ').slice(0, 140);
-    throw new Error(`${label || 'Server'} returned HTML instead of JSON. Check that ${RAILWAY_URL} has the compilation routes deployed. Response: ${shortText}`);
-  }
-}
-
-async function explainCompilationBuild() {
+function explainCompilationBuild() {
   const out = document.getElementById('compilation-status');
-  const links = parseCompilationLinks();
-  if (links.length < 2) {
-    toast('Paste at least two YouTube links first', 5000);
-    return;
-  }
-  if (compilationState.busy) return;
-  compilationState.busy = true;
   if (out) {
     out.classList.add('show');
-    out.innerHTML = '<div style="display:flex;align-items:center;gap:10px"><div class="spinner"></div>Starting compilation renderer...</div>';
+    out.innerHTML = `
+      <strong style="color:var(--text);display:block;margin-bottom:6px">Renderer connection is next</strong>
+      <div>Compilation Studio is ready for planning. The final build needs the downloader upgrade we discussed: download each YouTube source, transcribe it, let Ghost Editor pick segments, then FFmpeg joins those cuts into one MP4.</div>
+      <div style="margin-top:10px;color:var(--text3)">Once the downloader is stable, this button will start the long-running compilation job.</div>
+    `;
   }
-
-  try {
-    const res = await fetch(RAILWAY_URL + '/api/compilation/start', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        links,
-        style: document.getElementById('compilation-style').value,
-        targetMinutes: Number(document.getElementById('compilation-length').value || 30),
-        brief: document.getElementById('compilation-brief').value.trim(),
-        plan: compilationState.plan
-      })
-    });
-    const data = await readApiJson(res, 'Compilation backend');
-    if (!res.ok) throw new Error(data.error || 'Could not start compilation');
-    pollCompilationJob(data.jobId);
-    toast('Compilation build started');
-  } catch (err) {
-    compilationState.busy = false;
-    if (out) out.innerHTML = '<span style="color:var(--red)">Compilation build error: ' + escapeHTML(err.message) + '</span>';
-    toast('Compilation build error: ' + err.message, 6000);
-  }
-}
-
-async function pollCompilationJob(jobId) {
-  const out = document.getElementById('compilation-status');
-  try {
-    const res = await fetch(RAILWAY_URL + '/api/compilation/status/' + encodeURIComponent(jobId));
-    const job = await readApiJson(res, 'Compilation status');
-    if (!res.ok) throw new Error(job.error || 'Could not read compilation status');
-    if (out) {
-      const pct = Math.max(0, Math.min(100, Number(job.progress) || 0));
-      out.classList.add('show');
-      out.innerHTML = `
-        <strong style="color:var(--text);display:block;margin-bottom:8px">Building compilation</strong>
-        <div>${escapeHTML(job.phase || 'Working...')}</div>
-        <div class="progress-bar" style="margin-top:12px"><div class="progress-fill" style="width:${pct}%"></div></div>
-        <div style="margin-top:8px;font-family:var(--mono);font-size:12px;color:var(--text3)">${pct}% complete</div>
-      `;
-    }
-    if (job.status === 'completed') {
-      compilationState.busy = false;
-      if (out) {
-        out.innerHTML = `
-          <strong style="color:var(--green);display:block;margin-bottom:8px">Compilation ready</strong>
-          <div>Your long-form compilation has been rendered.</div>
-          <a class="btn btn-full" style="margin-top:14px;text-decoration:none;display:flex" href="${escapeHTML(job.downloadUrl)}" target="_blank" rel="noopener">Download Compilation MP4</a>
-        `;
-      }
-      toast('Compilation ready to download');
-      return;
-    }
-    if (job.status === 'failed') throw new Error(job.error || 'Compilation failed');
-    setTimeout(() => pollCompilationJob(jobId), 3500);
-  } catch (err) {
-    compilationState.busy = false;
-    if (out) out.innerHTML = '<span style="color:var(--red)">Compilation failed: ' + escapeHTML(err.message) + '</span>';
-    toast('Compilation failed: ' + err.message, 7000);
-  }
+  toast('We need the downloader renderer before final video build', 6000);
 }
 
 function applyTheme(theme) {
@@ -1827,6 +1819,7 @@ function goStage(n) {
   if (n === 3) {
     renderCaptionPresets();
     renderCaptionControls();
+    renderExportControls();
     renderExportSummary();
     setTimeout(() => drawAllVisibleCaptions(), 150);
   }
@@ -1872,6 +1865,7 @@ function createNewClips() {
     localFileId: null,
     localPreviewUrl: '',
     captionSettings: { size: 100, position: 78, words: 3 },
+    exportSettings: { preset: 'vertical', quality: '720p' },
     ghostBrief: '',
     ghostPlan: null,
     ghostAutoRun: false,
@@ -3341,6 +3335,11 @@ async function generateCaptions() {
 function renderExportSummary() {
   const selected = Array.from(state.selectedClips).map(i => state.clips[i]).filter(Boolean);
   const el = document.getElementById('export-summary');
+  const exportSettings = state.exportSettings || { preset: 'vertical', quality: '720p' };
+  const exportFormat = (typeof EXPORT_FORMATS !== 'undefined' && EXPORT_FORMATS[exportSettings.preset]) || null;
+  const exportLabel = exportFormat
+    ? exportFormat.label + ' - ' + exportFormat.sizes[exportSettings.quality || '720p']
+    : '9:16 - 720x1280';
   if (selected.length === 0) {
     el.textContent = 'No clips selected. Go back to Clips tab to select clips.';
     return;
@@ -3352,11 +3351,69 @@ function renderExportSummary() {
       <div style="color:var(--text2);font-size:13px;margin-top:4px">${c.why}</div>
       ${c.hook_overlay ? `<div style="color:var(--green);font-size:12px;margin-top:6px;font-family:var(--mono)">Hook overlay: ${escapeHTML(c.hook_overlay)}</div>` : ''}
     </div>`
-  ).join('') + `<div style="padding-top:12px;color:var(--text3);font-size:13px">${selected.length} clip${selected.length !== 1 ? 's' : ''} ready to export</div>`;
+  ).join('') + `<div style="padding-top:12px;color:var(--text3);font-size:13px">${selected.length} clip${selected.length !== 1 ? 's' : ''} ready to export - ${exportLabel}</div>`;
 }
 
 // Track ongoing export so we can show progress
 let exportInProgress = false;
+
+const EXPORT_FORMATS = {
+  vertical: {
+    label: '9:16',
+    suffix: '9x16',
+    sizes: { '720p': '720x1280', '1080p': '1080x1920' }
+  },
+  square: {
+    label: '1:1',
+    suffix: '1x1',
+    sizes: { '720p': '720x720', '1080p': '1080x1080' }
+  },
+  landscape: {
+    label: '16:9',
+    suffix: '16x9',
+    sizes: { '720p': '1280x720', '1080p': '1920x1080' }
+  }
+};
+
+function setExportPreset(preset) {
+  if (!state.exportSettings) state.exportSettings = { preset: 'vertical', quality: '720p' };
+  state.exportSettings.preset = EXPORT_FORMATS[preset] ? preset : 'vertical';
+  renderExportControls();
+  renderExportSummary();
+}
+
+function setExportQuality(quality) {
+  if (!state.exportSettings) state.exportSettings = { preset: 'vertical', quality: '720p' };
+  state.exportSettings.quality = quality === '1080p' ? '1080p' : '720p';
+  renderExportControls();
+  renderExportSummary();
+}
+
+function getExportSettingsForPlatform(platform) {
+  const base = state.exportSettings || { preset: 'vertical', quality: '720p' };
+  if (['tiktok', 'reels', 'shorts'].includes(platform)) {
+    return { ...base, preset: 'vertical' };
+  }
+  return base;
+}
+
+function renderExportControls() {
+  const settings = state.exportSettings || { preset: 'vertical', quality: '720p' };
+  ['vertical', 'square', 'landscape'].forEach(key => {
+    const el = document.getElementById('export-preset-' + key);
+    if (el) el.classList.toggle('active', settings.preset === key);
+  });
+  ['720p', '1080p'].forEach(key => {
+    const el = document.getElementById('export-quality-' + key);
+    if (el) el.classList.toggle('active', settings.quality === key);
+  });
+
+  const format = EXPORT_FORMATS[settings.preset] || EXPORT_FORMATS.vertical;
+  const mp4Card = Array.from(document.querySelectorAll('.export-card'))
+    .find(card => card.getAttribute('onclick') === "exportTo('mp4')");
+  const sub = mp4Card ? mp4Card.querySelector('.ex-sub') : null;
+  if (sub) sub.textContent = format.label + ' - ' + format.sizes[settings.quality || '720p'];
+}
 
 async function exportTo(platform) {
   const selected = Array.from(state.selectedClips).map(i => state.clips[i]).filter(Boolean);
@@ -3376,6 +3433,8 @@ async function exportTo(platform) {
   for (let idx = 0; idx < selected.length; idx++) {
     const clip = selected[idx];
     const label = clip.title || ('Clip ' + (idx + 1));
+    const exportSettings = getExportSettingsForPlatform(platform);
+    const exportFormat = EXPORT_FORMATS[exportSettings.preset] || EXPORT_FORMATS.vertical;
 
     summaryEl.innerHTML = '<div style="padding:16px;color:var(--text2);font-size:14px;display:flex;align-items:center;gap:12px">' +
       '<div class="spinner"></div> Cutting "' + label + '" (' + (idx+1) + '/' + selected.length + ')... this may take a minute</div>';
@@ -3399,6 +3458,8 @@ async function exportTo(platform) {
           captionSettings: state.captionSettings,
           hookOverlay: clip.hook_overlay || clip.hook || '',
           hookAngle: clip.hook_angle || '',
+          exportPreset: exportSettings.preset,
+          exportQuality: exportSettings.quality,
           words: state.words ? state.words.filter(w => w.start >= (clip.start_ms || 0) && w.start <= (clip.end_ms || 0)).slice(0, 300) : []
         })
       });
@@ -3414,7 +3475,7 @@ async function exportTo(platform) {
       const a = document.createElement('a');
       a.href = url;
       const safeTitle = label.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-      a.download = safeTitle + '_9x16.mp4';
+      a.download = safeTitle + '_' + exportFormat.suffix + '_' + exportSettings.quality + '.mp4';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
