@@ -565,7 +565,7 @@
         <span>Compilation Studio</span>
       </div>
 
-      <a href="index.html" class="back">← Back to ClipAI</a>
+      <a href="app.html" class="back">← Back to ClipAI</a>
     </section>
   </main>
 
@@ -573,7 +573,7 @@
   const API_URL = 'https://clipai-ten.vercel.app';
 
   if (localStorage.getItem('clipai_token')) {
-    window.location.href = 'index.html';
+    window.location.href = 'app.html';
   }
 
   function switchTab(tab) {
@@ -626,7 +626,7 @@
       localStorage.setItem('clipai_token', data.token);
       localStorage.setItem('clipai_user', JSON.stringify(data.user));
       showMsg('Welcome back. Redirecting...', 'success');
-      setTimeout(() => window.location.href = 'index.html', 900);
+      setTimeout(() => window.location.href = 'app.html', 900);
     } catch(err) {
       showMsg(err.message, 'error');
       setLoading('login-btn', false);
