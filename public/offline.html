@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>ClipAI Offline</title>
+  <style>
+    :root {
+      --bg: #080810;
+      --panel: rgba(17, 16, 30, 0.78);
+      --border: rgba(255,255,255,0.10);
+      --text: #f2f0ff;
+      --muted: #aaa6d9;
+      --accent: #7c6af7;
+      --cyan: #23c8ff;
+      --red: #f06464;
+      --green: #35e0a1;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+    }
+    body {
+      display: grid;
+      place-items: center;
+      padding: max(28px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
+      background:
+        radial-gradient(circle at 28% 18%, rgba(124,106,247,0.34), transparent 34%),
+        radial-gradient(circle at 76% 62%, rgba(35,200,255,0.22), transparent 36%),
+        linear-gradient(145deg, #080810, #101028 55%, #070712);
+    }
+    .shell {
+      width: min(100%, 420px);
+      text-align: center;
+      padding: 34px 22px 28px;
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      background: var(--panel);
+      box-shadow: 0 24px 80px rgba(0,0,0,0.48);
+      backdrop-filter: blur(18px);
+    }
+    .mark {
+      width: 94px;
+      height: 94px;
+      margin: 0 auto 22px;
+      border-radius: 28px;
+      display: grid;
+      place-items: center;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.16), rgba(255,255,255,0.03)),
+        radial-gradient(circle at 30% 72%, #22ccff, transparent 34%),
+        radial-gradient(circle at 76% 28%, #ff2fee, transparent 38%),
+        #12112a;
+      box-shadow: 0 0 46px rgba(124,106,247,0.42);
+      overflow: hidden;
+    }
+    .mark svg { width: 58px; height: 58px; filter: drop-shadow(0 0 18px rgba(35,200,255,0.45)); }
+    h1 { font-size: 25px; line-height: 1.12; margin-bottom: 10px; }
+    p { color: var(--muted); font-size: 14px; line-height: 1.65; margin: 0 auto 22px; max-width: 310px; }
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #ffc4c4;
+      background: rgba(240,100,100,0.12);
+      border: 1px solid rgba(240,100,100,0.25);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 12px;
+      margin-bottom: 18px;
+    }
+    .status.online { color: #c6ffe7; background: rgba(53,224,161,0.12); border-color: rgba(53,224,161,0.25); }
+    .dot { width: 8px; height: 8px; border-radius: 99px; background: var(--red); box-shadow: 0 0 16px rgba(240,100,100,0.9); }
+    .status.online .dot { background: var(--green); box-shadow: 0 0 16px rgba(53,224,161,0.9); }
+    button {
+      width: 100%;
+      border: 0;
+      border-radius: 14px;
+      padding: 14px 18px;
+      color: white;
+      background: linear-gradient(135deg, var(--accent), #23a8ff);
+      font-weight: 800;
+      font-size: 14px;
+      cursor: pointer;
+      box-shadow: 0 14px 34px rgba(124,106,247,0.28);
+    }
+    button:disabled { opacity: 0.72; }
+    .hint { margin-top: 14px; color: rgba(242,240,255,0.52); font-size: 12px; min-height: 18px; }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="mark" aria-hidden="true">
+      <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M21 47V18a14 14 0 0 1 28 0v28" stroke="url(#a)" stroke-width="8" stroke-linecap="round"/>
+        <path d="M18 41c13 5 25 2 36-8" stroke="url(#b)" stroke-width="9" stroke-linecap="round"/>
+        <path d="M16 41V27" stroke="#38D8FF" stroke-width="8" stroke-linecap="round"/>
+        <path d="M30 47V28" stroke="#F05CFF" stroke-width="8" stroke-linecap="round"/>
+        <defs><linearGradient id="a" x1="18" x2="53" y1="10" y2="52"><stop stop-color="#FE42F4"/><stop offset="1" stop-color="#1EC8FF"/></linearGradient><linearGradient id="b" x1="14" x2="56" y1="41" y2="31"><stop stop-color="#1DE0FF"/><stop offset="1" stop-color="#FF4BEF"/></linearGradient></defs>
+      </svg>
+    </div>
+    <div class="status" id="pill"><span class="dot"></span><span id="status">No internet connection</span></div>
+    <h1>ClipAI is waiting for connection</h1>
+    <p>Your workspace is safe. Turn your internet back on and ClipAI will reopen automatically.</p>
+    <button type="button" id="retry" onclick="retryNow()">Try Again</button>
+    <div class="hint" id="hint">Checking connection...</div>
+  </main>
+
+  <script>
+    const APP_URL = 'https://clipai-ten.vercel.app';
+    const statusEl = document.getElementById('status');
+    const hintEl = document.getElementById('hint');
+    const pillEl = document.getElementById('pill');
+    const retryBtn = document.getElementById('retry');
+    let checking = false;
+
+    async function canReachApp() {
+      if (!navigator.onLine) return false;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 4500);
+      try {
+        await fetch(APP_URL + '/?clipai_health=' + Date.now(), {
+          method: 'GET',
+          mode: 'no-cors',
+          cache: 'no-store',
+          signal: controller.signal
+        });
+        return true;
+      } catch (err) {
+        return false;
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    async function retryNow() {
+      if (checking) return;
+      checking = true;
+      retryBtn.disabled = true;
+      pillEl.classList.remove('online');
+      statusEl.textContent = navigator.onLine ? 'Checking connection...' : 'No internet connection';
+      hintEl.textContent = navigator.onLine ? 'One moment' : 'Turn on Wi-Fi or mobile data';
+
+      if (await canReachApp()) {
+        pillEl.classList.add('online');
+        statusEl.textContent = 'Connection restored';
+        hintEl.textContent = 'Opening ClipAI...';
+        setTimeout(() => window.location.replace(APP_URL), 350);
+        return;
+      }
+
+      statusEl.textContent = 'Still offline';
+      hintEl.textContent = 'ClipAI will retry automatically';
+      retryBtn.disabled = false;
+      checking = false;
+    }
+
+    window.addEventListener('online', retryNow);
+    window.addEventListener('focus', retryNow);
+    setInterval(retryNow, 4000);
+    setTimeout(retryNow, 700);
+  </script>
+</body>
+</html>
