@@ -1587,7 +1587,8 @@ const state = {
   hookBusy: false,
   viralMemory: [],
   memoryProfile: null,
-  memoryBusy: false
+  memoryBusy: false,
+  clipsReadyNotified: false
 };
 
 const compilationState = {
@@ -1602,6 +1603,59 @@ function toast(msg, duration = 3000) {
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), duration);
+}
+
+function getClipAINative() {
+  return window.Capacitor?.Plugins?.ClipAINative || null;
+}
+
+async function notifyNative(title, body) {
+  const native = getClipAINative();
+  if (!native?.notify) return;
+  try {
+    await native.notify({ title, body });
+  } catch (err) {
+    console.warn('[ClipAI] Native notification failed:', err);
+  }
+}
+
+async function requestNativeNotifications() {
+  const native = getClipAINative();
+  if (!native?.requestNotificationPermission) return;
+  try {
+    await native.requestNotificationPermission();
+  } catch (err) {
+    console.warn('[ClipAI] Notification permission request failed:', err);
+  }
+}
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('Could not read exported video'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function saveExportedVideo(blob, filename) {
+  const native = getClipAINative();
+  if (native?.saveVideo) {
+    const base64 = await blobToBase64(blob);
+    await native.saveVideo({ base64, filename });
+    await notifyNative('ClipAI download complete', filename + ' was saved to your Gallery.');
+    return { native: true };
+  }
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  return { native: false };
 }
 
 function chooseCreationMode(mode) {
@@ -1862,6 +1916,7 @@ function createNewClips() {
     hookBusy: false,
     memoryProfile: null,
     memoryBusy: false,
+    clipsReadyNotified: false,
     unlockedStage: 0
   });
 
@@ -2007,6 +2062,7 @@ async function uploadFile(file) {
         document.getElementById('upload-size').textContent = formatBytes(file.size) + ' uploaded';
         state.localFileId = data.localFileId;
         state.transcriptionUrl = data.uploadUrl;
+        notifyNative('ClipAI upload complete', 'Your video uploaded successfully. Transcription is starting now.');
         await startTranscription(state.transcriptionUrl);
       } else {
         let errMsg = 'Upload failed';
@@ -2076,6 +2132,7 @@ async function submitUrl() {
       state.localFileId = data.localFileId;
       state.transcriptionUrl = data.uploadUrl;
       setPreviewVideoUrl(data.previewUrl || data.videoUrl || data.localVideoUrl || '');
+      notifyNative('ClipAI upload complete', 'Your YouTube video is ready. Transcription is starting now.');
       if (!state.sourceVideoUrl) {
         toast('Video imported, but preview URL was not returned by backend.', 5000);
       }
@@ -2737,6 +2794,10 @@ function renderClips() {
   unlockStage(3);
   renderCaptionPresets();
   renderCaptionControls();
+  if (!state.clipsReadyNotified) {
+    state.clipsReadyNotified = true;
+    notifyNative('ClipAI clips ready', 'Your clips are ready for captions and export.');
+  }
 
   setTimeout(() => drawAllVisibleCaptions(), 300);
 }
@@ -3392,17 +3453,11 @@ async function exportTo(platform) {
 
       // Stream the blob and trigger download
       const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
       const safeTitle = label.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-      a.download = safeTitle + '_9x16.mp4';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      const filename = safeTitle + '_9x16.mp4';
+      const saved = await saveExportedVideo(blob, filename);
 
-      toast('"' + label + '" downloaded!', 3000);
+      toast('"' + label + '" ' + (saved.native ? 'saved to Gallery!' : 'downloaded!'), 3000);
 
     } catch (err) {
       toast('Error cutting "' + label + '": ' + err.message, 6000);
