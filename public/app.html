@@ -505,6 +505,86 @@
       display: none;
     }
 
+    /* Ghost Editor */
+    .ghost-card {
+      border-color: rgba(124,106,247,0.28);
+      background:
+        linear-gradient(135deg, rgba(124,106,247,0.12), transparent 42%),
+        var(--bg2);
+    }
+    .ghost-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+    .ghost-title { font-size: 20px; font-weight: 800; color: var(--text); line-height: 1.2; }
+    .ghost-sub { font-size: 13px; color: var(--text2); margin-top: 5px; max-width: 540px; }
+    .ghost-badge {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--accent2);
+      border: 1px solid rgba(124,106,247,0.32);
+      background: var(--accent-dim);
+      padding: 4px 8px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .ghost-input {
+      width: 100%;
+      min-height: 92px;
+      resize: vertical;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: var(--r);
+      padding: 14px 16px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      line-height: 1.55;
+      outline: none;
+    }
+    .ghost-input:focus { border-color: var(--accent); }
+    .ghost-examples { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 16px; }
+    .ghost-chip {
+      border: 1px solid var(--border2);
+      background: var(--bg3);
+      color: var(--text2);
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-family: var(--font);
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .ghost-chip:hover { color: var(--text); border-color: rgba(124,106,247,0.45); }
+    .ghost-status {
+      display: none;
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: var(--r);
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      color: var(--text2);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+    .ghost-status.show { display: block; }
+    .ghost-plan {
+      margin-top: 12px;
+      display: grid;
+      gap: 8px;
+    }
+    .ghost-plan-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      border-top: 1px solid var(--border);
+      padding-top: 8px;
+    }
+    .ghost-plan-row strong { color: var(--text); font-size: 13px; }
+    .ghost-plan-row span { color: var(--text3); font-family: var(--mono); font-size: 11px; white-space: nowrap; }
+
     /* Hook Lab */
     .hook-lab-card {
       border-color: rgba(240,168,50,0.24);
@@ -593,6 +673,86 @@
       cursor: pointer;
     }
     .hook-mini-btn:hover { background: rgba(240,168,50,0.10); }
+
+    /* Viral Memory */
+    .memory-card {
+      border-color: rgba(62,207,142,0.24);
+      background:
+        linear-gradient(135deg, rgba(62,207,142,0.10), transparent 45%),
+        var(--bg2);
+    }
+    .memory-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+    .memory-title { font-size: 18px; font-weight: 800; color: var(--text); line-height: 1.25; }
+    .memory-sub { color: var(--text2); font-size: 13px; margin-top: 4px; max-width: 620px; }
+    .memory-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 8px;
+      margin: 12px 0;
+    }
+    .memory-stat {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+    }
+    .memory-stat strong { display:block; color:var(--text); font-size:17px; line-height:1; }
+    .memory-stat span { color:var(--text3); font-family:var(--mono); font-size:10px; text-transform:uppercase; }
+    .memory-form {
+      display: grid;
+      grid-template-columns: 1.3fr repeat(4, minmax(76px, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .memory-form input,
+    .memory-form select {
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 10px 11px;
+      min-width: 0;
+      font-family: var(--font);
+      font-size: 12px;
+      outline: none;
+    }
+    .memory-form input:focus,
+    .memory-form select:focus { border-color: var(--green); }
+    .memory-output {
+      display: none;
+      margin-top: 14px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 14px;
+      color: var(--text2);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+    .memory-output.show { display:block; }
+    .memory-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border: 1px solid rgba(62,207,142,0.28);
+      color: var(--green);
+      background: rgba(62,207,142,0.08);
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-family: var(--mono);
+      font-size: 10px;
+      margin-top: 8px;
+    }
+    @media (max-width: 720px) {
+      .memory-form { grid-template-columns: 1fr 1fr; }
+      .memory-form input:first-child { grid-column: 1 / -1; }
+    }
 
     /* ── CLIPS ── */
     .clips-grid {
@@ -740,47 +900,6 @@
     .ex-sub { font-size: 11px; color: var(--text3); font-family: var(--mono); }
 
     /* ── TOAST ── */
-    .connection-banner {
-      position: fixed;
-      left: 12px;
-      right: 12px;
-      top: max(12px, env(safe-area-inset-top));
-      z-index: 1000;
-      display: none;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      max-width: 520px;
-      margin: 0 auto;
-      padding: 12px 14px;
-      border: 1px solid rgba(240,100,100,0.28);
-      border-radius: 14px;
-      color: #ffe4e4;
-      background: rgba(28, 12, 18, 0.94);
-      box-shadow: 0 18px 48px rgba(0,0,0,0.38);
-      backdrop-filter: blur(12px);
-      font-size: 13px;
-      line-height: 1.35;
-    }
-    .connection-banner.show { display: flex; }
-    .connection-banner.online {
-      border-color: rgba(62,207,142,0.3);
-      color: #d9ffe9;
-      background: rgba(8, 28, 18, 0.94);
-    }
-    .connection-banner button {
-      flex: 0 0 auto;
-      border: 1px solid rgba(255,255,255,0.18);
-      border-radius: 10px;
-      padding: 7px 10px;
-      color: #fff;
-      background: rgba(255,255,255,0.08);
-      font-family: var(--font);
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
     #toast {
       position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
       background: var(--bg2); border: 1px solid var(--border2);
@@ -913,11 +1032,6 @@
         padding: 7px 12px !important;
         white-space: nowrap;
       }
-      .connection-banner {
-        align-items: flex-start;
-        flex-direction: column;
-      }
-      .connection-banner button { width: 100%; }
     }
 
 /* CAPTION PRESETS */
@@ -995,46 +1109,6 @@
       .caption-control-grid { grid-template-columns: 1fr; }
     }
 
-  
-    /* Workspace entry */
-    .workspace-entry {
-      min-height: calc(100dvh - 74px);
-      padding: max(34px, calc(env(safe-area-inset-top) + 20px)) 20px max(42px, calc(env(safe-area-inset-bottom) + 34px));
-      display: grid;
-      place-items: center;
-      gap: 28px;
-      background:
-        radial-gradient(circle at 18% 18%, rgba(124,106,247,0.18), transparent 34%),
-        radial-gradient(circle at 82% 62%, rgba(62,231,255,0.12), transparent 32%);
-    }
-    .entry-copy { text-align: center; max-width: 760px; margin: 0 auto; }
-    .entry-copy h1 { font-size: clamp(34px, 8vw, 68px); line-height: 0.95; letter-spacing: -0.055em; margin: 12px 0 14px; }
-    .entry-copy p { color: var(--text2); max-width: 560px; margin: 0 auto; font-size: 15px; line-height: 1.7; }
-    .entry-chooser { width: min(960px, 100%); margin: 0 auto; }
-    .entry-chooser .mode-card { text-align: left; min-height: 210px; border-radius: 18px; }
-    .workspace-view { display: none; }
-    .workspace-view.active { display: block; }
-    body.workflow-open .workspace-entry { display: none; }
-    body.workflow-open .app-shell.active { display: block; }
-
-    .hook-lab-card { overflow: hidden; }
-    .hook-lab-output { min-width: 0; }
-    .hook-variant { min-width: 0; overflow: hidden; }
-    .hook-variant-top { flex-wrap: wrap; align-items: flex-start; }
-    .hook-line, .hook-note { overflow-wrap: anywhere; word-break: break-word; }
-
-    @media (max-width: 760px) {
-      nav { padding-left: 14px; padding-right: 14px; }
-      .workspace-entry { align-content: center; padding-left: 14px; padding-right: 14px; }
-      .entry-chooser .mode-card { min-height: 0; padding: 18px; }
-      .hook-lab-head { flex-direction: column; align-items: stretch; }
-      .hook-lab-benefits { grid-template-columns: 1fr; }
-      .hook-actions { display: grid; grid-template-columns: 1fr; }
-      .hook-mini-btn { width: 100%; justify-content: center; }
-      .ai-row, .url-row, .action-row { flex-direction: column; }
-      .ai-row .btn, .url-row .btn, .action-row .btn { width: 100%; justify-content: center; }
-    }
-
   </style>
 </head>
 <body>
@@ -1049,11 +1123,6 @@
     </div>
   </div>
 </nav>
-
-<div class="connection-banner" id="connection-banner">
-  <span id="connection-message">No internet connection. ClipAI will reconnect automatically.</span>
-  <button type="button" onclick="retryConnection()">Retry</button>
-</div>
 
 <div class="preview-modal" id="preview-modal">
   <div class="preview-inner">
@@ -1070,34 +1139,54 @@
   </div>
 </div>
 
-
-<section class="workspace-entry" id="workspace-entry">
-  <div class="entry-copy">
-    <span class="hero-eyebrow">AI Video Workspace</span>
-    <h1>What are we creating today?</h1>
-    <p>Choose the workflow you need. ClipAI will open a focused workspace instead of crowding every tool onto one screen.</p>
+<!-- Projects Sidebar -->
+<div id="projects-sidebar" style="display:none;position:fixed;top:0;right:0;width:320px;height:100vh;background:var(--bg2);border-left:1px solid var(--border2);z-index:200;overflow-y:auto;padding:24px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <div style="font-size:16px;font-weight:700;color:#fff">My Projects</div>
+    <button onclick="closeSidebar()" style="background:transparent;border:none;color:var(--text3);font-size:20px;cursor:pointer">✕</button>
   </div>
-  <div class="mode-chooser entry-chooser" id="mode-chooser">
-    <button class="mode-card" id="mode-clips" onclick="chooseCreationMode('clips')" type="button">
+  <div id="projects-list"><div style="color:var(--text3);font-size:13px">Loading...</div></div>
+</div>
+<div id="sidebar-overlay" onclick="closeSidebar()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:199"></div>
+
+<div class="hero">
+  <span class="hero-eyebrow">✦ AI Video Repurposing</span>
+  <h1>Turn long videos into<br><em>viral short clips</em></h1>
+  <p>Upload any podcast, Zoom, or YouTube recording. AI transcribes, finds the best moments, and generates caption-ready 9:16 clips.</p>
+  <div class="flow-steps">
+    <div class="flow-step"><div class="fs-icon">⬆</div><span class="fs-label">Upload</span></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step"><div class="fs-icon">◎</div><span class="fs-label">Transcribe</span></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step"><div class="fs-icon">✦</div><span class="fs-label">AI Clips</span></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step"><div class="fs-icon">Aa</div><span class="fs-label">Captions</span></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step"><div class="fs-icon">⬇</div><span class="fs-label">Export</span></div>
+  </div>
+</div>
+
+<div class="app-shell">
+
+  <div class="mode-chooser" id="mode-chooser">
+    <div class="mode-card active" id="mode-clips" onclick="chooseCreationMode('clips')">
       <div class="mode-top">
         <div class="mode-icon">9:16</div>
-        <span class="mode-badge">Shorts · Reels · TikTok</span>
+        <span class="mode-badge">Fast clips</span>
       </div>
       <div class="mode-title">Create Short Clips</div>
-      <div class="mode-sub">Upload one video or paste one YouTube link. ClipAI finds strong moments, captions them, and exports short clips.</div>
-    </button>
-    <button class="mode-card" id="mode-compilation" onclick="chooseCreationMode('compilation')" type="button">
+      <div class="mode-sub">Upload one video or paste one YouTube link. ClipAI finds viral moments, captions them, and exports short clips.</div>
+    </div>
+    <div class="mode-card" id="mode-compilation" onclick="chooseCreationMode('compilation')">
       <div class="mode-top">
         <div class="mode-icon">30m</div>
-        <span class="mode-badge">Long-form</span>
+        <span class="mode-badge">New</span>
       </div>
       <div class="mode-title">Compilation Studio</div>
-      <div class="mode-sub">Paste multiple YouTube links and build a longer compilation plan from the strongest segments across sources.</div>
-    </button>
+      <div class="mode-sub">Paste multiple YouTube links and let Ghost Editor plan a longer compilation from the best moments across all sources.</div>
+    </div>
   </div>
-</section>
 
-<div class="app-shell workspace-view" id="clips-workspace">
   <!-- STAGE TABS -->
   <div class="stages" role="tablist">
     <button class="stage-btn active" id="tab0" onclick="goStage(0)">
@@ -1122,7 +1211,7 @@
     <div class="card">
       <div class="card-title">Compilation Studio</div>
       <p style="color:var(--text2);font-size:14px;line-height:1.7;margin-bottom:16px">
-        Build a long-form compilation from multiple YouTube videos. Start with an AI edit plan, then render the final MP4 when the downloader pipeline is connected.
+        Build a long-form compilation from multiple YouTube videos. Start by creating the AI edit plan; after the downloader pipeline is connected, this same workspace will render the final MP4.
       </p>
       <div class="compilation-grid">
         <div>
@@ -1155,7 +1244,7 @@
             </select>
           </div>
           <div>
-            <label for="compilation-brief">Compilation instruction</label>
+            <label for="compilation-brief">Ghost Editor instruction</label>
             <input id="compilation-brief" placeholder="Start with the strongest hook, remove boring parts, keep high energy" />
           </div>
           <button class="btn btn-full" type="button" onclick="createCompilationPlan()">Create Compilation Plan</button>
@@ -1203,6 +1292,25 @@
       </div>
     </div>
 
+    <div class="card ghost-card">
+      <div class="ghost-head">
+        <div>
+          <div class="ghost-title">Ghost Editor Mode</div>
+          <div class="ghost-sub">Describe the edit once. ClipAI will pick the moment, set the length, choose captions, and prepare the export plan after transcription.</div>
+        </div>
+        <div class="ghost-badge">Autopilot</div>
+      </div>
+      <textarea class="ghost-input" id="ghost-brief" oninput="setGhostBrief(this.value)" placeholder="Find the funniest moment, make it 30 seconds, add yellow captions, start with the punchline."></textarea>
+      <div class="ghost-examples">
+        <button class="ghost-chip" type="button" onclick="useGhostExample('Find the funniest moment, make it 30 seconds, add yellow captions, start with the punchline.')">Funny punchline</button>
+        <button class="ghost-chip" type="button" onclick="useGhostExample('Find the most controversial 45 seconds, make it high energy, and use bold TikTok captions.')">Controversial take</button>
+        <button class="ghost-chip" type="button" onclick="useGhostExample('Create 3 motivational clips under 35 seconds each with clean white captions for Instagram Reels.')">3 motivational clips</button>
+      </div>
+      <button class="btn btn-ghost btn-full" type="button" onclick="rememberGhostBrief()">Use this Ghost brief</button>
+      <div class="ghost-status" id="ghost-upload-status">Ghost brief saved. Upload or paste a video URL and ClipAI will run this automatically after transcription.</div>
+    </div>
+  </div>
+
   <!-- ═══ PANEL 1: TRANSCRIBE ═══ -->
   <div class="panel" id="p1">
 
@@ -1232,6 +1340,24 @@
       <div class="card">
         <div class="card-title">Transcript</div>
         <div class="transcript-box" id="transcript-content"></div>
+      </div>
+
+      <div class="card ghost-card">
+        <div class="ghost-head">
+          <div>
+            <div class="ghost-title">Ghost Editor</div>
+            <div class="ghost-sub">Give the AI editor a plain-English command and it will build the clips, captions, and export setup for you.</div>
+          </div>
+          <div class="ghost-badge">No timestamps</div>
+        </div>
+        <textarea class="ghost-input" id="ghost-brief-results" oninput="setGhostBrief(this.value)" placeholder="Example: Find the best 30-second hot take, start with the strongest line, add yellow pop captions."></textarea>
+        <div class="ghost-examples">
+          <button class="ghost-chip" type="button" onclick="useGhostExample('Find the best 30-second hot take, start with the strongest line, add yellow pop captions.')">Hot take</button>
+          <button class="ghost-chip" type="button" onclick="useGhostExample('Make one calm educational clip under 40 seconds with minimal white captions.')">Educational</button>
+          <button class="ghost-chip" type="button" onclick="useGhostExample('Find the most emotional story moment and make it feel like a TikTok confession.')">Emotional story</button>
+        </div>
+        <button class="btn btn-primary btn-full" id="ghost-run-btn" type="button" onclick="runGhostEditor()">Create Ghost Edit</button>
+        <div class="ghost-status" id="ghost-status"></div>
       </div>
 
       <div class="card">
@@ -1281,6 +1407,34 @@
       </div>
       <button class="btn btn-ghost btn-full" id="hook-lab-btn" type="button" onclick="runHookLab()">Generate Hook Variants</button>
       <div class="hook-lab-output" id="hook-lab-output"></div>
+    </div>
+    <div class="card memory-card">
+      <div class="memory-head">
+        <div>
+          <div class="memory-title">Viral Memory Engine</div>
+          <div class="memory-sub">ClipAI remembers which clips performed for you, then scores new clips against your audience patterns instead of generic viral guesses.</div>
+        </div>
+        <div class="ghost-badge">Learning</div>
+      </div>
+      <div class="memory-stats" id="memory-stats"></div>
+      <div class="memory-form">
+        <input id="memory-title" placeholder="Clip title or topic" />
+        <select id="memory-platform">
+          <option value="tiktok">TikTok</option>
+          <option value="reels">Reels</option>
+          <option value="shorts">Shorts</option>
+          <option value="linkedin">LinkedIn</option>
+        </select>
+        <input id="memory-views" type="number" min="0" placeholder="Views" />
+        <input id="memory-likes" type="number" min="0" placeholder="Likes" />
+        <input id="memory-comments" type="number" min="0" placeholder="Comments" />
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button class="btn btn-ghost" type="button" onclick="saveMemoryEntry()">Save Result</button>
+        <button class="btn btn-ghost" id="memory-analyze-btn" type="button" onclick="runViralMemory()">Score Current Clips</button>
+        <button class="btn btn-ghost" type="button" onclick="prefillMemoryFromSelectedClip()">Use Selected Clip</button>
+      </div>
+      <div class="memory-output" id="memory-output"></div>
     </div>
     <div class="action-row">
       <button class="btn btn-primary btn-full" onclick="goStage(3)" style="margin-top:16px">Continue to export →</button>
@@ -1446,76 +1600,9 @@ const compilationState = {
 // ═══ UTILS ═══
 function toast(msg, duration = 3000) {
   const t = document.getElementById('toast');
-  const cleanMsg = formatUserError(msg);
-  t.textContent = cleanMsg;
+  t.textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), duration);
-}
-
-function formatUserError(value) {
-  const text = String(value || '').trim();
-  if (!text) return 'Something went wrong. Please try again.';
-  if (text.startsWith('<!DOCTYPE') || text.startsWith('<html')) {
-    return 'ClipAI server returned a temporary page. Please check your connection and try again.';
-  }
-  if (/Failed to fetch|NetworkError|Load failed|ERR_INTERNET_DISCONNECTED/i.test(text)) {
-    return 'Connection issue. Check your internet and try again.';
-  }
-  return text.length > 220 ? text.slice(0, 217) + '...' : text;
-}
-
-function setConnectionBanner(mode, message) {
-  const banner = document.getElementById('connection-banner');
-  const text = document.getElementById('connection-message');
-  if (!banner || !text) return;
-
-  if (!mode) {
-    banner.classList.remove('show', 'online');
-    return;
-  }
-
-  banner.classList.toggle('online', mode === 'online');
-  banner.classList.add('show');
-  text.textContent = message;
-
-  if (mode === 'online') {
-    setTimeout(() => banner.classList.remove('show', 'online'), 2600);
-  }
-}
-
-async function retryConnection() {
-  setConnectionBanner('offline', 'Checking connection...');
-  if (!navigator.onLine) {
-    setConnectionBanner('offline', 'Still offline. Check Wi-Fi or mobile data.');
-    return false;
-  }
-
-  try {
-    await fetch(API_URL + '/api/transcript-status?id=connection-check', { cache: 'no-store' });
-  } catch (err) {
-    // A server 400/404 still proves the network is back; only fetch failure means offline.
-    if (/Failed to fetch|NetworkError|Load failed/i.test(err.message || '')) {
-      setConnectionBanner('offline', 'Internet is on, but ClipAI cannot reach the server yet.');
-      return false;
-    }
-  }
-
-  setConnectionBanner('online', 'Connection restored. ClipAI is back online.');
-  return true;
-}
-
-function initConnectionAwareness() {
-  if (!navigator.onLine) {
-    setConnectionBanner('offline', 'No internet connection. ClipAI will reconnect automatically.');
-  }
-
-  window.addEventListener('offline', () => {
-    setConnectionBanner('offline', 'No internet connection. Uploads and exports will resume when you reconnect.');
-  });
-
-  window.addEventListener('online', () => {
-    retryConnection();
-  });
 }
 
 function getClipAINative() {
@@ -1574,16 +1661,15 @@ async function saveExportedVideo(blob, filename) {
 function chooseCreationMode(mode) {
   currentCreationMode = mode === 'compilation' ? 'compilation' : 'clips';
   const isCompilation = currentCreationMode === 'compilation';
-  document.body.classList.add('workflow-open');
-  document.getElementById('workspace-entry')?.setAttribute('aria-hidden', 'true');
-  const clipsWorkspace = document.getElementById('clips-workspace');
-  const studio = document.getElementById('compilation-studio');
-  if (clipsWorkspace) clipsWorkspace.classList.toggle('active', !isCompilation);
-  if (studio) studio.style.display = isCompilation ? 'block' : 'none';
   document.getElementById('mode-clips')?.classList.toggle('active', !isCompilation);
   document.getElementById('mode-compilation')?.classList.toggle('active', isCompilation);
+  document.querySelector('.stages')?.style.setProperty('display', isCompilation ? 'none' : 'flex');
+  document.querySelectorAll('.panel').forEach(panel => {
+    panel.style.display = isCompilation ? 'none' : '';
+  });
+  const studio = document.getElementById('compilation-studio');
+  if (studio) studio.style.display = isCompilation ? 'block' : 'none';
   if (!isCompilation) goStage(state.currentStage || 0);
-  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function parseCompilationLinks() {
@@ -1658,7 +1744,7 @@ async function createCompilationPlan() {
   compilationState.links = links;
   if (out) {
     out.classList.add('show');
-    out.innerHTML = '<div style="display:flex;align-items:center;gap:10px"><div class="spinner"></div>AI Planner is building your compilation blueprint...</div>';
+    out.innerHTML = '<div style="display:flex;align-items:center;gap:10px"><div class="spinner"></div>Ghost Editor is building your compilation blueprint...</div>';
   }
 
   try {
@@ -1691,7 +1777,7 @@ function explainCompilationBuild() {
     out.classList.add('show');
     out.innerHTML = `
       <strong style="color:var(--text);display:block;margin-bottom:6px">Renderer connection is next</strong>
-      <div>Compilation Studio is ready for planning. The final build needs the downloader upgrade we discussed: download each YouTube source, transcribe it, let AI Planner pick segments, then FFmpeg joins those cuts into one MP4.</div>
+      <div>Compilation Studio is ready for planning. The final build needs the downloader upgrade we discussed: download each YouTube source, transcribe it, let Ghost Editor pick segments, then FFmpeg joins those cuts into one MP4.</div>
       <div style="margin-top:10px;color:var(--text3)">Once the downloader is stable, this button will start the long-running compilation job.</div>
     `;
   }
@@ -1834,7 +1920,7 @@ function createNewClips() {
     unlockedStage: 0
   });
 
-  const idsToClear = ['url-input', 'moments-query', 'clip-query', 'cap-query'];
+  const idsToClear = ['url-input', 'moments-query', 'clip-query', 'cap-query', 'ghost-brief', 'ghost-brief-results'];
   idsToClear.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
@@ -1884,7 +1970,6 @@ function createNewClips() {
   });
 
   resetProgressSteps();
-  chooseCreationMode('clips');
   goStage(0);
   updateNewClipsButton();
   toast('Ready for a new video.');
@@ -2341,7 +2426,7 @@ async function askMomentsAI() {
   setBtn('moments-ask-btn', false);
 }
 
-// AI Planner turns a plain-English brief into ready-to-export clips.
+// Ghost Editor turns a plain-English brief into ready-to-export clips.
 function syncGhostBriefInputs(value) {
   ['ghost-brief', 'ghost-brief-results'].forEach(id => {
     const el = document.getElementById(id);
@@ -2368,10 +2453,10 @@ function rememberGhostBrief() {
   syncGhostBriefInputs(brief);
   const status = document.getElementById('ghost-upload-status');
   if (status) {
-    status.textContent = 'AI edit brief saved. Upload or paste a video URL and ClipAI will run it after transcription.';
+    status.textContent = 'Ghost brief saved. Upload or paste a video URL and ClipAI will run it after transcription.';
     status.classList.add('show');
   }
-  toast('AI edit brief saved');
+  toast('Ghost brief saved');
 }
 
 function setGhostStatus(message, showPlan) {
@@ -2409,7 +2494,7 @@ function applyGhostPlan(plan) {
     duration_s: clip.duration_s || Math.max(1, Math.round(((clip.end_ms || 0) - (clip.start_ms || 0)) / 1000)),
     speaker: clip.speaker || '?',
     caption_lines: clip.caption_lines || [],
-    why: clip.why || plan.plan_summary || 'Selected by AI Planner from your brief.',
+    why: clip.why || plan.plan_summary || 'Selected by Ghost Editor from your brief.',
     platform_fit: clip.platform_fit || [plan.platform || 'tiktok', 'reels', 'shorts'],
     energy: clip.energy || plan.energy || 'high'
   }));
@@ -2440,7 +2525,7 @@ async function runGhostEditor(options = {}) {
   syncGhostBriefInputs(brief);
   state.ghostBusy = true;
   setBtn('ghost-run-btn', true, 'Editing...');
-  setGhostStatus('<div style="display:flex;align-items:center;gap:10px"><div class="spinner"></div><span>AI Planner is reading the transcript and building your edit...</span></div>');
+  setGhostStatus('<div style="display:flex;align-items:center;gap:10px"><div class="spinner"></div><span>Ghost Editor is reading the transcript and building your edit...</span></div>');
 
   try {
     const res = await fetch(RAILWAY_URL + '/api/ghost-edit', {
@@ -2456,7 +2541,7 @@ async function runGhostEditor(options = {}) {
       })
     });
     const plan = await res.json();
-    if (!res.ok) throw new Error(plan.error || 'AI Planner failed');
+    if (!res.ok) throw new Error(plan.error || 'Ghost Editor failed');
     applyGhostPlan(plan);
     unlockStage(3);
     goStage(2);
@@ -2469,8 +2554,8 @@ async function runGhostEditor(options = {}) {
     setGhostStatus('Ghost edit ready. The clips are selected and caption settings are applied.', true);
     toast(options.auto ? 'Ghost edit created automatically' : 'Ghost edit created');
   } catch (err) {
-    setGhostStatus('<span style="color:var(--red)">AI Planner error: ' + escapeHTML(err.message) + '</span>');
-    toast('AI Planner error: ' + err.message, 6000);
+    setGhostStatus('<span style="color:var(--red)">Ghost Editor error: ' + escapeHTML(err.message) + '</span>');
+    toast('Ghost Editor error: ' + err.message, 6000);
   }
 
   state.ghostBusy = false;
@@ -2881,7 +2966,7 @@ async function copyHookVariant(i) {
   }
 }
 
-// Legacy local performance helpers are disabled in the current product.
+// Viral Memory Engine keeps creator-specific performance memory in localStorage.
 const MEMORY_KEY = 'clipai_viral_memory_v1';
 
 function loadViralMemory() {
@@ -3416,13 +3501,142 @@ function doLogout() {
 }
 
 
+async function openSidebar() {
+  const token = localStorage.getItem('clipai_token');
+  if (!token) { window.location.href = 'login.html'; return; }
+  document.getElementById('projects-sidebar').style.display = 'block';
+  document.getElementById('sidebar-overlay').style.display = 'block';
+  const listEl = document.getElementById('projects-list');
+  listEl.innerHTML = '<div style="color:var(--text3);font-size:13px">Loading...</div>';
+  try {
+    const res = await fetch(API_URL + '/api/projects', { headers: { 'authorization': 'Bearer ' + token, 'x-requested-with': 'clipai' } });
+    const projects = await res.json();
+    if (!projects.length) {
+      listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">No saved projects yet.<br>Process a video and save it!</div>';
+      return;
+    }
+    // Store projects in window map to avoid JSON escaping issues in onclick
+    window._projectsMap = {};
+    projects.forEach((p, i) => { window._projectsMap[i] = p; });
+
+    listEl.innerHTML = projects.map((p, i) => {
+      const dateStr = new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const clipCount = Array.isArray(p.clips) ? p.clips.length : 0;
+      const wordCount = p.transcript ? p.transcript.split(' ').length.toLocaleString() : '0';
+      return '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px" id="proj-card-' + i + '">' +
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">' +
+          '<div style="font-size:14px;font-weight:600;color:var(--text);line-height:1.4">' + (p.title || 'Untitled') + '</div>' +
+          '<div style="display:flex;gap:6px;flex-shrink:0">' +
+            '<button onclick="loadProjectByIndex(' + i + ')" style="background:var(--accent);color:#fff;border:none;padding:6px 14px;border-radius:8px;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer">Open →</button>' +
+            '<button onclick="deleteProject(this,\'' + p.id + '\',' + i + ')" style="background:transparent;color:var(--red);border:1px solid rgba(240,100,100,0.3);padding:6px 10px;border-radius:8px;font-family:var(--font);font-size:12px;cursor:pointer">🗑</button>' +
+          '</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:12px;flex-wrap:wrap">' +
+          '<span style="font-size:11px;color:var(--text3);font-family:var(--mono)">📅 ' + dateStr + '</span>' +
+          '<span style="font-size:11px;color:var(--text3);font-family:var(--mono)">✦ ' + clipCount + ' clips</span>' +
+          '<span style="font-size:11px;color:var(--text3);font-family:var(--mono)">◎ ' + wordCount + ' words</span>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  } catch(e) {
+    listEl.innerHTML = '<div style="color:var(--red);font-size:13px">Error loading projects</div>';
+  }
+}
+
+function loadProjectByIndex(i) {
+  const p = window._projectsMap[i];
+  if (!p) { toast('Project not found'); return; }
+  loadProject(p);
+}
+
+async function deleteProject(btn, id, i) {
+  const token = localStorage.getItem('clipai_token');
+  if (!confirm('Delete this project? This cannot be undone.')) return;
+  try {
+    const res = await fetch(API_URL + '/api/projects?id=' + id, {
+      method: 'DELETE',
+      headers: { 'authorization': 'Bearer ' + token }
+    });
+    if (res.ok) {
+      const card = document.getElementById('proj-card-' + i);
+      if (card) card.style.display = 'none';
+      toast('Project deleted');
+    } else {
+      toast('Delete failed');
+    }
+  } catch(e) {
+    toast('Delete error: ' + e.message);
+  }
+}
+
+function loadProject(p) {
+
+  // Restore full state
+  state.transcript = p.transcript || '';
+  state.clips = p.clips || [];
+  state.duration = p.duration || 0;
+  state.utterances = p.utterances || [];
+  state.highlights = p.highlights || [];
+  state.words = p.words || [];
+
+  closeSidebar();
+
+  if (state.clips.length > 0) {
+    // Unlock all stages
+    unlockStage(1); unlockStage(2); unlockStage(3);
+
+    // Restore transcript view
+    const statsEl = document.getElementById('stats-row');
+    if (statsEl) {
+      const words = state.transcript ? state.transcript.split(' ').length : 0;
+      const dur = state.duration ? formatTime(state.duration * 1000) : '--:--';
+      statsEl.innerHTML =
+        '<div class="stat"><div class="stat-val">' + dur + '</div><div class="stat-label">duration</div></div>' +
+        '<div class="stat"><div class="stat-val">' + words.toLocaleString() + '</div><div class="stat-label">words</div></div>' +
+        '<div class="stat"><div class="stat-val">' + state.clips.length + '</div><div class="stat-label">clips</div></div>' +
+        '<div class="stat"><div class="stat-val">' + (state.highlights.length || '?') + '</div><div class="stat-label">moments</div></div>';
+    }
+
+    const tcEl = document.getElementById('transcript-content');
+    if (tcEl && state.transcript) {
+      tcEl.textContent = state.transcript.substring(0, 3000) + (state.transcript.length > 3000 ? '...' : '');
+    }
+
+    // Show transcript results panel
+    const progressEl = document.getElementById('transcribe-progress');
+    const resultsEl = document.getElementById('transcribe-results');
+    if (progressEl) progressEl.style.display = 'none';
+    if (resultsEl) resultsEl.style.display = 'block';
+
+    // Go to clips page and render
+    goStage(2);
+    renderClips();
+    toast('✓ Project loaded: "' + (p.title || 'Untitled') + '"', 3000);
+  } else if (state.transcript) {
+    // Has transcript but no clips — go to transcribe page
+    unlockStage(1); unlockStage(2);
+    const progressEl = document.getElementById('transcribe-progress');
+    const resultsEl = document.getElementById('transcribe-results');
+    if (progressEl) progressEl.style.display = 'none';
+    if (resultsEl) resultsEl.style.display = 'block';
+    goStage(1);
+    showTranscriptResults();
+    toast('✓ Project loaded — generate clips to continue', 3000);
+  } else {
+    toast('This project has no data to restore', 4000);
+  }
+}
+
+function closeSidebar() {
+  document.getElementById('projects-sidebar').style.display = 'none';
+  document.getElementById('sidebar-overlay').style.display = 'none';
+}
 
 // Init
 state.unlockedStage = 0;
 initTheme();
 loadViralMemory();
 requestNativeNotifications();
-initConnectionAwareness();
 goStage(0);
 initAuth();
 
