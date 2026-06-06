@@ -74,8 +74,8 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      padding: 16px 32px;
-      padding-top: max(16px, env(safe-area-inset-top));
+      padding: 14px 28px;
+      padding-top: max(14px, env(safe-area-inset-top));
       border-bottom: 1px solid var(--border);
       background: rgba(8,8,16,0.9);
       backdrop-filter: blur(12px);
@@ -1001,14 +1001,19 @@
       .mode-chooser,
       .compilation-grid { grid-template-columns: 1fr; }
       .stats-row { grid-template-columns: repeat(2, 1fr); }
-      .clips-grid { grid-template-columns: repeat(2, 1fr); }
-      nav { padding: 12px 14px; align-items: flex-start; }
-      .logo { font-size: 18px; line-height: 34px; }
-      .nav-tools { gap: 6px; max-width: calc(100% - 74px); }
-      .nav-action { font-size: 12px; padding: 7px 9px; border-radius: 7px; }
-      .hero { padding: 48px 16px 40px; }
+      .clips-grid { grid-template-columns: 1fr; }
+      nav {
+        padding: 10px 12px;
+        padding-top: max(10px, env(safe-area-inset-top));
+        align-items: center;
+        gap: 8px;
+      }
+      .logo { font-size: 18px; line-height: 1; min-height: 34px; display:flex; align-items:center; }
+      .nav-tools { gap: 6px; max-width: calc(100% - 82px); flex-wrap: wrap; justify-content:flex-end; }
+      .nav-action { font-size: 11px; padding: 6px 8px; border-radius: 7px; line-height: 1.1; }
+      .hero { padding: 34px 14px 28px; }
       .stage-btn span.stage-label { display: none; }
-      .app-shell { padding: 0 12px 64px; }
+      .app-shell { padding: 14px 12px 64px; }
       .card { padding: 16px; border-radius: 14px; }
       .upload-zone { padding: 38px 16px; }
       .url-row,
@@ -1109,6 +1114,18 @@
       .caption-control-grid { grid-template-columns: 1fr; }
     }
 
+  
+    /* Screen fit fixes */
+    .app-shell { padding-top: 18px; }
+    .mode-card, .card, .panel, #compilation-studio { min-width: 0; }
+    .mode-title, .mode-sub, .card-title { overflow-wrap: anywhere; }
+    #compilation-studio { width: 100%; }
+    @media (max-width: 420px) {
+      .mode-card { padding: 15px; }
+      .mode-top { align-items: flex-start; }
+      .mode-badge { white-space: normal; text-align: right; }
+      .stages { position: sticky; top: 55px; z-index: 40; }
+    }
   </style>
 </head>
 <body>
@@ -1661,15 +1678,24 @@ async function saveExportedVideo(blob, filename) {
 function chooseCreationMode(mode) {
   currentCreationMode = mode === 'compilation' ? 'compilation' : 'clips';
   const isCompilation = currentCreationMode === 'compilation';
+  const shell = document.querySelector('.app-shell');
+  const stages = document.querySelector('.stages');
+  const studio = document.getElementById('compilation-studio');
+
+  if (shell) shell.style.display = 'block';
   document.getElementById('mode-clips')?.classList.toggle('active', !isCompilation);
   document.getElementById('mode-compilation')?.classList.toggle('active', isCompilation);
-  document.querySelector('.stages')?.style.setProperty('display', isCompilation ? 'none' : 'flex');
+
+  if (stages) stages.style.display = isCompilation ? 'none' : 'flex';
   document.querySelectorAll('.panel').forEach(panel => {
     panel.style.display = isCompilation ? 'none' : '';
   });
-  const studio = document.getElementById('compilation-studio');
   if (studio) studio.style.display = isCompilation ? 'block' : 'none';
-  if (!isCompilation) goStage(state.currentStage || 0);
+
+  if (!isCompilation) {
+    goStage(state.currentStage || 0);
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function parseCompilationLinks() {
@@ -2153,6 +2179,11 @@ async function submitUrl() {
 // YouTube help removed — yt-dlp now handles YouTube directly
 
 async function startTranscription(videoUrl) {
+  currentCreationMode = 'clips';
+  document.querySelector('.app-shell')?.style.setProperty('display', 'block');
+  document.querySelector('.stages')?.style.setProperty('display', 'flex');
+  document.getElementById('compilation-studio')?.style.setProperty('display', 'none');
+  document.querySelectorAll('.panel').forEach(panel => { panel.style.display = ''; });
   // Unlock FIRST so goStage can navigate
   unlockStage(1);
   goStage(1);
