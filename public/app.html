@@ -1884,6 +1884,7 @@ const state = {
 
 const compilationState = {
   links: [],
+  sources: [],
   plan: null,
   busy: false
 };
@@ -2026,6 +2027,67 @@ function useCompilationExample(kind) {
   toast('Compilation style loaded');
 }
 
+async function getYouTubeDirectUrl(url) {
+  const RAPIDAPI_KEY = '2739c1edfcmsh6e763515222fb6bp1b7684jsne1a821094a00';
+  const RAPIDAPI_HOST = 'youtube-video-fast-downloader-24-7.p.rapidapi.com';
+  const match = url.match(/(?:v=|youtu\.be\/|shorts\/)([^&\n?#]+)/);
+  const videoId = match ? match[1] : null;
+  if (!videoId) throw new Error('Could not extract video ID from URL');
+
+  const rapidRes = await fetch(`https://${RAPIDAPI_HOST}/download_video/${videoId}?quality=247`, {
+    headers: {
+      'Content-Type': 'application/json',
+      'x-rapidapi-host': RAPIDAPI_HOST,
+      'x-rapidapi-key': RAPIDAPI_KEY
+    }
+  });
+  const rapidData = await rapidRes.json();
+  const directUrl = rapidData?.file || rapidData?.url || rapidData?.link;
+  if (!directUrl) throw new Error('Could not get download link from RapidAPI');
+  return directUrl;
+}
+
+async function uploadYouTubeSource(url) {
+  const directUrl = await getYouTubeDirectUrl(url);
+  const res = await fetch(RAILWAY_URL + '/api/youtube-upload', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ url: directUrl, originalUrl: url })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'YouTube download failed');
+  return { ...data, originalUrl: url, directUrl };
+}
+
+async function createTranscriptJob(videoUrl) {
+  const res = await fetch(API_URL + '/api/transcribe', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ videoUrl })
+  });
+  const rawText = await res.text();
+  let data;
+  try { data = JSON.parse(rawText); } catch(e) { throw new Error('Transcription server returned an invalid response'); }
+  if (!res.ok) throw new Error(data.error || 'Transcription failed');
+  const transcriptId = data.transcriptId || data.id;
+  if (!transcriptId) throw new Error('No transcript ID returned');
+  return transcriptId;
+}
+
+async function waitForCompilationTranscript(transcriptId, onStatus) {
+  const maxAttempts = 180;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (onStatus) onStatus(attempt);
+    await new Promise(resolve => setTimeout(resolve, attempt === 0 ? 1800 : 4000));
+    const res = await fetch(API_URL + '/api/transcript-status?id=' + encodeURIComponent(transcriptId));
+    if (!res.ok) throw new Error('Transcript status failed');
+    const data = await res.json();
+    if (data.status === 'completed') return data;
+    if (data.status === 'error') throw new Error(data.error || 'AssemblyAI returned an error');
+  }
+  throw new Error('Transcription timed out');
+}
+
 function renderCompilationPlan(plan) {
   const out = document.getElementById('compilation-status');
   if (!out) return;
@@ -2046,7 +2108,7 @@ function renderCompilationPlan(plan) {
     </div>
     <div class="compilation-plan">${segmentHtml}</div>
     <div style="margin-top:12px;color:var(--green);font-size:13px">
-      Next: connect this plan to the downloader/FFmpeg compilation renderer so ClipAI can cut and join the final long video.
+      Sources are downloaded and transcribed. Next step: render the final compilation MP4 from this blueprint.
     </div>
   `;
 }
@@ -2066,17 +2128,67 @@ async function createCompilationPlan() {
   const out = document.getElementById('compilation-status');
   compilationState.busy = true;
   compilationState.links = links;
+  compilationState.sources = [];
   if (out) {
     out.classList.add('show');
-    out.innerHTML = '<div style="display:flex;align-items:center;gap:10px"><div class="spinner"></div>Ghost Editor is building your compilation blueprint...</div>';
+    out.innerHTML = '<div style="display:flex;align-items:center;gap:10px"><div class="spinner"></div>Preparing YouTube sources for Compilation Studio...</div>';
   }
 
   try {
+    const sources = [];
+    for (let i = 0; i < links.length; i++) {
+      const link = links[i];
+      if (out) {
+        out.innerHTML = '<div style="display:flex;align-items:center;gap:10px"><div class="spinner"></div>Downloading source ' + (i + 1) + ' of ' + links.length + '...</div>' +
+          '<div style="margin-top:10px;color:var(--text3);font-family:var(--mono);font-size:11px;overflow-wrap:anywhere">' + escapeHTML(link) + '</div>';
+      }
+
+      const uploaded = await uploadYouTubeSource(link);
+
+      if (out) {
+        out.innerHTML = '<div style="display:flex;align-items:center;gap:10px"><div class="spinner"></div>Transcribing source ' + (i + 1) + ' of ' + links.length + '...</div>' +
+          '<div style="margin-top:10px;color:var(--text3);font-family:var(--mono);font-size:11px;overflow-wrap:anywhere">' + escapeHTML(link) + '</div>';
+      }
+
+      const transcriptId = await createTranscriptJob(uploaded.uploadUrl);
+      const transcript = await waitForCompilationTranscript(transcriptId, attempt => {
+        if (!out || attempt % 2 !== 0) return;
+        out.innerHTML = '<div style="display:flex;align-items:center;gap:10px"><div class="spinner"></div>Transcribing source ' + (i + 1) + ' of ' + links.length + '... attempt ' + (attempt + 1) + '</div>' +
+          '<div style="margin-top:10px;color:var(--text3);font-family:var(--mono);font-size:11px;overflow-wrap:anywhere">' + escapeHTML(link) + '</div>';
+      });
+
+      sources.push({
+        index: i,
+        originalUrl: link,
+        localFileId: uploaded.localFileId,
+        uploadUrl: uploaded.uploadUrl,
+        previewUrl: uploaded.previewUrl || uploaded.videoUrl || uploaded.localVideoUrl || '',
+        transcriptId,
+        transcript: transcript.text || '',
+        utterances: transcript.utterances || [],
+        words: transcript.words || [],
+        duration: transcript.duration || 0
+      });
+      compilationState.sources = sources;
+    }
+
+    if (out) {
+      out.innerHTML = '<div style="display:flex;align-items:center;gap:10px"><div class="spinner"></div>Ghost Editor is building your compilation blueprint from transcripts...</div>';
+    }
+
     const res = await fetch(API_URL + '/api/compilation-plan', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         links,
+        sources: sources.map(source => ({
+          index: source.index,
+          originalUrl: source.originalUrl,
+          transcript: source.transcript,
+          utterances: source.utterances.slice(0, 80),
+          words: source.words.slice(0, 1000),
+          duration: source.duration
+        })),
         style: document.getElementById('compilation-style').value,
         targetMinutes: Number(document.getElementById('compilation-length').value || 30),
         brief: document.getElementById('compilation-brief').value.trim()
@@ -2086,7 +2198,7 @@ async function createCompilationPlan() {
     if (!res.ok) throw new Error(data.error || 'Could not create compilation plan');
     compilationState.plan = data;
     renderCompilationPlan(data);
-    toast('Compilation plan ready');
+    toast('Compilation plan ready from transcribed sources');
   } catch (err) {
     if (out) out.innerHTML = '<span style="color:var(--red)">Compilation error: ' + escapeHTML(err.message) + '</span>';
     toast('Compilation error: ' + err.message, 6000);
@@ -2436,24 +2548,9 @@ async function submitUrl() {
     }, 500);
 
     try {
-      // Step 1: Get direct download URL from RapidAPI (user's browser)
+      // Step 1: Get direct download URL from the same helper Compilation Studio uses.
       document.getElementById('upload-size').textContent = 'Getting download link...';
-      const RAPIDAPI_KEY = '2739c1edfcmsh6e763515222fb6bp1b7684jsne1a821094a00';
-      const RAPIDAPI_HOST = 'youtube-video-fast-downloader-24-7.p.rapidapi.com';
-      const match = url.match(/(?:v=|youtu\.be\/|shorts\/)([^&\n?#]+)/);
-      const videoId = match ? match[1] : null;
-      if (!videoId) throw new Error('Could not extract video ID from URL');
-
-      const rapidRes = await fetch(`https://${RAPIDAPI_HOST}/download_video/${videoId}?quality=247`, {
-        headers: {
-          'Content-Type': 'application/json',
-          'x-rapidapi-host': RAPIDAPI_HOST,
-          'x-rapidapi-key': RAPIDAPI_KEY
-        }
-      });
-      const rapidData = await rapidRes.json();
-      const directUrl = rapidData?.file || rapidData?.url || rapidData?.link;
-      if (!directUrl) throw new Error('Could not get download link from RapidAPI');
+      const directUrl = await getYouTubeDirectUrl(url);
 
       document.getElementById('upload-size').textContent = 'Sending to server for transcription...';
 
