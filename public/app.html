@@ -1588,7 +1588,7 @@
               <input id="compilation-brief" placeholder="Start with the strongest hook, remove boring parts..." />
             </div>
             <button class="btn btn-full" type="button" onclick="createCompilationPlan()">Create Compilation Plan</button>
-            <button class="btn btn-ghost btn-full" type="button" onclick="explainCompilationBuild()">Build Final Video</button>
+            <button class="btn btn-ghost btn-full" type="button" onclick="buildCompilationVideo()">Build Final Video</button>
           </div>
         </div>
         <div class="compilation-status" id="compilation-status"></div>
@@ -2207,17 +2207,74 @@ async function createCompilationPlan() {
   }
 }
 
-function explainCompilationBuild() {
+async function buildCompilationVideo() {
   const out = document.getElementById('compilation-status');
+  if (compilationState.busy) {
+    toast('Compilation Studio is already working');
+    return;
+  }
+  if (!compilationState.plan || !Array.isArray(compilationState.plan.segments) || !compilationState.plan.segments.length) {
+    toast('Create a compilation plan first', 5000);
+    return;
+  }
+  if (!Array.isArray(compilationState.sources) || compilationState.sources.length < 2) {
+    toast('Compilation sources are not ready. Create the plan again so ClipAI can download and transcribe each link.', 6000);
+    return;
+  }
+
+  compilationState.busy = true;
   if (out) {
     out.classList.add('show');
-    out.innerHTML = `
-      <strong style="color:var(--text);display:block;margin-bottom:6px">Renderer connection is next</strong>
-      <div>Compilation Studio is ready for planning. The final build needs the downloader upgrade we discussed: download each YouTube source, transcribe it, let Ghost Editor pick segments, then FFmpeg joins those cuts into one MP4.</div>
-      <div style="margin-top:10px;color:var(--text3)">Once the downloader is stable, this button will start the long-running compilation job.</div>
-    `;
+    out.innerHTML =
+      '<div style="display:flex;align-items:center;gap:10px"><div class="spinner"></div>Building final compilation video...</div>' +
+      '<div style="margin-top:10px;color:var(--text3);font-size:12px;line-height:1.6">ClipAI is cutting selected moments from ' +
+      compilationState.sources.length + ' sources and joining them into one MP4. This can take several minutes.</div>';
   }
-  toast('We need the downloader renderer before final video build', 6000);
+
+  try {
+    const res = await fetch(RAILWAY_URL + '/api/build-compilation', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: compilationState.plan.title || 'ClipAI Compilation',
+        quality: '720p',
+        plan: compilationState.plan,
+        sources: compilationState.sources.map(source => ({
+          index: source.index,
+          originalUrl: source.originalUrl,
+          localFileId: source.localFileId,
+          duration: source.duration
+        }))
+      })
+    });
+
+    if (!res.ok) {
+      const raw = await res.text();
+      let data = {};
+      try { data = JSON.parse(raw); } catch(e) {}
+      throw new Error(data.error || raw.slice(0, 220) || 'Compilation build failed');
+    }
+
+    const blob = await res.blob();
+    const safeTitle = (compilationState.plan.title || 'clipai_compilation').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+    const filename = safeTitle + '_720p.mp4';
+    const saved = await saveExportedVideo(blob, filename);
+
+    if (out) {
+      out.innerHTML =
+        '<strong style="color:var(--green);display:block;margin-bottom:6px">Final compilation ready</strong>' +
+        '<div style="color:var(--text2);font-size:13px;line-height:1.7">' +
+        (saved.native ? 'Saved to your phone Gallery in Movies/ClipAI.' : 'Downloaded in your browser.') +
+        '</div>';
+    }
+    toast('Final compilation ' + (saved.native ? 'saved to Gallery' : 'downloaded'), 5000);
+    notifyNative('ClipAI compilation ready', 'Your final compilation video is ready.');
+  } catch (err) {
+    if (out) out.innerHTML = '<span style="color:var(--red)">Compilation build error: ' + escapeHTML(formatUserError(err.message)) + '</span>';
+    toast('Compilation build error: ' + err.message, 7000);
+  } finally {
+    compilationState.busy = false;
+  }
 }
 
 function applyTheme(theme) {
