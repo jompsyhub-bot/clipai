@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <style>
+
     :root {
       --bg: #080810;
       --bg2: #0d0c1a;
@@ -1126,6 +1127,277 @@
       .mode-badge { white-space: normal; text-align: right; }
       .stages { position: sticky; top: 55px; z-index: 40; }
     }
+  
+    /* Post-login workspace choice */
+    body.awaiting-choice .hero { display: none; }
+    body.awaiting-choice .app-shell {
+      min-height: calc(100dvh - 68px);
+      display: grid;
+      place-items: center;
+      padding: max(28px, env(safe-area-inset-top)) 16px max(36px, env(safe-area-inset-bottom));
+    }
+    body.awaiting-choice #mode-chooser {
+      display: grid;
+      width: min(920px, 100%);
+      margin: 0 auto;
+    }
+    body.awaiting-choice #mode-chooser::before {
+      content: "Choose your workspace";
+      grid-column: 1 / -1;
+      color: var(--text);
+      font-size: clamp(28px, 7vw, 52px);
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.05em;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    body.awaiting-choice #mode-chooser::after {
+      content: "Start with short clips or build a longer compilation. Each opens as its own focused workspace.";
+      grid-column: 1 / -1;
+      color: var(--text2);
+      font-size: 14px;
+      line-height: 1.6;
+      text-align: center;
+      max-width: 560px;
+      justify-self: center;
+      margin: -2px 0 14px;
+      order: -1;
+    }
+    body.awaiting-choice .stages,
+    body.awaiting-choice .panel,
+    body.awaiting-choice #compilation-studio { display: none !important; }
+    body.workspace-active #mode-chooser { display: none !important; }
+    body.workspace-active .hero { display: none; }
+    body.workspace-active .app-shell { padding-top: 18px; }
+    @media (max-width: 600px) {
+      body.awaiting-choice .app-shell { min-height: calc(100dvh - 58px); padding-left: 12px; padding-right: 12px; }
+      body.awaiting-choice #mode-chooser::before { font-size: 32px; }
+      body.awaiting-choice .mode-card { padding: 18px; }
+    }
+
+  
+
+    /* ── DASHBOARD ── */
+    #dashboard {
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 32px 20px 80px;
+    }
+    .dashboard-header {
+      margin-bottom: 40px;
+    }
+    .dashboard-greeting {
+      font-size: clamp(22px, 4vw, 32px);
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .dashboard-sub {
+      color: var(--text2);
+      font-size: 14px;
+    }
+    .dashboard-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 40px;
+    }
+    .dash-stat {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--r2);
+      padding: 18px;
+    }
+    .dash-stat-val {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--accent2);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .dash-stat-label {
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .dashboard-section-title {
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--text3);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+    .workspace-cards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+    .workspace-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--r2);
+      padding: 24px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .workspace-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .workspace-card:hover {
+      border-color: rgba(124,106,247,0.5);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+    }
+    .workspace-card:hover::before { opacity: 1; }
+    .workspace-card-icon {
+      width: 48px; height: 48px;
+      border-radius: 14px;
+      background: var(--accent-dim);
+      border: 1px solid rgba(124,106,247,0.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      margin-bottom: 16px;
+    }
+    .workspace-card-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 8px;
+      letter-spacing: -0.3px;
+    }
+    .workspace-card-desc {
+      font-size: 13px;
+      color: var(--text2);
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+    .workspace-card-features {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .workspace-feature {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text3);
+    }
+    .workspace-feature::before {
+      content: '✓';
+      color: var(--green);
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .workspace-card-badge {
+      position: absolute;
+      top: 16px; right: 16px;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--green);
+      background: rgba(62,207,142,0.12);
+      border: 1px solid rgba(62,207,142,0.22);
+      border-radius: 999px;
+      padding: 3px 8px;
+    }
+    .workspace-card-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 16px;
+      color: var(--accent2);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .recent-projects-section { margin-bottom: 40px; }
+    .recent-project-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .recent-project-row:hover { border-color: rgba(124,106,247,0.4); }
+    .recent-project-icon {
+      width: 36px; height: 36px;
+      background: var(--bg3);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .recent-project-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .recent-project-meta {
+      font-size: 11px;
+      color: var(--text3);
+      font-family: var(--mono);
+      white-space: nowrap;
+    }
+    #workspace { display: none; }
+    .workspace-topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+      margin-bottom: 0;
+    }
+    .workspace-mode-pills {
+      display: flex;
+      gap: 6px;
+    }
+    .workspace-pill {
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border2);
+      color: var(--text3);
+      background: transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .workspace-pill.active {
+      background: var(--accent-dim);
+      color: var(--accent2);
+      border-color: rgba(124,106,247,0.4);
+    }
+    @media (max-width: 600px) {
+      .workspace-cards { grid-template-columns: 1fr; }
+      .dashboard-stats { grid-template-columns: repeat(2, 1fr); }
+      #dashboard { padding: 20px 16px 60px; }
+    }
+
   </style>
 </head>
 <body>
@@ -1134,7 +1406,8 @@
   <div class="logo">clip<span>AI</span></div>
   <div class="nav-tools">
     <button class="nav-action" id="theme-toggle" onclick="toggleTheme()" type="button">Light mode</button>
-    <button class="nav-action primary hidden" id="new-clips-btn" onclick="createNewClips()" type="button">Create New Clips</button>
+    <button class="nav-action hidden" id="back-to-dashboard-btn" onclick="backToDashboard()" type="button">← Dashboard</button>
+    <button class="nav-action primary hidden" id="new-clips-btn" onclick="createNewClips()" type="button">+ New</button>
     <div id="nav-auth">
       <a href="login.html" class="nav-action" style="text-decoration:none">Sign In</a>
     </div>
@@ -1166,395 +1439,396 @@
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:199"></div>
 
-<div class="hero">
-  <span class="hero-eyebrow">✦ AI Video Repurposing</span>
-  <h1>Turn long videos into<br><em>viral short clips</em></h1>
-  <p>Upload any podcast, Zoom, or YouTube recording. AI transcribes, finds the best moments, and generates caption-ready 9:16 clips.</p>
-  <div class="flow-steps">
-    <div class="flow-step"><div class="fs-icon">⬆</div><span class="fs-label">Upload</span></div>
-    <span class="flow-arrow">→</span>
-    <div class="flow-step"><div class="fs-icon">◎</div><span class="fs-label">Transcribe</span></div>
-    <span class="flow-arrow">→</span>
-    <div class="flow-step"><div class="fs-icon">✦</div><span class="fs-label">AI Clips</span></div>
-    <span class="flow-arrow">→</span>
-    <div class="flow-step"><div class="fs-icon">Aa</div><span class="fs-label">Captions</span></div>
-    <span class="flow-arrow">→</span>
-    <div class="flow-step"><div class="fs-icon">⬇</div><span class="fs-label">Export</span></div>
+<!-- ═══ DASHBOARD ═══ -->
+<div id="dashboard">
+  <div class="dashboard-header">
+    <div class="dashboard-greeting" id="dashboard-greeting">Welcome back 👋</div>
+    <div class="dashboard-sub">What are you creating today?</div>
+  </div>
+
+  <div class="dashboard-stats" id="dashboard-stats">
+    <div class="dash-stat">
+      <div class="dash-stat-val" id="dash-stat-projects">0</div>
+      <div class="dash-stat-label">Projects</div>
+    </div>
+    <div class="dash-stat">
+      <div class="dash-stat-val" id="dash-stat-clips">0</div>
+      <div class="dash-stat-label">Clips Made</div>
+    </div>
+    <div class="dash-stat">
+      <div class="dash-stat-val" id="dash-stat-exports">0</div>
+      <div class="dash-stat-label">Exports</div>
+    </div>
+    <div class="dash-stat">
+      <div class="dash-stat-val" id="dash-stat-memory">0</div>
+      <div class="dash-stat-label">Viral Memories</div>
+    </div>
+  </div>
+
+  <div class="dashboard-section-title">Choose your workspace</div>
+  <div class="workspace-cards">
+    <div class="workspace-card" onclick="chooseCreationMode('clips')">
+      <span class="workspace-card-badge">Popular</span>
+      <div class="workspace-card-icon">✂️</div>
+      <div class="workspace-card-title">Short Clip Studio</div>
+      <div class="workspace-card-desc">Upload one video or paste a YouTube link. AI transcribes, finds the best viral moments, adds captions, and exports 9:16 clips.</div>
+      <div class="workspace-card-features">
+        <div class="workspace-feature">AI transcript with speaker detection</div>
+        <div class="workspace-feature">5 viral clip suggestions with hooks</div>
+        <div class="workspace-feature">Caption styles — TikTok, Karaoke, Neon</div>
+        <div class="workspace-feature">Export to MP4, TikTok, Reels, Shorts</div>
+      </div>
+      <div class="workspace-card-cta">Open Studio →</div>
+    </div>
+    <div class="workspace-card" onclick="chooseCreationMode('compilation')">
+      <span class="workspace-card-badge">New</span>
+      <div class="workspace-card-icon">🎬</div>
+      <div class="workspace-card-title">Compilation Studio</div>
+      <div class="workspace-card-desc">Paste multiple YouTube links and let Ghost Editor build a longer compilation from the best moments across all your sources.</div>
+      <div class="workspace-card-features">
+        <div class="workspace-feature">Up to 8 YouTube sources at once</div>
+        <div class="workspace-feature">Ghost Editor AI builds the plan</div>
+        <div class="workspace-feature">Choose style: funny, edu, motivation</div>
+        <div class="workspace-feature">Target length up to 45 minutes</div>
+      </div>
+      <div class="workspace-card-cta">Open Studio →</div>
+    </div>
+  </div>
+
+  <div class="recent-projects-section" id="recent-projects-section" style="display:none">
+    <div class="dashboard-section-title">Recent projects</div>
+    <div id="recent-projects-list"></div>
+    <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:8px" onclick="openSidebar()">View all projects</button>
   </div>
 </div>
 
-<div class="app-shell">
-
-  <div class="mode-chooser" id="mode-chooser">
-    <div class="mode-card active" id="mode-clips" onclick="chooseCreationMode('clips')">
-      <div class="mode-top">
-        <div class="mode-icon">9:16</div>
-        <span class="mode-badge">Fast clips</span>
-      </div>
-      <div class="mode-title">Create Short Clips</div>
-      <div class="mode-sub">Upload one video or paste one YouTube link. ClipAI finds viral moments, captions them, and exports short clips.</div>
+<!-- ═══ WORKSPACE ═══ -->
+<div id="workspace">
+  <div class="workspace-topbar">
+    <div class="workspace-mode-pills">
+      <button class="workspace-pill active" id="ws-pill-clips" onclick="chooseCreationMode('clips')">✂️ Short Clips</button>
+      <button class="workspace-pill" id="ws-pill-compilation" onclick="chooseCreationMode('compilation')">🎬 Compilation</button>
     </div>
-    <div class="mode-card" id="mode-compilation" onclick="chooseCreationMode('compilation')">
-      <div class="mode-top">
-        <div class="mode-icon">30m</div>
-        <span class="mode-badge">New</span>
-      </div>
-      <div class="mode-title">Compilation Studio</div>
-      <div class="mode-sub">Paste multiple YouTube links and let Ghost Editor plan a longer compilation from the best moments across all sources.</div>
-    </div>
+    <div style="flex:1"></div>
+    <button class="nav-action primary hidden" id="new-clips-btn2" onclick="createNewClips()" type="button" style="font-size:12px;padding:6px 12px">+ New</button>
   </div>
 
-  <!-- STAGE TABS -->
-  <div class="stages" role="tablist">
-    <button class="stage-btn active" id="tab0" onclick="goStage(0)">
-      <span class="snum">1</span>
-      <span class="stage-label">Upload</span>
-    </button>
-    <button class="stage-btn locked" id="tab1" onclick="goStage(1)">
-      <span class="snum">2</span>
-      <span class="stage-label">Transcribe</span>
-    </button>
-    <button class="stage-btn locked" id="tab2" onclick="goStage(2)">
-      <span class="snum">3</span>
-      <span class="stage-label">Clips</span>
-    </button>
-    <button class="stage-btn locked" id="tab3" onclick="goStage(3)">
-      <span class="snum">4</span>
-      <span class="stage-label">Export</span>
-    </button>
-  </div>
-
-  <div id="compilation-studio" style="display:none">
-    <div class="card">
-      <div class="card-title">Compilation Studio</div>
-      <p style="color:var(--text2);font-size:14px;line-height:1.7;margin-bottom:16px">
-        Build a long-form compilation from multiple YouTube videos. Start by creating the AI edit plan; after the downloader pipeline is connected, this same workspace will render the final MP4.
-      </p>
-      <div class="compilation-grid">
-        <div>
-          <label style="display:block;color:var(--text3);font-family:var(--mono);font-size:12px;margin-bottom:8px">YouTube links, one per line</label>
-          <textarea id="compilation-links" class="compilation-links" placeholder="https://www.youtube.com/watch?v=...&#10;https://youtu.be/...&#10;https://www.youtube.com/shorts/..."></textarea>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-            <button class="ghost-chip" type="button" onclick="useCompilationExample('funny')">Funny moments</button>
-            <button class="ghost-chip" type="button" onclick="useCompilationExample('educational')">Educational breakdown</button>
-            <button class="ghost-chip" type="button" onclick="useCompilationExample('motivation')">Motivation mix</button>
-          </div>
-        </div>
-        <div class="compilation-options">
-          <div>
-            <label for="compilation-style">Compilation style</label>
-            <select id="compilation-style">
-              <option value="funniest">Funniest moments</option>
-              <option value="educational">Educational explainer</option>
-              <option value="controversial">Controversial takes</option>
-              <option value="motivational">Motivational story</option>
-              <option value="documentary">Documentary flow</option>
-            </select>
-          </div>
-          <div>
-            <label for="compilation-length">Target length</label>
-            <select id="compilation-length">
-              <option value="10">10 minutes</option>
-              <option value="20">20 minutes</option>
-              <option value="30" selected>30 minutes</option>
-              <option value="45">45 minutes</option>
-            </select>
-          </div>
-          <div>
-            <label for="compilation-brief">Ghost Editor instruction</label>
-            <input id="compilation-brief" placeholder="Start with the strongest hook, remove boring parts, keep high energy" />
-          </div>
-          <button class="btn btn-full" type="button" onclick="createCompilationPlan()">Create Compilation Plan</button>
-          <button class="btn btn-ghost btn-full" type="button" onclick="explainCompilationBuild()">Build Final Video</button>
-        </div>
+  <div class="app-shell">
+    <div class="mode-chooser" id="mode-chooser" style="display:none">
+      <div class="mode-card active" id="mode-clips" onclick="chooseCreationMode('clips')">
+        <div class="mode-top"><div class="mode-icon">9:16</div><span class="mode-badge">Fast clips</span></div>
+        <div class="mode-title">Create Short Clips</div>
+        <div class="mode-sub">Upload one video or paste one YouTube link.</div>
       </div>
-      <div class="compilation-status" id="compilation-status"></div>
-    </div>
-  </div>
-
-  <!-- ═══ PANEL 0: UPLOAD ═══ -->
-  <div class="panel active" id="p0">
-    <div class="card">
-      <div class="card-title">Upload your video</div>
-      <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
-        <input type="file" id="file-input" accept="video/*,audio/*" />
-        <div class="upload-icon-wrap">⬆</div>
-        <h3>Drop your video here</h3>
-        <p>or <a>browse files</a> to select from your device</p>
-        <div class="formats">
-          <span class="fmt">MP4</span><span class="fmt">MOV</span><span class="fmt">MKV</span>
-          <span class="fmt">WEBM</span><span class="fmt">AVI</span><span class="fmt">MP3</span>
-          <span class="fmt">M4A</span>
-        </div>
-      </div>
-
-      <div class="or-divider">or paste a public URL</div>
-
-      <div class="url-row">
-        <input class="url-input" id="url-input" type="url"
-          placeholder="https://example.com/video.mp4  or  YouTube/podcast URL" />
-        <button class="btn btn-primary" onclick="submitUrl()">Analyze</button>
-      </div>
-
-      <div id="upload-progress" style="display:none" class="progress-wrap">
-        <div class="progress-label">
-          <span id="upload-status">Uploading...</span>
-          <div class="progress-actions">
-            <span id="upload-pct">0%</span>
-            <button id="cancel-upload-btn" onclick="cancelUpload()" style="background:transparent;border:1px solid var(--red);color:var(--red);font-family:var(--font);font-size:12px;padding:3px 10px;border-radius:6px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='rgba(240,100,100,0.15)'" onmouseout="this.style.background='transparent'">✕ Cancel</button>
-          </div>
-        </div>
-        <div class="progress-bar"><div class="progress-fill" id="upload-bar" style="width:0%"></div></div>
-        <div id="upload-size" style="font-size:12px;color:var(--text3);margin-top:6px;font-family:var(--mono)"></div>
+      <div class="mode-card" id="mode-compilation" onclick="chooseCreationMode('compilation')">
+        <div class="mode-top"><div class="mode-icon">30m</div><span class="mode-badge">New</span></div>
+        <div class="mode-title">Compilation Studio</div>
+        <div class="mode-sub">Paste multiple YouTube links for a longer compilation.</div>
       </div>
     </div>
 
-    <div class="card ghost-card">
-      <div class="ghost-head">
-        <div>
-          <div class="ghost-title">Ghost Editor Mode</div>
-          <div class="ghost-sub">Describe the edit once. ClipAI will pick the moment, set the length, choose captions, and prepare the export plan after transcription.</div>
-        </div>
-        <div class="ghost-badge">Autopilot</div>
-      </div>
-      <textarea class="ghost-input" id="ghost-brief" oninput="setGhostBrief(this.value)" placeholder="Find the funniest moment, make it 30 seconds, add yellow captions, start with the punchline."></textarea>
-      <div class="ghost-examples">
-        <button class="ghost-chip" type="button" onclick="useGhostExample('Find the funniest moment, make it 30 seconds, add yellow captions, start with the punchline.')">Funny punchline</button>
-        <button class="ghost-chip" type="button" onclick="useGhostExample('Find the most controversial 45 seconds, make it high energy, and use bold TikTok captions.')">Controversial take</button>
-        <button class="ghost-chip" type="button" onclick="useGhostExample('Create 3 motivational clips under 35 seconds each with clean white captions for Instagram Reels.')">3 motivational clips</button>
-      </div>
-      <button class="btn btn-ghost btn-full" type="button" onclick="rememberGhostBrief()">Use this Ghost brief</button>
-      <div class="ghost-status" id="ghost-upload-status">Ghost brief saved. Upload or paste a video URL and ClipAI will run this automatically after transcription.</div>
-    </div>
-  </div>
-
-  <!-- ═══ PANEL 1: TRANSCRIBE ═══ -->
-  <div class="panel" id="p1">
-
-    <div id="transcribe-progress" class="card">
-      <div class="card-title">Processing your video</div>
-      <div class="progress-wrap">
-        <div class="progress-label">
-          <span id="trans-status">Submitting to AssemblyAI...</span>
-          <span id="trans-pct">0%</span>
-        </div>
-        <div class="progress-bar"><div class="progress-fill" id="trans-bar" style="width:0%"></div></div>
-      </div>
-      <div class="progress-steps">
-        <div class="p-step active" id="step-upload"><div class="p-dot"></div>Uploading media</div>
-        <div class="p-step" id="step-transcribe"><div class="p-dot"></div>Transcribing audio</div>
-        <div class="p-step" id="step-speakers"><div class="p-dot"></div>Detecting speakers</div>
-        <div class="p-step" id="step-moments"><div class="p-dot"></div>Analyzing key moments</div>
-        <div class="p-step" id="step-done"><div class="p-dot"></div>Ready</div>
-      </div>
+    <!-- STAGE TABS -->
+    <div class="stages" role="tablist">
+      <button class="stage-btn active" id="tab0" onclick="goStage(0)">
+        <span class="snum">1</span>
+        <span class="stage-label">Upload</span>
+      </button>
+      <button class="stage-btn locked" id="tab1" onclick="goStage(1)">
+        <span class="snum">2</span>
+        <span class="stage-label">Transcribe</span>
+      </button>
+      <button class="stage-btn locked" id="tab2" onclick="goStage(2)">
+        <span class="snum">3</span>
+        <span class="stage-label">Clips</span>
+      </button>
+      <button class="stage-btn locked" id="tab3" onclick="goStage(3)">
+        <span class="snum">4</span>
+        <span class="stage-label">Export</span>
+      </button>
     </div>
 
-    <div id="transcribe-results" style="display:none">
-      <div class="stats-row" id="stats-row">
-        <!-- filled by JS -->
-      </div>
-
+    <div id="compilation-studio" style="display:none">
       <div class="card">
-        <div class="card-title">Transcript</div>
-        <div class="transcript-box" id="transcript-content"></div>
+        <div class="card-title">Compilation Studio</div>
+        <p style="color:var(--text2);font-size:14px;line-height:1.7;margin-bottom:16px">
+          Build a long-form compilation from multiple YouTube videos. Start by creating the AI edit plan.
+        </p>
+        <div class="compilation-grid">
+          <div>
+            <label style="display:block;color:var(--text3);font-family:var(--mono);font-size:12px;margin-bottom:8px">YouTube links, one per line</label>
+            <textarea id="compilation-links" class="compilation-links" placeholder="https://www.youtube.com/watch?v=...&#10;https://youtu.be/...&#10;https://www.youtube.com/shorts/..."></textarea>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+              <button class="ghost-chip" type="button" onclick="useCompilationExample('funny')">Funny moments</button>
+              <button class="ghost-chip" type="button" onclick="useCompilationExample('educational')">Educational breakdown</button>
+              <button class="ghost-chip" type="button" onclick="useCompilationExample('motivation')">Motivation mix</button>
+            </div>
+          </div>
+          <div class="compilation-options">
+            <div>
+              <label for="compilation-style">Compilation style</label>
+              <select id="compilation-style">
+                <option value="funniest">Funniest moments</option>
+                <option value="educational">Educational explainer</option>
+                <option value="controversial">Controversial takes</option>
+                <option value="motivational">Motivational story</option>
+                <option value="documentary">Documentary flow</option>
+              </select>
+            </div>
+            <div>
+              <label for="compilation-length">Target length</label>
+              <select id="compilation-length">
+                <option value="10">10 minutes</option>
+                <option value="20">20 minutes</option>
+                <option value="30" selected>30 minutes</option>
+                <option value="45">45 minutes</option>
+              </select>
+            </div>
+            <div>
+              <label for="compilation-brief">Ghost Editor instruction</label>
+              <input id="compilation-brief" placeholder="Start with the strongest hook, remove boring parts..." />
+            </div>
+            <button class="btn btn-full" type="button" onclick="createCompilationPlan()">Create Compilation Plan</button>
+            <button class="btn btn-ghost btn-full" type="button" onclick="explainCompilationBuild()">Build Final Video</button>
+          </div>
+        </div>
+        <div class="compilation-status" id="compilation-status"></div>
       </div>
+    </div>
 
+    <!-- ═══ PANEL 0: UPLOAD ═══ -->
+    <div class="panel active" id="p0">
+      <div class="card">
+        <div class="card-title">Upload your video</div>
+        <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+          <input type="file" id="file-input" accept="video/*,audio/*" />
+          <div class="upload-icon-wrap">⬆</div>
+          <h3>Drop your video here</h3>
+          <p>or <a>browse files</a> to select from your device</p>
+          <div class="formats">
+            <span class="fmt">MP4</span><span class="fmt">MOV</span><span class="fmt">MKV</span>
+            <span class="fmt">WEBM</span><span class="fmt">AVI</span><span class="fmt">MP3</span>
+            <span class="fmt">M4A</span>
+          </div>
+        </div>
+        <div class="or-divider">or paste a public URL</div>
+        <div class="url-row">
+          <input class="url-input" id="url-input" type="url" placeholder="https://example.com/video.mp4  or  YouTube/podcast URL" />
+          <button class="btn btn-primary" onclick="submitUrl()">Analyze</button>
+        </div>
+        <div id="upload-progress" style="display:none" class="progress-wrap">
+          <div class="progress-label">
+            <span id="upload-status">Uploading...</span>
+            <div class="progress-actions">
+              <span id="upload-pct">0%</span>
+              <button id="cancel-upload-btn" onclick="cancelUpload()" style="background:transparent;border:1px solid var(--red);color:var(--red);font-family:var(--font);font-size:12px;padding:3px 10px;border-radius:6px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='rgba(240,100,100,0.15)'" onmouseout="this.style.background='transparent'">✕ Cancel</button>
+            </div>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" id="upload-bar" style="width:0%"></div></div>
+          <div id="upload-size" style="font-size:12px;color:var(--text3);margin-top:6px;font-family:var(--mono)"></div>
+        </div>
+      </div>
       <div class="card ghost-card">
         <div class="ghost-head">
           <div>
-            <div class="ghost-title">Ghost Editor</div>
-            <div class="ghost-sub">Give the AI editor a plain-English command and it will build the clips, captions, and export setup for you.</div>
+            <div class="ghost-title">Ghost Editor Mode</div>
+            <div class="ghost-sub">Describe the edit once. ClipAI will pick the moment, set the length, choose captions, and prepare the export plan after transcription.</div>
           </div>
-          <div class="ghost-badge">No timestamps</div>
+          <div class="ghost-badge">Autopilot</div>
         </div>
-        <textarea class="ghost-input" id="ghost-brief-results" oninput="setGhostBrief(this.value)" placeholder="Example: Find the best 30-second hot take, start with the strongest line, add yellow pop captions."></textarea>
+        <textarea class="ghost-input" id="ghost-brief" oninput="setGhostBrief(this.value)" placeholder="Find the funniest moment, make it 30 seconds, add yellow captions, start with the punchline."></textarea>
         <div class="ghost-examples">
-          <button class="ghost-chip" type="button" onclick="useGhostExample('Find the best 30-second hot take, start with the strongest line, add yellow pop captions.')">Hot take</button>
-          <button class="ghost-chip" type="button" onclick="useGhostExample('Make one calm educational clip under 40 seconds with minimal white captions.')">Educational</button>
-          <button class="ghost-chip" type="button" onclick="useGhostExample('Find the most emotional story moment and make it feel like a TikTok confession.')">Emotional story</button>
+          <button class="ghost-chip" type="button" onclick="useGhostExample('Find the funniest moment, make it 30 seconds, add yellow captions, start with the punchline.')">Funny punchline</button>
+          <button class="ghost-chip" type="button" onclick="useGhostExample('Find the most controversial 45 seconds, make it high energy, and use bold TikTok captions.')">Controversial take</button>
+          <button class="ghost-chip" type="button" onclick="useGhostExample('Create 3 motivational clips under 35 seconds each with clean white captions for Instagram Reels.')">3 motivational clips</button>
         </div>
-        <button class="btn btn-primary btn-full" id="ghost-run-btn" type="button" onclick="runGhostEditor()">Create Ghost Edit</button>
-        <div class="ghost-status" id="ghost-status"></div>
+        <button class="btn btn-ghost btn-full" type="button" onclick="rememberGhostBrief()">Use this Ghost brief</button>
+        <div class="ghost-status" id="ghost-upload-status">Ghost brief saved. Upload or paste a video URL and ClipAI will run this automatically after transcription.</div>
       </div>
+    </div>
 
+    <!-- ═══ PANEL 1: TRANSCRIBE ═══ -->
+    <div class="panel" id="p1">
+      <div id="transcribe-progress" class="card">
+        <div class="card-title">Processing your video</div>
+        <div class="progress-wrap">
+          <div class="progress-label">
+            <span id="trans-status">Submitting to AssemblyAI...</span>
+            <span id="trans-pct">0%</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" id="trans-bar" style="width:0%"></div></div>
+        </div>
+        <div class="progress-steps">
+          <div class="p-step active" id="step-upload"><div class="p-dot"></div>Uploading media</div>
+          <div class="p-step" id="step-transcribe"><div class="p-dot"></div>Transcribing audio</div>
+          <div class="p-step" id="step-speakers"><div class="p-dot"></div>Detecting speakers</div>
+          <div class="p-step" id="step-moments"><div class="p-dot"></div>Analyzing key moments</div>
+          <div class="p-step" id="step-done"><div class="p-dot"></div>Ready</div>
+        </div>
+      </div>
+      <div id="transcribe-results" style="display:none">
+        <div class="stats-row" id="stats-row"></div>
+        <div class="card">
+          <div class="card-title">Transcript</div>
+          <div class="transcript-box" id="transcript-content"></div>
+        </div>
+        <div class="card ghost-card">
+          <div class="ghost-head">
+            <div>
+              <div class="ghost-title">Ghost Editor</div>
+              <div class="ghost-sub">Give the AI editor a plain-English command and it will build the clips, captions, and export setup for you.</div>
+            </div>
+            <div class="ghost-badge">No timestamps</div>
+          </div>
+          <textarea class="ghost-input" id="ghost-brief-results" oninput="setGhostBrief(this.value)" placeholder="Example: Find the best 30-second hot take, start with the strongest line, add yellow pop captions."></textarea>
+          <div class="ghost-examples">
+            <button class="ghost-chip" type="button" onclick="useGhostExample('Find the best 30-second hot take, start with the strongest line, add yellow pop captions.')">Hot take</button>
+            <button class="ghost-chip" type="button" onclick="useGhostExample('Make one calm educational clip under 40 seconds with minimal white captions.')">Educational</button>
+            <button class="ghost-chip" type="button" onclick="useGhostExample('Find the most emotional story moment and make it feel like a TikTok confession.')">Emotional story</button>
+          </div>
+          <button class="btn btn-primary btn-full" id="ghost-run-btn" type="button" onclick="runGhostEditor()">Create Ghost Edit</button>
+          <div class="ghost-status" id="ghost-status"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Key moments — click to select</div>
+          <div class="moments-grid" id="moments-grid"></div>
+          <div class="ai-row">
+            <input class="ai-input" id="moments-query" placeholder="Ask AI: find moments about fundraising, product launches..." />
+            <button class="btn btn-primary" id="moments-ask-btn" onclick="askMomentsAI()">Ask</button>
+          </div>
+          <div class="ai-output" id="moments-ai-out"></div>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="goToClips()">Generate clips from selected moments →</button>
+      </div>
+    </div>
+
+    <!-- ═══ PANEL 2: CLIPS ═══ -->
+    <div class="panel" id="p2">
       <div class="card">
-        <div class="card-title">Key moments — click to select</div>
-        <div class="moments-grid" id="moments-grid"></div>
+        <div class="card-title">AI clip suggestions — 9:16 vertical format</div>
+        <div id="clips-loading" style="display:flex;align-items:center;gap:12px;padding:20px 0;color:var(--text2);font-size:14px">
+          <div class="spinner"></div> Analyzing transcript and generating clip ideas...
+        </div>
+        <div class="clips-grid" id="clips-grid" style="display:none"></div>
+        <div class="ai-row" style="margin-top:20px">
+          <input class="ai-input" id="clip-query" placeholder="Generate a clip about a specific topic or moment..." />
+          <button class="btn btn-primary" id="clip-ask-btn" onclick="askClipAI()">Generate</button>
+        </div>
+        <div class="ai-output" id="clip-ai-out"></div>
+      </div>
+      <div class="card hook-lab-card">
+        <div class="hook-lab-head">
+          <div>
+            <div class="hook-lab-title">Hook Lab</div>
+            <div class="hook-lab-sub">Create and apply the first 2 seconds that make people stop scrolling.</div>
+          </div>
+          <div class="ghost-badge">Premium</div>
+        </div>
+        <div class="hook-lab-benefits">
+          <div class="hook-benefit"><strong>Visible in export</strong>Burns the chosen hook into the start of the MP4.</div>
+          <div class="hook-benefit"><strong>Better retention</strong>Tests curiosity, conflict, pain, story, and comment angles.</div>
+          <div class="hook-benefit"><strong>One-click apply</strong>Updates title, hook overlay, first caption, and filename.</div>
+        </div>
+        <button class="btn btn-ghost btn-full" id="hook-lab-btn" type="button" onclick="runHookLab()">Generate Hook Variants</button>
+        <div class="hook-lab-output" id="hook-lab-output"></div>
+      </div>
+      <div class="card memory-card">
+        <div class="memory-head">
+          <div>
+            <div class="memory-title">Viral Memory Engine</div>
+            <div class="memory-sub">ClipAI remembers which clips performed for you, then scores new clips against your audience patterns.</div>
+          </div>
+          <div class="ghost-badge">Learning</div>
+        </div>
+        <div class="memory-stats" id="memory-stats"></div>
+        <div class="memory-form">
+          <input id="memory-title" placeholder="Clip title or topic" />
+          <select id="memory-platform">
+            <option value="tiktok">TikTok</option>
+            <option value="reels">Reels</option>
+            <option value="shorts">Shorts</option>
+            <option value="linkedin">LinkedIn</option>
+          </select>
+          <input id="memory-views" type="number" min="0" placeholder="Views" />
+          <input id="memory-likes" type="number" min="0" placeholder="Likes" />
+          <input id="memory-comments" type="number" min="0" placeholder="Comments" />
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button class="btn btn-ghost" type="button" onclick="saveMemoryEntry()">Save Result</button>
+          <button class="btn btn-ghost" id="memory-analyze-btn" type="button" onclick="runViralMemory()">Score Current Clips</button>
+          <button class="btn btn-ghost" type="button" onclick="prefillMemoryFromSelectedClip()">Use Selected Clip</button>
+        </div>
+        <div class="memory-output" id="memory-output"></div>
+      </div>
+      <div class="action-row">
+        <div style="display:flex;gap:10px;margin-top:16px;width:100%">
+          <button class="btn btn-ghost" onclick="saveProject()" style="flex:1">💾 Save Project</button>
+          <button class="btn btn-primary" onclick="goStage(3)" style="flex:2">Continue to export →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ PANEL 3: EXPORT ═══ -->
+    <div class="panel" id="p3">
+      <div class="card">
+        <div class="card-title">Caption style — pick a preset or describe your own</div>
+        <div class="caption-presets" id="caption-presets"></div>
+        <div class="caption-control-grid">
+          <div class="caption-control">
+            <label for="caption-size-range">Size <strong id="caption-size-value">100%</strong></label>
+            <input id="caption-size-range" type="range" min="80" max="125" value="100" oninput="updateCaptionSetting('size', this.value)" />
+          </div>
+          <div class="caption-control">
+            <label for="caption-position-range">Position <strong id="caption-position-value">78%</strong></label>
+            <input id="caption-position-range" type="range" min="62" max="88" value="78" oninput="updateCaptionSetting('position', this.value)" />
+          </div>
+          <div class="caption-control">
+            <label for="caption-density-range">Words <strong id="caption-density-value">3</strong></label>
+            <input id="caption-density-range" type="range" min="2" max="4" value="3" oninput="updateCaptionSetting('words', this.value)" />
+          </div>
+        </div>
+        <div class="caption-mini-preview">
+          <div class="caption-mini-text" id="caption-mini-text">Make every clip feel ready to post</div>
+        </div>
         <div class="ai-row">
-          <input class="ai-input" id="moments-query"
-            placeholder="Ask AI: find moments about fundraising, product launches..." />
-          <button class="btn btn-primary" id="moments-ask-btn" onclick="askMomentsAI()">Ask</button>
+          <input class="ai-input" id="cap-query" placeholder="Optional: describe a custom caption style..." />
+          <button class="btn btn-primary" id="cap-btn" onclick="generateCaptions()">Preview</button>
         </div>
-        <div class="ai-output" id="moments-ai-out"></div>
+        <div class="ai-output" id="cap-ai-out"></div>
       </div>
-
-      <button class="btn btn-primary btn-full" onclick="goToClips()">
-        Generate clips from selected moments →
-      </button>
-    </div>
-  </div>
-
-  <!-- ═══ PANEL 2: CLIPS ═══ -->
-  <div class="panel" id="p2">
-    <div class="card">
-      <div class="card-title">AI clip suggestions — 9:16 vertical format</div>
-      <div id="clips-loading" style="display:flex;align-items:center;gap:12px;padding:20px 0;color:var(--text2);font-size:14px">
-        <div class="spinner"></div> Analyzing transcript and generating clip ideas...
-      </div>
-      <div class="clips-grid" id="clips-grid" style="display:none"></div>
-      <div class="ai-row" style="margin-top:20px">
-        <input class="ai-input" id="clip-query"
-          placeholder="Generate a clip about a specific topic or moment..." />
-        <button class="btn btn-primary" id="clip-ask-btn" onclick="askClipAI()">Generate</button>
-      </div>
-      <div class="ai-output" id="clip-ai-out"></div>
-    </div>
-    <div class="card hook-lab-card">
-      <div class="hook-lab-head">
-        <div>
-          <div class="hook-lab-title">Hook Lab</div>
-          <div class="hook-lab-sub">Create and apply the first 2 seconds that make people stop scrolling. Applied hooks are burned into exported MP4s as an opening overlay.</div>
-        </div>
-        <div class="ghost-badge">Premium</div>
-      </div>
-      <div class="hook-lab-benefits">
-        <div class="hook-benefit"><strong>Visible in export</strong>Burns the chosen hook into the start of the MP4.</div>
-        <div class="hook-benefit"><strong>Better retention</strong>Tests curiosity, conflict, pain, story, and comment angles.</div>
-        <div class="hook-benefit"><strong>One-click apply</strong>Updates title, hook overlay, first caption, and filename.</div>
-      </div>
-      <button class="btn btn-ghost btn-full" id="hook-lab-btn" type="button" onclick="runHookLab()">Generate Hook Variants</button>
-      <div class="hook-lab-output" id="hook-lab-output"></div>
-    </div>
-    <div class="card memory-card">
-      <div class="memory-head">
-        <div>
-          <div class="memory-title">Viral Memory Engine</div>
-          <div class="memory-sub">ClipAI remembers which clips performed for you, then scores new clips against your audience patterns instead of generic viral guesses.</div>
-        </div>
-        <div class="ghost-badge">Learning</div>
-      </div>
-      <div class="memory-stats" id="memory-stats"></div>
-      <div class="memory-form">
-        <input id="memory-title" placeholder="Clip title or topic" />
-        <select id="memory-platform">
-          <option value="tiktok">TikTok</option>
-          <option value="reels">Reels</option>
-          <option value="shorts">Shorts</option>
-          <option value="linkedin">LinkedIn</option>
-        </select>
-        <input id="memory-views" type="number" min="0" placeholder="Views" />
-        <input id="memory-likes" type="number" min="0" placeholder="Likes" />
-        <input id="memory-comments" type="number" min="0" placeholder="Comments" />
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-        <button class="btn btn-ghost" type="button" onclick="saveMemoryEntry()">Save Result</button>
-        <button class="btn btn-ghost" id="memory-analyze-btn" type="button" onclick="runViralMemory()">Score Current Clips</button>
-        <button class="btn btn-ghost" type="button" onclick="prefillMemoryFromSelectedClip()">Use Selected Clip</button>
-      </div>
-      <div class="memory-output" id="memory-output"></div>
-    </div>
-    <div class="action-row">
-      <button class="btn btn-primary btn-full" onclick="goStage(3)" style="margin-top:16px">Continue to export →</button>
-    </div>
-  </div>
-
-  <!-- ═══ PANEL 3: EXPORT ═══ -->
-  <div class="panel" id="p3">
-    <div class="card">
       <div class="card">
-  <div class="card-title">Caption style — pick a preset or describe your own</div>
-  <div class="caption-presets">
-    <div class="preset-btn active" onclick="selectPreset(this,'tiktok-bold')">
-      <div class="preset-preview" style="background:#000;color:#fff;font-size:13px;font-weight:900;font-family:Arial Black,sans-serif">BOLD TEXT</div>
-      <div class="preset-name">TikTok Bold</div>
-    </div>
-    <div class="preset-btn" onclick="selectPreset(this,'yellow-pop')">
-      <div class="preset-preview" style="background:#111;color:#FFE600;font-size:13px;font-weight:800">Yellow Pop</div>
-      <div class="preset-name">MrBeast Yellow</div>
-    </div>
-    <div class="preset-btn" onclick="selectPreset(this,'minimal-white')">
-      <div class="preset-preview" style="background:#000;color:#fff;font-size:12px;font-weight:400">minimal clean</div>
-      <div class="preset-name">Minimal White</div>
-    </div>
-    <div class="preset-btn" onclick="selectPreset(this,'karaoke')">
-      <div class="preset-preview" style="background:#1a0a2e;font-size:12px"><span style="color:#fff">word </span><span style="color:#7c6af7;font-weight:800">by </span><span style="color:#fff">word</span></div>
-      <div class="preset-name">Karaoke</div>
-    </div>
-    <div class="preset-btn" onclick="selectPreset(this,'neon')">
-      <div class="preset-preview" style="background:#000;color:#00ff88;font-size:12px;font-weight:700;text-shadow:0 0 8px #00ff88">NEON GLOW</div>
-      <div class="preset-name">Neon Glow</div>
-    </div>
-    <div class="preset-btn" onclick="selectPreset(this,'subtitle')">
-      <div class="preset-preview" style="background:rgba(0,0,0,0.7);color:#fff;font-size:11px;padding:0 4px">Subtitle style</div>
-      <div class="preset-name">Subtitle Box</div>
-    </div>
-  </div>
-  <div class="ai-row">
-    <input class="ai-input" id="cap-query-old" placeholder="Or describe your own: bold yellow, word-by-word pop..." />
-    <button class="btn btn-primary" id="cap-btn-old" onclick="generateCaptions()">Preview</button>
-  </div>
-  <div id="cap-ai-out-old" style="display:none;margin-top:16px"></div>
-</div>
-      <div class="caption-presets" id="caption-presets"></div>
-      <div class="caption-control-grid">
-        <div class="caption-control">
-          <label for="caption-size-range">Size <strong id="caption-size-value">100%</strong></label>
-          <input id="caption-size-range" type="range" min="80" max="125" value="100" oninput="updateCaptionSetting('size', this.value)" />
-        </div>
-        <div class="caption-control">
-          <label for="caption-position-range">Position <strong id="caption-position-value">78%</strong></label>
-          <input id="caption-position-range" type="range" min="62" max="88" value="78" oninput="updateCaptionSetting('position', this.value)" />
-        </div>
-        <div class="caption-control">
-          <label for="caption-density-range">Words <strong id="caption-density-value">3</strong></label>
-          <input id="caption-density-range" type="range" min="2" max="4" value="3" oninput="updateCaptionSetting('words', this.value)" />
+        <div class="card-title">Export &amp; share</div>
+        <div class="export-grid">
+          <div class="export-card" onclick="exportTo('mp4')">
+            <span class="ex-icon">⬇</span>
+            <div class="ex-name">Download MP4</div>
+            <div class="ex-sub">9:16 · 1080×1920</div>
+          </div>
+          <div class="export-card" onclick="exportTo('tiktok')">
+            <span class="ex-icon">▶</span>
+            <div class="ex-name">TikTok</div>
+            <div class="ex-sub">Direct publish</div>
+          </div>
+          <div class="export-card" onclick="exportTo('reels')">
+            <span class="ex-icon">◈</span>
+            <div class="ex-name">Instagram Reels</div>
+            <div class="ex-sub">Direct publish</div>
+          </div>
+          <div class="export-card" onclick="exportTo('shorts')">
+            <span class="ex-icon">▷</span>
+            <div class="ex-name">YouTube Shorts</div>
+            <div class="ex-sub">Direct publish</div>
+          </div>
         </div>
       </div>
-      <div class="caption-mini-preview">
-        <div class="caption-mini-text" id="caption-mini-text">Make every clip feel ready to post</div>
-      </div>
-      <div class="ai-row">
-        <input class="ai-input" id="cap-query"
-          placeholder="Optional: describe a custom caption style..." />
-        <button class="btn btn-primary" id="cap-btn" onclick="generateCaptions()">Preview</button>
-      </div>
-      <div class="ai-output" id="cap-ai-out"></div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Export & share</div>
-      <div class="export-grid">
-        <div class="export-card" onclick="exportTo('mp4')">
-          <span class="ex-icon">⬇</span>
-          <div class="ex-name">Download MP4</div>
-          <div class="ex-sub">9:16 · 1080×1920</div>
-        </div>
-        <div class="export-card" onclick="exportTo('tiktok')">
-          <span class="ex-icon">▶</span>
-          <div class="ex-name">TikTok</div>
-          <div class="ex-sub">Direct publish</div>
-        </div>
-        <div class="export-card" onclick="exportTo('reels')">
-          <span class="ex-icon">◈</span>
-          <div class="ex-name">Instagram Reels</div>
-          <div class="ex-sub">Direct publish</div>
-        </div>
-        <div class="export-card" onclick="exportTo('shorts')">
-          <span class="ex-icon">▷</span>
-          <div class="ex-name">YouTube Shorts</div>
-          <div class="ex-sub">Direct publish</div>
-        </div>
+      <div class="card">
+        <div class="card-title">Selected clips summary</div>
+        <div id="export-summary" style="color:var(--text2);font-size:14px;line-height:1.7"></div>
+        <button class="btn btn-ghost btn-full" onclick="createNewClips()" style="margin-top:16px">+ Create New Clips</button>
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-title">Selected clips summary</div>
-      <div id="export-summary" style="color:var(--text2);font-size:14px;line-height:1.7"></div>
-      <button class="btn btn-ghost btn-full" onclick="createNewClips()" style="margin-top:16px">Create New Clips</button>
-    </div>
-  </div>
-
-</div><!-- /app-shell -->
+  </div><!-- /app-shell -->
+</div><!-- /workspace -->
 
 <div id="toast"></div>
 
@@ -1678,11 +1952,19 @@ async function saveExportedVideo(blob, filename) {
 function chooseCreationMode(mode) {
   currentCreationMode = mode === 'compilation' ? 'compilation' : 'clips';
   const isCompilation = currentCreationMode === 'compilation';
-  const shell = document.querySelector('.app-shell');
+
+  // Hide dashboard, show workspace
+  const dashboard = document.getElementById('dashboard');
+  const workspace = document.getElementById('workspace');
+  if (dashboard) dashboard.style.display = 'none';
+  if (workspace) workspace.style.display = 'block';
+
+  document.body.classList.remove('awaiting-choice');
+  document.body.classList.add('workspace-active');
+
   const stages = document.querySelector('.stages');
   const studio = document.getElementById('compilation-studio');
 
-  if (shell) shell.style.display = 'block';
   document.getElementById('mode-clips')?.classList.toggle('active', !isCompilation);
   document.getElementById('mode-compilation')?.classList.toggle('active', isCompilation);
 
@@ -1692,9 +1974,25 @@ function chooseCreationMode(mode) {
   });
   if (studio) studio.style.display = isCompilation ? 'block' : 'none';
 
+  // Show back button
+  const backBtn = document.getElementById('back-to-dashboard-btn');
+  if (backBtn) backBtn.classList.remove('hidden');
+
   if (!isCompilation) {
     goStage(state.currentStage || 0);
   }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function backToDashboard() {
+  const dashboard = document.getElementById('dashboard');
+  const workspace = document.getElementById('workspace');
+  if (dashboard) dashboard.style.display = 'block';
+  if (workspace) workspace.style.display = 'none';
+  document.body.classList.remove('workspace-active');
+  // dashboard handles mode selection
+  const backBtn = document.getElementById('back-to-dashboard-btn');
+  if (backBtn) backBtn.classList.add('hidden');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -2138,14 +2436,34 @@ async function submitUrl() {
     }, 500);
 
     try {
+      // Step 1: Get direct download URL from RapidAPI (user's browser)
+      document.getElementById('upload-size').textContent = 'Getting download link...';
+      const RAPIDAPI_KEY = '2739c1edfcmsh6e763515222fb6bp1b7684jsne1a821094a00';
+      const RAPIDAPI_HOST = 'youtube-video-fast-downloader-24-7.p.rapidapi.com';
+      const match = url.match(/(?:v=|youtu\.be\/|shorts\/)([^&\n?#]+)/);
+      const videoId = match ? match[1] : null;
+      if (!videoId) throw new Error('Could not extract video ID from URL');
+
+      const rapidRes = await fetch(`https://${RAPIDAPI_HOST}/download_video/${videoId}?quality=247`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-rapidapi-host': RAPIDAPI_HOST,
+          'x-rapidapi-key': RAPIDAPI_KEY
+        }
+      });
+      const rapidData = await rapidRes.json();
+      const directUrl = rapidData?.file || rapidData?.url || rapidData?.link;
+      if (!directUrl) throw new Error('Could not get download link from RapidAPI');
+
+      document.getElementById('upload-size').textContent = 'Sending to server for transcription...';
+
+      // Step 2: Send direct URL to backend for download + AssemblyAI upload
       const res = await fetch(RAILWAY_URL + '/api/youtube-upload', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ url })
+        body: JSON.stringify({ url: directUrl, originalUrl: url })
       });
-      const raw = await res.text();
-      let data;
-      try { data = JSON.parse(raw); } catch(e) { throw new Error('Backend returned invalid response: ' + raw.slice(0, 120)); }
+      const data = await res.json();
       clearInterval(fakeTimer);
 
       if (!res.ok) throw new Error(data.error || 'YouTube download failed');
@@ -2179,11 +2497,19 @@ async function submitUrl() {
 // YouTube help removed — yt-dlp now handles YouTube directly
 
 async function startTranscription(videoUrl) {
+  // Make sure workspace is visible
+  const dashboard = document.getElementById('dashboard');
+  const workspace = document.getElementById('workspace');
+  if (dashboard) dashboard.style.display = 'none';
+  if (workspace) workspace.style.display = 'block';
+  document.body.classList.remove('awaiting-choice');
+  document.body.classList.add('workspace-active');
   currentCreationMode = 'clips';
-  document.querySelector('.app-shell')?.style.setProperty('display', 'block');
   document.querySelector('.stages')?.style.setProperty('display', 'flex');
   document.getElementById('compilation-studio')?.style.setProperty('display', 'none');
   document.querySelectorAll('.panel').forEach(panel => { panel.style.display = ''; });
+  const backBtn = document.getElementById('back-to-dashboard-btn');
+  if (backBtn) backBtn.classList.remove('hidden');
   // Unlock FIRST so goStage can navigate
   unlockStage(1);
   goStage(1);
@@ -3519,6 +3845,14 @@ function initAuth() {
   const token = localStorage.getItem('clipai_token');
   const user = JSON.parse(localStorage.getItem('clipai_user') || 'null');
   const navAuth = document.getElementById('nav-auth');
+
+  // Update dashboard greeting
+  const greeting = document.getElementById('dashboard-greeting');
+  if (greeting && user) {
+    const name = (user.email || '').split('@')[0];
+    greeting.textContent = 'Welcome back, ' + name + ' 👋';
+  }
+
   if (token && user) {
     navAuth.innerHTML =
       '<button onclick="doLogout()" class="nav-action" type="button">Sign out</button>';
@@ -3665,6 +3999,7 @@ function closeSidebar() {
 
 // Init
 state.unlockedStage = 0;
+// dashboard handles mode selection
 initTheme();
 loadViralMemory();
 requestNativeNotifications();
@@ -3820,6 +4155,76 @@ function drawPreviewFrame(frame) {
     ctx.beginPath(); ctx.moveTo(W/2 - 10, H/2 - 14); ctx.lineTo(W/2 + 14, H/2); ctx.lineTo(W/2 - 10, H/2 + 14); ctx.closePath(); ctx.fill();
   }
 }
+</script>
+
+// ── DASHBOARD EXTRAS ──
+function loadDashboardStats() {
+  const token = localStorage.getItem('clipai_token');
+  if (!token) return;
+
+  // Load viral memory count
+  try {
+    const mem = JSON.parse(localStorage.getItem('clipai_viral_memory') || '[]');
+    document.getElementById('dash-stat-memory').textContent = mem.length;
+  } catch(e) {}
+
+  // Load projects for recent list
+  fetch('/api/projects', { headers: { 'authorization': 'Bearer ' + token } })
+    .then(r => r.json())
+    .then(projects => {
+      if (!Array.isArray(projects)) return;
+      document.getElementById('dash-stat-projects').textContent = projects.length;
+
+      // Count total clips across projects
+      const totalClips = projects.reduce((sum, p) => sum + (p.clips?.length || 0), 0);
+      document.getElementById('dash-stat-clips').textContent = totalClips;
+
+      // Show recent projects
+      if (projects.length > 0) {
+        const section = document.getElementById('recent-projects-section');
+        const list = document.getElementById('recent-projects-list');
+        if (section) section.style.display = 'block';
+        if (list) {
+          list.innerHTML = projects.slice(0, 3).map(p => `
+            <div class="recent-project-row" onclick="loadProjectFromDashboard('${JSON.stringify(p).replace(/'/g, "\'")}')" >
+              <div class="recent-project-icon">🎬</div>
+              <div class="recent-project-title">${p.title || 'Untitled Project'}</div>
+              <div class="recent-project-meta">${p.clips?.length || 0} clips · ${new Date(p.created_at).toLocaleDateString()}</div>
+            </div>
+          `).join('');
+        }
+      }
+    })
+    .catch(() => {});
+}
+
+function loadProjectFromDashboard(projectJson) {
+  try {
+    const p = typeof projectJson === 'string' ? JSON.parse(projectJson) : projectJson;
+    // Switch to clips workspace first
+    chooseCreationMode('clips');
+    // Then load project
+    setTimeout(() => loadProject(JSON.stringify(p)), 100);
+  } catch(e) {
+    toast('Could not load project');
+  }
+}
+
+// Update workspace pills when mode changes
+const origChoose = chooseCreationMode;
+function updateWorkspacePills(mode) {
+  document.getElementById('ws-pill-clips')?.classList.toggle('active', mode !== 'compilation');
+  document.getElementById('ws-pill-compilation')?.classList.toggle('active', mode === 'compilation');
+  document.getElementById('new-clips-btn2')?.classList.toggle('hidden', state.unlockedStage === 0 && !state.transcript);
+}
+
+// Hook into chooseCreationMode to update pills
+const _origChoose = chooseCreationMode;
+
+// Call dashboard stats on load
+window.addEventListener('DOMContentLoaded', () => {
+  loadDashboardStats();
+});
 </script>
 </body>
 </html>
