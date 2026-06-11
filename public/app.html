@@ -1889,6 +1889,11 @@ const compilationState = {
   busy: false
 };
 
+const billingState = {
+  status: null,
+  busy: false
+};
+
 // ═══ UTILS ═══
 function formatUserError(error, fallback = 'Something went wrong. Please try again.') {
   const raw = String(error?.message || error || '').trim();
@@ -1986,6 +1991,103 @@ async function saveExportedVideo(blob, filename) {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   return { native: false };
+}
+
+function getAuthToken() {
+  return localStorage.getItem('clipai_token') || '';
+}
+
+async function readBillingJson(res) {
+  const raw = await res.text();
+  try {
+    return raw ? JSON.parse(raw) : {};
+  } catch (err) {
+    return { error: raw };
+  }
+}
+
+async function requestBilling(action) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Please sign in again');
+  const options = {
+    method: action ? 'POST' : 'GET',
+    headers: {
+      'content-type': 'application/json',
+      authorization: 'Bearer ' + token
+    }
+  };
+  if (action) options.body = JSON.stringify({ action });
+  const res = await fetch(API_URL + '/api/billing', options);
+  const data = await readBillingJson(res);
+  if (!res.ok && res.status !== 402) throw new Error(data.error || 'Billing could not be checked');
+  billingState.status = data;
+  return data;
+}
+
+function billingSummaryText(status) {
+  if (!status) return 'Checking your plan...';
+  if (status.isSubscribed) return 'ClipAI Pro active';
+  const remaining = Math.max(0, Number(status.exportsRemaining || 0));
+  return remaining === 1 ? '1 free export left' : remaining + ' free exports left';
+}
+
+function showPaywall(status) {
+  let modal = document.getElementById('paywall-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'paywall-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.78);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;padding:18px';
+    modal.innerHTML =
+      '<div style="width:min(440px,100%);background:var(--bg2);border:1px solid var(--border2);border-radius:18px;padding:22px;box-shadow:0 24px 80px rgba(0,0,0,0.45)">' +
+        '<div style="display:flex;justify-content:space-between;gap:14px;align-items:flex-start;margin-bottom:14px">' +
+          '<div><div style="font-size:20px;font-weight:800;color:var(--text);line-height:1.2">Unlock ClipAI Pro</div>' +
+          '<div id="paywall-sub" style="font-size:13px;color:var(--text2);line-height:1.6;margin-top:6px">Your free exports are complete.</div></div>' +
+          '<button type="button" onclick="closePaywall()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);width:32px;height:32px;border-radius:50%;cursor:pointer">x</button>' +
+        '</div>' +
+        '<div style="display:grid;gap:9px;margin:16px 0">' +
+          '<button type="button" class="btn btn-ghost btn-full" onclick="selectPendingPlan(&quot;weekly&quot;)">Weekly - flexible access</button>' +
+          '<button type="button" class="btn btn-ghost btn-full" onclick="selectPendingPlan(&quot;monthly&quot;)">Monthly - best for regular creators</button>' +
+          '<button type="button" class="btn btn-primary btn-full" onclick="selectPendingPlan(&quot;yearly&quot;)">Yearly - best value</button>' +
+        '</div>' +
+        '<div id="paywall-note" style="font-size:12px;color:var(--text3);line-height:1.6;text-align:center">Payments are being connected with RevenueCat next. Your trial limit is already protected.</div>' +
+      '</div>';
+    document.body.appendChild(modal);
+  }
+  const sub = document.getElementById('paywall-sub');
+  if (sub) sub.textContent = status?.requiresPayment
+    ? 'You have used your 3 free exports. Choose a plan to continue exporting.'
+    : 'Choose a plan to continue exporting without limits.';
+  modal.style.display = 'flex';
+}
+
+function closePaywall() {
+  const modal = document.getElementById('paywall-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function selectPendingPlan(plan) {
+  toast('Payment setup is next. We will connect the ' + plan + ' plan with RevenueCat.');
+}
+
+async function ensureExportAllowed() {
+  try {
+    const status = await requestBilling('check_export');
+    if (status.canExport) return true;
+    showPaywall(status);
+    return false;
+  } catch (err) {
+    toast(formatUserError(err, 'We could not check your plan. Please try again.'));
+    return false;
+  }
+}
+
+async function recordSuccessfulExport() {
+  try {
+    const status = await requestBilling('record_export');
+    toast(billingSummaryText(status), 2500);
+  } catch (err) {
+    console.warn('[ClipAI] Billing usage update failed:', err);
+  }
 }
 
 function chooseCreationMode(mode) {
@@ -2270,6 +2372,7 @@ async function buildCompilationVideo() {
     toast('Please prepare the compilation again before building the final video.', 6000);
     return;
   }
+  if (!(await ensureExportAllowed())) return;
 
   compilationState.busy = true;
   if (out) {
@@ -2318,6 +2421,7 @@ async function buildCompilationVideo() {
     }
     toast('Final compilation ' + (saved.native ? 'saved to Gallery' : 'downloaded'), 5000);
     notifyNative('ClipAI compilation ready', 'Your final compilation video is ready.');
+    await recordSuccessfulExport();
   } catch (err) {
     if (out) out.innerHTML = '<span style="color:var(--red)">' + escapeHTML(formatUserError(err, 'We could not create the final video. Please try again with fewer or shorter sources.')) + '</span>';
     toast(formatUserError(err, 'We could not create the final video. Please try again with fewer or shorter sources.'), 7000);
@@ -3979,6 +4083,7 @@ async function exportTo(platform) {
   for (let idx = 0; idx < selected.length; idx++) {
     const clip = selected[idx];
     const label = clip.title || ('Clip ' + (idx + 1));
+    if (!(await ensureExportAllowed())) break;
 
     summaryEl.innerHTML = '<div style="padding:16px;color:var(--text2);font-size:14px;display:flex;align-items:center;gap:12px">' +
       '<div class="spinner"></div> Cutting "' + label + '" (' + (idx+1) + '/' + selected.length + ')... this may take a minute</div>';
@@ -4018,6 +4123,7 @@ async function exportTo(platform) {
       const saved = await saveExportedVideo(blob, filename);
 
       toast('"' + label + '" ' + (saved.native ? 'saved to Gallery!' : 'downloaded!'), 3000);
+      await recordSuccessfulExport();
 
     } catch (err) {
       toast(formatUserError(err, 'We could not export "' + label + '". Please try again.'), 6000);
