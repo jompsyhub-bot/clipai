@@ -524,7 +524,7 @@
 
     <section class="form-wrap" aria-label="Account access">
       <div class="form-head">
-        <h2>Welcome back</h2>
+        <h2>Sign in to ClipAI</h2>
         <p>Access your clips, Ghost Editor briefs, saved projects, and Compilation Studio.</p>
       </div>
 
@@ -581,7 +581,7 @@
     document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
     document.getElementById('form-login').style.display = tab === 'login' ? 'block' : 'none';
     document.getElementById('form-signup').style.display = tab === 'signup' ? 'block' : 'none';
-    document.querySelector('.form-head h2').textContent = tab === 'login' ? 'Welcome back' : 'Create your workspace';
+    document.querySelector('.form-head h2').textContent = tab === 'login' ? 'Sign in to ClipAI' : 'Create your workspace';
     document.querySelector('.form-head p').textContent = tab === 'login'
       ? 'Access your clips, Ghost Editor briefs, saved projects, and Compilation Studio.'
       : 'Start turning long videos into clips, hooks, and compilation plans.';
@@ -590,8 +590,33 @@
 
   function showMsg(text, type) {
     const el = document.getElementById('msg');
-    el.textContent = text;
+    el.textContent = type === 'error' ? formatAuthMessage(text) : text;
     el.className = 'msg ' + type;
+  }
+
+  function formatAuthMessage(error) {
+    const raw = String(error?.message || error || '').trim();
+    const lower = raw.toLowerCase();
+    if (!raw) return 'We could not complete that request. Please try again.';
+    if (lower.includes('<!doctype') || lower.includes('<html') || lower.includes('json') || lower.includes('server returned')) {
+      return 'We could not reach ClipAI right now. Please check your connection and try again.';
+    }
+    if (lower.includes('failed to fetch') || lower.includes('network') || lower.includes('offline')) {
+      return 'You appear to be offline. Reconnect and try again.';
+    }
+    if (lower.includes('invalid') || lower.includes('credential') || lower.includes('login') || lower.includes('password')) {
+      return 'The email or password is not correct. Please try again.';
+    }
+    if (lower.includes('already') || lower.includes('exists')) {
+      return 'An account with this email already exists. Try signing in instead.';
+    }
+    if (lower.includes('email')) {
+      return 'Please enter a valid email address.';
+    }
+    if (raw.length > 120 || /[<>]/.test(raw) || /https?:\/\//i.test(raw)) {
+      return 'We could not complete that request. Please try again.';
+    }
+    return raw;
   }
 
   function setLoading(btnId, loading) {
@@ -606,7 +631,7 @@
     try {
       return JSON.parse(text);
     } catch (err) {
-      throw new Error('Login server returned HTML instead of JSON. Check that the APK is calling ' + API_URL + '/api/auth');
+      throw new Error('The sign-in service is temporarily unavailable.');
     }
   }
 
@@ -625,10 +650,10 @@
       if (!res.ok) throw new Error(data.error || 'Login failed');
       localStorage.setItem('clipai_token', data.token);
       localStorage.setItem('clipai_user', JSON.stringify(data.user));
-      showMsg('Welcome back. Redirecting...', 'success');
-      setTimeout(() => window.location.href = 'app.html', 900);
+      showMsg('Signed in successfully.', 'success');
+      setTimeout(() => window.location.href = 'app.html', 600);
     } catch(err) {
-      showMsg(err.message, 'error');
+      showMsg(err, 'error');
       setLoading('login-btn', false);
     }
   }
@@ -647,11 +672,11 @@
       });
       const data = await readJsonResponse(res);
       if (!res.ok) throw new Error(data.error || 'Signup failed');
-      showMsg(data.message || 'Account created. You can now sign in.', 'success');
+      showMsg('Account created. You can now sign in.', 'success');
       setLoading('signup-btn', false);
       setTimeout(() => switchTab('login'), 1800);
     } catch(err) {
-      showMsg(err.message, 'error');
+      showMsg(err, 'error');
       setLoading('signup-btn', false);
     }
   }
