@@ -2092,11 +2092,19 @@ function renderCompilationPlan(plan) {
   const out = document.getElementById('compilation-status');
   if (!out) return;
   const segments = Array.isArray(plan.segments) ? plan.segments : [];
+  const totalSeconds = Math.round(segments.reduce((sum, segment) => {
+    const start = Number(segment.start_ms || segment.startMs || 0);
+    const end = Number(segment.end_ms || segment.endMs || 0);
+    const seconds = end > start ? (end - start) / 1000 : Number(segment.target_seconds || 0);
+    return sum + Math.max(0, seconds || 0);
+  }, 0));
   const segmentHtml = segments.map((segment, index) => `
     <div class="compilation-segment">
       <strong>${index + 1}. ${escapeHTML(segment.title || 'Source segment')}</strong>
-      <span>${escapeHTML(segment.source || '')}</span>
+      <span>${escapeHTML(segment.source || '')}${segment.start_ms !== undefined ? ' · ' + formatTime(segment.start_ms) + ' → ' + formatTime(segment.end_ms || segment.start_ms) : ''}</span>
       <div style="margin-top:6px;color:var(--text2)">${escapeHTML(segment.direction || segment.reason || '')}</div>
+      ${segment.reason ? `<div style="margin-top:6px;color:var(--text3);font-size:12px">${escapeHTML(segment.reason)}</div>` : ''}
+      ${segment.transition || segment.energy ? `<div style="margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--accent2)">${escapeHTML([segment.energy, segment.transition].filter(Boolean).join(' · '))}</div>` : ''}
     </div>
   `).join('');
   out.classList.add('show');
@@ -2106,9 +2114,12 @@ function renderCompilationPlan(plan) {
     <div style="margin-top:10px;font-family:var(--mono);font-size:12px;color:var(--text3)">
       ${plan.source_count || compilationState.links.length} sources · ${plan.target_minutes || '?'} min target · ${escapeHTML(plan.style || 'custom')}
     </div>
+    <div style="margin-top:6px;font-family:var(--mono);font-size:12px;color:var(--accent2)">
+      Planned runtime: ${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}
+    </div>
     <div class="compilation-plan">${segmentHtml}</div>
-    <div style="margin-top:12px;color:var(--green);font-size:13px">
-      Sources are downloaded and transcribed. Next step: render the final compilation MP4 from this blueprint.
+    <div style="margin-top:12px;color:${plan.renderer_ready ? 'var(--green)' : 'var(--amber)'};font-size:13px">
+      ${plan.renderer_ready ? 'Ghost Editor timeline is render-ready. Build Final Video will cut and join these exact timestamps.' : 'Plan created, but exact render timestamps are limited. Create the plan again if the transcripts did not finish.'}
     </div>
   `;
 }
