@@ -1652,15 +1652,15 @@
         <div class="card-title">Processing your video</div>
         <div class="progress-wrap">
           <div class="progress-label">
-            <span id="trans-status">Submitting to AssemblyAI...</span>
+            <span id="trans-status">Preparing your video...</span>
             <span id="trans-pct">0%</span>
           </div>
           <div class="progress-bar"><div class="progress-fill" id="trans-bar" style="width:0%"></div></div>
         </div>
         <div class="progress-steps">
           <div class="p-step active" id="step-upload"><div class="p-dot"></div>Uploading media</div>
-          <div class="p-step" id="step-transcribe"><div class="p-dot"></div>Transcribing audio</div>
-          <div class="p-step" id="step-speakers"><div class="p-dot"></div>Detecting speakers</div>
+          <div class="p-step" id="step-transcribe"><div class="p-dot"></div>Reading your video</div>
+          <div class="p-step" id="step-speakers"><div class="p-dot"></div>Understanding the speakers</div>
           <div class="p-step" id="step-moments"><div class="p-dot"></div>Analyzing key moments</div>
           <div class="p-step" id="step-done"><div class="p-dot"></div>Ready</div>
         </div>
@@ -1890,9 +1890,47 @@ const compilationState = {
 };
 
 // ═══ UTILS ═══
+function formatUserError(error, fallback = 'Something went wrong. Please try again.') {
+  const raw = String(error?.message || error || '').trim();
+  if (!raw) return fallback;
+  const text = raw.replace(/\s+/g, ' ');
+  const lower = text.toLowerCase();
+
+  if (lower.includes('<!doctype') || lower.includes('<html') || lower.includes('unexpected token') || lower.includes('invalid response') || lower.includes('instead of json')) {
+    return 'We could not complete that request. Please check your connection and try again.';
+  }
+  if (lower.includes('network') || lower.includes('failed to fetch') || lower.includes('load failed') || lower.includes('offline')) {
+    return 'You appear to be offline. Reconnect and try again.';
+  }
+  if (lower.includes('youtube') || lower.includes('download link') || lower.includes('video id') || lower.includes('private') || lower.includes('unavailable')) {
+    return 'One of the video links could not be opened. Please use a public YouTube link and try again.';
+  }
+  if (lower.includes('transcript') || lower.includes('transcrib') || lower.includes('assemblyai')) {
+    return 'We could not read the audio from this video. Please try again or use another video.';
+  }
+  if (lower.includes('ffmpeg') || lower.includes('cut') || lower.includes('concat') || lower.includes('renderer') || lower.includes('render') || lower.includes('source file')) {
+    return 'We could not finish creating the video. Please try again with shorter clips or rebuild the project.';
+  }
+  if (lower.includes('auth') || lower.includes('login') || lower.includes('signup') || lower.includes('password') || lower.includes('email') || lower.includes('invalid credentials')) {
+    return 'We could not sign you in with those details. Please check and try again.';
+  }
+  if (text.length > 140 || /https?:\/\//i.test(text) || /[{}[\]<>]/.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function professionalMessage(message) {
+  const raw = String(message || '').trim();
+  if (/error|failed|doctype|html|ffmpeg|invalid response|server error|exception|trace/i.test(raw)) {
+    return formatUserError(raw);
+  }
+  return raw;
+}
+
 function toast(msg, duration = 3000) {
   const t = document.getElementById('toast');
-  t.textContent = msg;
+  t.textContent = professionalMessage(msg);
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), duration);
 }
@@ -2083,7 +2121,7 @@ async function waitForCompilationTranscript(transcriptId, onStatus) {
     if (!res.ok) throw new Error('Transcript status failed');
     const data = await res.json();
     if (data.status === 'completed') return data;
-    if (data.status === 'error') throw new Error(data.error || 'AssemblyAI returned an error');
+    if (data.status === 'error') throw new Error(data.error || 'Audio processing failed');
   }
   throw new Error('Transcription timed out');
 }
@@ -2119,7 +2157,7 @@ function renderCompilationPlan(plan) {
     </div>
     <div class="compilation-plan">${segmentHtml}</div>
     <div style="margin-top:12px;color:${plan.renderer_ready ? 'var(--green)' : 'var(--amber)'};font-size:13px">
-      ${plan.renderer_ready ? 'Ghost Editor timeline is render-ready. Build Final Video will cut and join these exact timestamps.' : 'Plan created, but exact render timestamps are limited. Create the plan again if the transcripts did not finish.'}
+      ${plan.renderer_ready ? 'Your compilation is ready to build.' : 'Your plan is ready, but a few moments may need another pass before building.'}
     </div>
   `;
 }
@@ -2150,21 +2188,21 @@ async function createCompilationPlan() {
     for (let i = 0; i < links.length; i++) {
       const link = links[i];
       if (out) {
-        out.innerHTML = '<div style="display:flex;align-items:center;gap:10px"><div class="spinner"></div>Downloading source ' + (i + 1) + ' of ' + links.length + '...</div>' +
+        out.innerHTML = '<div style="display:flex;align-items:center;gap:10px"><div class="spinner"></div>Importing video ' + (i + 1) + ' of ' + links.length + '...</div>' +
           '<div style="margin-top:10px;color:var(--text3);font-family:var(--mono);font-size:11px;overflow-wrap:anywhere">' + escapeHTML(link) + '</div>';
       }
 
       const uploaded = await uploadYouTubeSource(link);
 
       if (out) {
-        out.innerHTML = '<div style="display:flex;align-items:center;gap:10px"><div class="spinner"></div>Transcribing source ' + (i + 1) + ' of ' + links.length + '...</div>' +
+        out.innerHTML = '<div style="display:flex;align-items:center;gap:10px"><div class="spinner"></div>Reading video ' + (i + 1) + ' of ' + links.length + '...</div>' +
           '<div style="margin-top:10px;color:var(--text3);font-family:var(--mono);font-size:11px;overflow-wrap:anywhere">' + escapeHTML(link) + '</div>';
       }
 
       const transcriptId = await createTranscriptJob(uploaded.uploadUrl);
       const transcript = await waitForCompilationTranscript(transcriptId, attempt => {
         if (!out || attempt % 2 !== 0) return;
-        out.innerHTML = '<div style="display:flex;align-items:center;gap:10px"><div class="spinner"></div>Transcribing source ' + (i + 1) + ' of ' + links.length + '... attempt ' + (attempt + 1) + '</div>' +
+        out.innerHTML = '<div style="display:flex;align-items:center;gap:10px"><div class="spinner"></div>Reading video ' + (i + 1) + ' of ' + links.length + '...</div>' +
           '<div style="margin-top:10px;color:var(--text3);font-family:var(--mono);font-size:11px;overflow-wrap:anywhere">' + escapeHTML(link) + '</div>';
       });
 
@@ -2184,7 +2222,7 @@ async function createCompilationPlan() {
     }
 
     if (out) {
-      out.innerHTML = '<div style="display:flex;align-items:center;gap:10px"><div class="spinner"></div>Ghost Editor is building your compilation blueprint from transcripts...</div>';
+      out.innerHTML = '<div style="display:flex;align-items:center;gap:10px"><div class="spinner"></div>Preparing your compilation plan...</div>';
     }
 
     const res = await fetch(API_URL + '/api/compilation-plan', {
@@ -2209,10 +2247,10 @@ async function createCompilationPlan() {
     if (!res.ok) throw new Error(data.error || 'Could not create compilation plan');
     compilationState.plan = data;
     renderCompilationPlan(data);
-    toast('Compilation plan ready from transcribed sources');
+    toast('Compilation plan ready');
   } catch (err) {
-    if (out) out.innerHTML = '<span style="color:var(--red)">Compilation error: ' + escapeHTML(err.message) + '</span>';
-    toast('Compilation error: ' + err.message, 6000);
+    if (out) out.innerHTML = '<span style="color:var(--red)">' + escapeHTML(formatUserError(err, 'We could not prepare this compilation. Please check the links and try again.')) + '</span>';
+    toast(formatUserError(err, 'We could not prepare this compilation. Please check the links and try again.'), 6000);
   } finally {
     compilationState.busy = false;
   }
@@ -2229,7 +2267,7 @@ async function buildCompilationVideo() {
     return;
   }
   if (!Array.isArray(compilationState.sources) || compilationState.sources.length < 2) {
-    toast('Compilation sources are not ready. Create the plan again so ClipAI can download and transcribe each link.', 6000);
+    toast('Please prepare the compilation again before building the final video.', 6000);
     return;
   }
 
@@ -2281,8 +2319,8 @@ async function buildCompilationVideo() {
     toast('Final compilation ' + (saved.native ? 'saved to Gallery' : 'downloaded'), 5000);
     notifyNative('ClipAI compilation ready', 'Your final compilation video is ready.');
   } catch (err) {
-    if (out) out.innerHTML = '<span style="color:var(--red)">Compilation build error: ' + escapeHTML(formatUserError(err.message)) + '</span>';
-    toast('Compilation build error: ' + err.message, 7000);
+    if (out) out.innerHTML = '<span style="color:var(--red)">' + escapeHTML(formatUserError(err, 'We could not create the final video. Please try again with fewer or shorter sources.')) + '</span>';
+    toast(formatUserError(err, 'We could not create the final video. Please try again with fewer or shorter sources.'), 7000);
   } finally {
     compilationState.busy = false;
   }
@@ -2346,8 +2384,8 @@ function goStage(n) {
   if (n > state.unlockedStage) {
     const messages = [
       '',
-      'Upload a video first to unlock Transcribe.',
-      'Complete transcription first to unlock Clips.',
+      'Upload a video first to continue.',
+      'Let ClipAI finish reading the video first.',
       'Generate clips first to unlock Export.'
     ];
     toast(messages[n] || 'Complete the previous step first.');
@@ -2450,7 +2488,7 @@ function createNewClips() {
   if (transPct) transPct.textContent = '0%';
   const transStatus = document.getElementById('trans-status');
   if (transStatus) {
-    transStatus.textContent = 'Submitting to AssemblyAI...';
+    transStatus.textContent = 'Preparing your video...';
     transStatus.style.color = '';
   }
 
@@ -2571,7 +2609,7 @@ async function uploadFile(file) {
       } else {
         let errMsg = 'Upload failed';
         try { errMsg = JSON.parse(xhr.responseText).error || errMsg; } catch(e) {}
-        toast('Upload failed: ' + errMsg);
+        toast(formatUserError(errMsg, 'We could not upload this file. Please try again.'), 6000);
         document.getElementById('upload-progress').style.display = 'none';
       }
       resolve();
@@ -2620,7 +2658,7 @@ async function submitUrl() {
       document.getElementById('upload-size').textContent = 'Getting download link...';
       const directUrl = await getYouTubeDirectUrl(url);
 
-      document.getElementById('upload-size').textContent = 'Sending to server for transcription...';
+      document.getElementById('upload-size').textContent = 'Preparing your video...';
 
       // Step 2: Send direct URL to backend for download + AssemblyAI upload
       const res = await fetch(RAILWAY_URL + '/api/youtube-upload', {
@@ -2636,12 +2674,12 @@ async function submitUrl() {
       document.getElementById('upload-bar').style.width = '100%';
       document.getElementById('upload-pct').textContent = '100%';
       document.getElementById('upload-status').textContent = 'YouTube video ready!';
-      document.getElementById('upload-size').textContent = 'Downloaded, saved, and ready to transcribe';
+      document.getElementById('upload-size').textContent = 'Video ready. Starting analysis...';
 
       state.localFileId = data.localFileId;
       state.transcriptionUrl = data.uploadUrl;
       setPreviewVideoUrl(data.previewUrl || data.videoUrl || data.localVideoUrl || '');
-      notifyNative('ClipAI upload complete', 'Your YouTube video is ready. Transcription is starting now.');
+      notifyNative('ClipAI upload complete', 'Your video is ready. Analysis is starting now.');
       if (!state.sourceVideoUrl) {
         toast('Video imported, but preview URL was not returned by backend.', 5000);
       }
@@ -2649,7 +2687,7 @@ async function submitUrl() {
     } catch (err) {
       clearInterval(fakeTimer);
       document.getElementById('upload-progress').style.display = 'none';
-      toast('YouTube error: ' + err.message, 6000);
+      toast(formatUserError(err, 'We could not open that YouTube link. Please check the link and try again.'), 6000);
     }
     return;
   }
@@ -2686,7 +2724,7 @@ async function startTranscription(videoUrl) {
   updateStep('step-transcribe', 'active');
   document.getElementById('trans-bar').style.width = '10%';
   document.getElementById('trans-pct').textContent = '10%';
-  document.getElementById('trans-status').textContent = 'Submitting to AssemblyAI...';
+  document.getElementById('trans-status').textContent = 'Preparing your video...';
 
   try {
     console.log('[ClipAI] Submitting video URL to transcribe API:', videoUrl.substring(0, 80));
@@ -2714,11 +2752,11 @@ async function startTranscription(videoUrl) {
   } catch (err) {
     console.error('[ClipAI] Transcription failed:', err.message);
     // Show error on the transcribe page instead of silently going back
-    document.getElementById('trans-status').textContent = 'Failed: ' + err.message;
+    document.getElementById('trans-status').textContent = formatUserError(err, 'We could not process this video. Please try again.');
     document.getElementById('trans-status').style.color = 'var(--red)';
     document.getElementById('trans-bar').style.width = '0%';
     document.getElementById('trans-bar').style.background = 'var(--red)';
-    toast('Error: ' + err.message, 6000);
+    toast(formatUserError(err, 'We could not process this video. Please try again.'), 6000);
     // Stay on transcribe page so user can see the error
   }
 }
@@ -2759,8 +2797,8 @@ async function pollTranscript() {
     clearInterval(animator);
     console.error('[ClipAI] Error:', msg);
     const el = document.getElementById('trans-status');
-    if (el) { el.textContent = 'Error: ' + msg; el.style.color = 'var(--red)'; }
-    setTimeout(() => { toast('Error: ' + msg); goStage(0); }, 2000);
+    if (el) { el.textContent = formatUserError(msg, 'We could not process this video. Please try again.'); el.style.color = 'var(--red)'; }
+    setTimeout(() => { toast(formatUserError(msg, 'We could not process this video. Please try again.')); goStage(0); }, 2000);
   };
 
   const poll = async () => {
@@ -2782,7 +2820,7 @@ async function pollTranscript() {
         updateStep('step-transcribe', 'active');
 
       } else if (data.status === 'processing') {
-        setStatus('Transcribing audio...');
+        setStatus('Reading your video...');
         updateStep('step-upload', 'done');
         updateStep('step-transcribe', 'active');
         if (attempts > 3) {
@@ -2816,7 +2854,7 @@ async function pollTranscript() {
         return;
 
       } else if (data.status === 'error') {
-        showError(data.error || 'AssemblyAI returned an error');
+        showError(data.error || 'Audio processing failed');
         return;
       } else {
         setStatus('Status: ' + data.status + '...');
@@ -2841,7 +2879,7 @@ function showTranscriptResults() {
   document.getElementById('transcribe-progress').style.display = 'none';
   document.getElementById('transcribe-results').style.display = 'block';
   unlockStage(2);
-  toast('Transcription complete! Showing results...');
+  toast('Video analysis complete. Showing results...');
 
   // Stats
   const words = state.transcript ? state.transcript.split(' ').length : 0;
@@ -2940,10 +2978,10 @@ async function askMomentsAI() {
         `Clip ${i + 1}: "${c.title}" (${c.start_ms ? formatTime(c.start_ms) : '?'} – ${c.end_ms ? formatTime(c.end_ms) : '?'})\n${c.why}`
       ).join('\n\n');
     } else {
-      out.textContent = data.error || 'No results found.';
+      out.textContent = data.error ? formatUserError(data.error, 'We could not find matching moments. Try a simpler request.') : 'No matching moments found.';
     }
   } catch (err) {
-    out.textContent = 'Error: ' + err.message;
+    out.textContent = formatUserError(err, 'We could not search the moments right now. Please try again.');
   }
   setBtn('moments-ask-btn', false);
 }
@@ -2975,7 +3013,7 @@ function rememberGhostBrief() {
   syncGhostBriefInputs(brief);
   const status = document.getElementById('ghost-upload-status');
   if (status) {
-    status.textContent = 'Ghost brief saved. Upload or paste a video URL and ClipAI will run it after transcription.';
+    status.textContent = 'Ghost brief saved. Upload or paste a video URL and ClipAI will apply it after analysis.';
     status.classList.add('show');
   }
   toast('Ghost brief saved');
@@ -3076,8 +3114,8 @@ async function runGhostEditor(options = {}) {
     setGhostStatus('Ghost edit ready. The clips are selected and caption settings are applied.', true);
     toast(options.auto ? 'Ghost edit created automatically' : 'Ghost edit created');
   } catch (err) {
-    setGhostStatus('<span style="color:var(--red)">Ghost Editor error: ' + escapeHTML(err.message) + '</span>');
-    toast('Ghost Editor error: ' + err.message, 6000);
+    setGhostStatus('<span style="color:var(--red)">' + escapeHTML(formatUserError(err, 'We could not create that edit. Please try again.')) + '</span>');
+    toast(formatUserError(err, 'We could not create that edit. Please try again.'), 6000);
   }
 
   state.ghostBusy = false;
@@ -3257,7 +3295,7 @@ async function goToClips() {
     // Auto-advance toast
     toast('Clips ready! Review and select, then continue to export.');
   } catch (err) {
-    toast('Error generating clips: ' + err.message);
+    toast(formatUserError(err, 'We could not generate clips from this video. Please try again.'));
     state.clips = [];
     renderClips();
   }
@@ -3361,10 +3399,10 @@ async function askClipAI() {
       const c = data.clips[0];
       out.textContent = `"${c.title}"\n${formatTime(c.start_ms || 0)} – ${formatTime(c.end_ms || 0)} (${c.duration_s}s)\n\n${c.why}\n\nHook: "${c.hook}"\n\nCaptions:\n${(c.caption_lines || []).join('\n')}`;
     } else {
-      out.textContent = data.error || 'No clip found for that query.';
+      out.textContent = data.error ? formatUserError(data.error, 'No clip found for that request.') : 'No clip found for that request.';
     }
   } catch (err) {
-    out.textContent = 'Error: ' + err.message;
+    out.textContent = formatUserError(err, 'We could not create a clip from that request. Please try another prompt.');
   }
   setBtn('clip-ask-btn', false);
 }
@@ -3447,8 +3485,8 @@ async function runHookLab() {
     renderHookLab(data.variants || []);
     toast('Hook variants ready');
   } catch (err) {
-    if (out) out.innerHTML = '<div class="hook-variant"><div class="hook-note" style="color:var(--red)">Hook Lab error: ' + escapeHTML(err.message) + '</div></div>';
-    toast('Hook Lab error: ' + err.message, 6000);
+    if (out) out.innerHTML = '<div class="hook-variant"><div class="hook-note" style="color:var(--red)">' + escapeHTML(formatUserError(err, 'We could not create hook ideas right now. Please try again.')) + '</div></div>';
+    toast(formatUserError(err, 'We could not create hook ideas right now. Please try again.'), 6000);
   }
 
   state.hookBusy = false;
@@ -3484,7 +3522,7 @@ async function copyHookVariant(i) {
     await navigator.clipboard.writeText(variant.hook);
     toast('Hook copied');
   } catch (err) {
-    toast('Copy failed: ' + err.message);
+    toast('Copy was not available on this device.');
   }
 }
 
@@ -3642,8 +3680,8 @@ async function runViralMemory() {
     renderExportSummary();
     toast('Viral Memory scored your clips');
   } catch (err) {
-    if (out) out.innerHTML = '<span style="color:var(--red)">Viral Memory error: ' + escapeHTML(err.message) + '</span>';
-    toast('Viral Memory error: ' + err.message, 6000);
+    if (out) out.innerHTML = '<span style="color:var(--red)">' + escapeHTML(formatUserError(err, 'We could not score these clips right now. Please try again.')) + '</span>';
+    toast(formatUserError(err, 'We could not score these clips right now. Please try again.'), 6000);
   }
 
   state.memoryBusy = false;
@@ -3831,7 +3869,7 @@ async function toggleClipPreview(i) {
       await video.play();
       runPreviewLoop(video, canvas, clip, end);
     } catch (err) {
-      toast('Preview could not play: ' + err.message, 5000);
+      toast('Preview is not available for this video right now.', 5000);
     }
   } else {
     video.pause();
@@ -3895,7 +3933,7 @@ async function generateCaptions() {
     out.textContent = data.description || 'Custom caption style ready. Play a clip preview to see it live.';
     drawAllVisibleCaptions();
   } catch (err) {
-    out.textContent = 'Error: ' + err.message;
+    out.textContent = formatUserError(err, 'We could not preview that caption style. Please try again.');
   }
 
   setBtn('cap-btn', false);
@@ -3930,7 +3968,7 @@ async function exportTo(platform) {
 
   // The backend cuts from its saved local file, not the AssemblyAI upload URL.
   if (!state.localFileId) {
-    toast('Local video file not found. Please re-upload your video.', 5000);
+    toast('This project needs the original video again. Please re-upload and try export.', 5000);
     return;
   }
 
@@ -3947,7 +3985,7 @@ async function exportTo(platform) {
 
     try {
       if (!state.localFileId) {
-        throw new Error('Local video file not found. Please re-upload your video.');
+        throw new Error('Original video is no longer available for this project.');
       }
       const res = await fetch(RAILWAY_URL + '/api/cut-clip', {
         method: 'POST',
@@ -3982,7 +4020,7 @@ async function exportTo(platform) {
       toast('"' + label + '" ' + (saved.native ? 'saved to Gallery!' : 'downloaded!'), 3000);
 
     } catch (err) {
-      toast('Error cutting "' + label + '": ' + err.message, 6000);
+      toast(formatUserError(err, 'We could not export "' + label + '". Please try again.'), 6000);
       console.error('[ClipAI] Export error:', err);
     }
   }
@@ -4095,7 +4133,7 @@ async function deleteProject(btn, id, i) {
       toast('Delete failed');
     }
   } catch(e) {
-    toast('Delete error: ' + e.message);
+    toast('We could not delete that project. Please try again.');
   }
 }
 
