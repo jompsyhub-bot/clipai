@@ -1997,6 +1997,13 @@ function getAuthToken() {
   return localStorage.getItem('clipai_token') || '';
 }
 
+function handleExpiredSession() {
+  localStorage.removeItem('clipai_token');
+  localStorage.removeItem('clipai_user');
+  sessionStorage.setItem('clipai_login_notice', 'Your session expired. Please sign in again.');
+  window.location.href = 'login.html';
+}
+
 async function readBillingJson(res) {
   const raw = await res.text();
   try {
@@ -2019,6 +2026,10 @@ async function requestBilling(action) {
   if (action) options.body = JSON.stringify({ action });
   const res = await fetch(API_URL + '/api/billing', options);
   const data = await readBillingJson(res);
+  if (res.status === 401) {
+    handleExpiredSession();
+    throw new Error('Please sign in again');
+  }
   if (!res.ok && res.status !== 402) throw new Error(data.error || 'Billing could not be checked');
   billingState.status = data;
   return data;
@@ -4184,7 +4195,12 @@ async function openSidebar() {
   listEl.innerHTML = '<div style="color:var(--text3);font-size:13px">Loading...</div>';
   try {
     const res = await fetch(API_URL + '/api/projects', { headers: { 'authorization': 'Bearer ' + token, 'x-requested-with': 'clipai' } });
+    if (res.status === 401) {
+      handleExpiredSession();
+      return;
+    }
     const projects = await res.json();
+    if (!res.ok) throw new Error('Could not load projects');
     if (!projects.length) {
       listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">No saved projects yet.<br>Process a video and save it!</div>';
       return;
