@@ -17,7 +17,7 @@ function setCors(req, res) {
 }
 
 const TABLE = 'billing_profiles';
-const FREE_EXPORTS_LIMIT = 3;
+const FREE_EXPORTS_LIMIT = Number(process.env.CLIPAI_FREE_EXPORTS_LIMIT || 1);
 
 function jsonError(res, status, message, extra = {}) {
   return res.status(status).json({ error: message, ...extra });
@@ -58,7 +58,8 @@ function normalizeProfile(profile, userId) {
   const expiresAt = profile?.subscription_expires_at ? Date.parse(profile.subscription_expires_at) : 0;
   const subscriptionActive = Boolean(profile?.subscription_active) && (!expiresAt || expiresAt > now);
   const exportsUsed = Math.max(0, Number(profile?.exports_used || 0));
-  const freeExportsLimit = Math.max(0, Number(profile?.free_exports_limit || FREE_EXPORTS_LIMIT));
+  const storedLimit = Number(profile?.free_exports_limit);
+  const freeExportsLimit = Math.max(0, Number.isFinite(storedLimit) ? Math.min(storedLimit, FREE_EXPORTS_LIMIT) : FREE_EXPORTS_LIMIT);
   const exportsRemaining = subscriptionActive ? null : Math.max(0, freeExportsLimit - exportsUsed);
 
   return {
