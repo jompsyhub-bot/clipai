@@ -86,6 +86,9 @@ async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   } catch(err) {
     console.error('[ClipAI] projects error:', err.message);
+    if (/session expired|jwt|invalid token|not authenticated/i.test(err.message || '')) {
+      return res.status(401).json({ error: 'Please sign in again' });
+    }
     return res.status(500).json({ error: err.message });
   }
 }
