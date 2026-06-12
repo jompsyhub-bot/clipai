@@ -2096,9 +2096,18 @@ async function recordSuccessfulExport() {
   try {
     const status = await requestBilling('record_export');
     toast(billingSummaryText(status), 2500);
+    updateDashboardBilling(status);
   } catch (err) {
     console.warn('[ClipAI] Billing usage update failed:', err);
   }
+}
+
+function updateDashboardBilling(status) {
+  const exportsEl = document.getElementById('dash-stat-exports');
+  if (!exportsEl || !status) return;
+  exportsEl.textContent = status.isSubscribed
+    ? String(status.exportsUsed || 0)
+    : String(status.exportsUsed || 0) + '/' + String(status.freeExportsLimit || 1);
 }
 
 function chooseCreationMode(mode) {
@@ -4491,6 +4500,10 @@ function loadDashboardStats() {
     const mem = JSON.parse(localStorage.getItem('clipai_viral_memory') || '[]');
     document.getElementById('dash-stat-memory').textContent = mem.length;
   } catch(e) {}
+
+  requestBilling()
+    .then(updateDashboardBilling)
+    .catch(err => console.warn('[ClipAI] dashboard billing unavailable:', err));
 
   // Load projects for recent list
   fetch('/api/projects', { headers: { 'authorization': 'Bearer ' + token } })
