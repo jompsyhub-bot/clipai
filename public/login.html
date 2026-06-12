@@ -594,6 +594,12 @@
     el.className = 'msg ' + type;
   }
 
+  const loginNotice = sessionStorage.getItem('clipai_login_notice');
+  if (loginNotice) {
+    sessionStorage.removeItem('clipai_login_notice');
+    setTimeout(() => showMsg(loginNotice, 'error'), 50);
+  }
+
   function formatAuthMessage(error) {
     const raw = String(error?.message || error || '').trim();
     const lower = raw.toLowerCase();
