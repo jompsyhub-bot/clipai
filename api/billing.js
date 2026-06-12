@@ -178,6 +178,9 @@ export default async function handler(req, res) {
     return jsonError(res, 400, 'Unsupported billing action');
   } catch (err) {
     console.error('[ClipAI] billing error:', err.message);
+    if (/session expired|jwt|invalid token|not authenticated/i.test(err.message || '')) {
+      return jsonError(res, 401, 'Please sign in again');
+    }
     return jsonError(res, 500, 'Billing could not be checked');
   }
 }
