@@ -17,7 +17,7 @@ function setCors(req, res) {
 }
 
 const TABLE = 'billing_profiles';
-const FREE_EXPORTS_LIMIT = Number(process.env.CLIPAI_FREE_EXPORTS_LIMIT || 1);
+const FREE_EXPORTS_LIMIT = Number(process.env.CLIPAI_FREE_EXPORTS_LIMIT || 3);
 
 function jsonError(res, status, message, extra = {}) {
   return res.status(status).json({ error: message, ...extra });
