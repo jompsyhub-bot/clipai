@@ -82,7 +82,10 @@ async function fetchProfile({ supabaseUrl, serviceKey, userId }) {
     { headers: billingHeaders(serviceKey) }
   );
   const data = await readJson(response);
-  if (!response.ok) throw new Error('Billing profile unavailable');
+  if (!response.ok) {
+    const detail = typeof data?.message === 'string' ? data.message : JSON.stringify(data || {});
+    throw new Error('Billing profile unavailable: ' + detail);
+  }
   return Array.isArray(data) ? data[0] : null;
 }
 
@@ -107,7 +110,10 @@ async function upsertProfile({ supabaseUrl, serviceKey, user }) {
     })
   });
   const data = await readJson(response);
-  if (!response.ok) throw new Error('Billing profile could not be created');
+  if (!response.ok) {
+    const detail = typeof data?.message === 'string' ? data.message : JSON.stringify(data || {});
+    throw new Error('Billing profile could not be created: ' + detail);
+  }
   return Array.isArray(data) ? data[0] : data;
 }
 
@@ -121,7 +127,10 @@ async function updateExportsUsed({ supabaseUrl, serviceKey, userId, nextCount })
     })
   });
   const data = await readJson(response);
-  if (!response.ok) throw new Error('Export usage could not be updated');
+  if (!response.ok) {
+    const detail = typeof data?.message === 'string' ? data.message : JSON.stringify(data || {});
+    throw new Error('Export usage could not be updated: ' + detail);
+  }
   return Array.isArray(data) ? data[0] : data;
 }
 
@@ -168,6 +177,7 @@ export default async function handler(req, res) {
 
     return jsonError(res, 400, 'Unsupported billing action');
   } catch (err) {
+    console.error('[ClipAI] billing error:', err.message);
     return jsonError(res, 500, 'Billing could not be checked');
   }
 }
