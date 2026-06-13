@@ -64,7 +64,7 @@ function normalizeProfile(profile, userId) {
 
   return {
     userId,
-    entitlement: profile?.entitlement || 'pro',
+    entitlement: subscriptionActive ? (profile?.entitlement || 'pro') : (profile?.entitlement || 'free'),
     isSubscribed: subscriptionActive,
     subscriptionActive,
     subscriptionExpiresAt: profile?.subscription_expires_at || null,
@@ -103,7 +103,7 @@ async function upsertProfile({ supabaseUrl, serviceKey, user }) {
       exports_used: 0,
       free_exports_limit: FREE_EXPORTS_LIMIT,
       revenuecat_app_user_id: user.id,
-      entitlement: 'pro',
+      entitlement: 'free',
       subscription_active: false,
       subscription_expires_at: null,
       created_at: new Date().toISOString(),
