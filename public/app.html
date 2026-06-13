@@ -1894,6 +1894,20 @@ const billingState = {
   busy: false
 };
 
+const REVENUECAT_ANDROID_API_KEY = 'test_RzckjKbyUxDDEzZWeKEdPGvkapF';
+const REVENUECAT_ENTITLEMENT_ID = 'pro';
+const REVENUECAT_PRODUCT_IDS = {
+  weekly: 'clipai_pro_weekly',
+  monthly: 'clipai_pro_monthly',
+  yearly: 'clipai_pro_yearly'
+};
+
+const revenueCatState = {
+  configured: false,
+  offerings: null,
+  busy: false
+};
+
 // ═══ UTILS ═══
 function formatUserError(error, fallback = 'Something went wrong. Please try again.') {
   const raw = String(error?.message || error || '').trim();
@@ -2042,6 +2056,114 @@ function billingSummaryText(status) {
   return remaining === 1 ? '1 free export left' : remaining + ' free exports left';
 }
 
+function getRevenueCatPlugin() {
+  return window.Capacitor?.Plugins?.Purchases || null;
+}
+
+function isNativeRevenueCatAvailable() {
+  return Boolean(getRevenueCatPlugin() && window.Capacitor?.isNativePlatform?.());
+}
+
+function getCurrentUser() {
+  try {
+    return JSON.parse(localStorage.getItem('clipai_user') || 'null');
+  } catch (err) {
+    return null;
+  }
+}
+
+async function initRevenueCat() {
+  const Purchases = getRevenueCatPlugin();
+  const user = getCurrentUser();
+  if (!Purchases || !window.Capacitor?.isNativePlatform?.() || !user?.id) return false;
+  if (revenueCatState.configured) return true;
+
+  try {
+    if (Purchases.setLogLevel) await Purchases.setLogLevel({ level: 'DEBUG' });
+    await Purchases.configure({
+      apiKey: REVENUECAT_ANDROID_API_KEY,
+      appUserID: user.id
+    });
+    if (user.email && Purchases.setEmail) await Purchases.setEmail({ email: user.email });
+    revenueCatState.configured = true;
+    return true;
+  } catch (err) {
+    console.warn('[ClipAI] RevenueCat configure failed:', err);
+    return false;
+  }
+}
+
+async function getRevenueCatOffering() {
+  if (!(await initRevenueCat())) return null;
+  if (revenueCatState.offerings?.current) return revenueCatState.offerings.current;
+
+  const Purchases = getRevenueCatPlugin();
+  const offerings = await Purchases.getOfferings();
+  revenueCatState.offerings = offerings;
+  return offerings?.current || offerings?.all?.default || null;
+}
+
+function productIdentifierForPackage(pkg) {
+  return pkg?.product?.identifier || pkg?.product?.productIdentifier || pkg?.identifier || '';
+}
+
+function revenueCatPackageForPlan(offering, plan) {
+  const directKey = plan === 'yearly' ? 'annual' : plan;
+  const expectedProductId = REVENUECAT_PRODUCT_IDS[plan];
+  const direct = offering?.[directKey];
+  if (direct && productIdentifierForPackage(direct) === expectedProductId) return direct;
+  const packages = Array.isArray(offering?.availablePackages) ? offering.availablePackages : [];
+  return packages.find(pkg => productIdentifierForPackage(pkg) === expectedProductId)
+    || packages.find(pkg => String(pkg?.packageType || '').toLowerCase() === directKey)
+    || direct
+    || null;
+}
+
+function planPriceLabel(plan, pkg) {
+  const price = pkg?.product?.priceString || pkg?.product?.price?.formatted || '';
+  const suffix = plan === 'weekly' ? ' / week' : plan === 'monthly' ? ' / month' : ' / year';
+  return price ? price + suffix : plan.charAt(0).toUpperCase() + plan.slice(1);
+}
+
+function customerHasPro(customerInfo) {
+  const active = customerInfo?.entitlements?.active || {};
+  return Boolean(active[REVENUECAT_ENTITLEMENT_ID]?.isActive ?? active[REVENUECAT_ENTITLEMENT_ID]);
+}
+
+async function waitForSupabaseSubscription() {
+  for (let i = 0; i < 5; i++) {
+    const status = await requestBilling();
+    if (status.isSubscribed) return status;
+    await new Promise(resolve => setTimeout(resolve, 1600));
+  }
+  return billingState.status;
+}
+
+async function refreshPaywallPlans() {
+  const note = document.getElementById('paywall-note');
+  if (!isNativeRevenueCatAvailable()) {
+    if (note) note.textContent = 'Google Play purchases are available inside the Android app. Web checkout will be added separately.';
+    return;
+  }
+
+  try {
+    const offering = await getRevenueCatOffering();
+    ['weekly', 'monthly', 'yearly'].forEach(plan => {
+      const btn = document.getElementById('paywall-' + plan);
+      const pkg = revenueCatPackageForPlan(offering, plan);
+      if (!btn) return;
+      btn.disabled = !pkg;
+      if (pkg) btn.textContent = planPriceLabel(plan, pkg);
+    });
+    if (note) note.textContent = offering
+      ? 'Secure checkout is handled by Google Play. You can cancel anytime in your Play Store subscriptions.'
+      : 'No RevenueCat offering was found. Check that the default offering has weekly, monthly, and yearly packages.';
+  } catch (err) {
+    console.warn('[ClipAI] RevenueCat offerings unavailable:', err);
+    if (note) note.textContent = 'Plans could not be loaded. Check your RevenueCat product and offering setup.';
+  }
+}
+
 function showPaywall(status) {
   let modal = document.getElementById('paywall-modal');
   if (!modal) {
@@ -2056,11 +2178,12 @@ function showPaywall(status) {
           '<button type="button" onclick="closePaywall()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);width:32px;height:32px;border-radius:50%;cursor:pointer">x</button>' +
         '</div>' +
         '<div style="display:grid;gap:9px;margin:16px 0">' +
-          '<button type="button" class="btn btn-ghost btn-full" onclick="selectPendingPlan(&quot;weekly&quot;)">Weekly - flexible access</button>' +
-          '<button type="button" class="btn btn-ghost btn-full" onclick="selectPendingPlan(&quot;monthly&quot;)">Monthly - best for regular creators</button>' +
-          '<button type="button" class="btn btn-primary btn-full" onclick="selectPendingPlan(&quot;yearly&quot;)">Yearly - best value</button>' +
+          '<button id="paywall-weekly" type="button" class="btn btn-ghost btn-full" onclick="purchaseProPlan(&quot;weekly&quot;)">Weekly - flexible access</button>' +
+          '<button id="paywall-monthly" type="button" class="btn btn-ghost btn-full" onclick="purchaseProPlan(&quot;monthly&quot;)">Monthly - best for regular creators</button>' +
+          '<button id="paywall-yearly" type="button" class="btn btn-primary btn-full" onclick="purchaseProPlan(&quot;yearly&quot;)">Yearly - best value</button>' +
+          '<button type="button" class="btn btn-ghost btn-full" onclick="restoreProPurchases()">Restore purchases</button>' +
         '</div>' +
-        '<div id="paywall-note" style="font-size:12px;color:var(--text3);line-height:1.6;text-align:center">Payments are being connected with RevenueCat next. Your trial limit is already protected.</div>' +
+        '<div id="paywall-note" style="font-size:12px;color:var(--text3);line-height:1.6;text-align:center">Loading secure checkout...</div>' +
       '</div>';
     document.body.appendChild(modal);
   }
@@ -2069,6 +2192,7 @@ function showPaywall(status) {
     ? 'You have used your 3 free exports. Choose a plan to continue exporting.'
     : 'Choose a plan to continue exporting without limits.';
   modal.style.display = 'flex';
+  refreshPaywallPlans();
 }
 
 function closePaywall() {
@@ -2076,8 +2200,74 @@ function closePaywall() {
   if (modal) modal.style.display = 'none';
 }
 
-function selectPendingPlan(plan) {
-  toast('Payment setup is next. We will connect the ' + plan + ' plan with RevenueCat.');
+async function purchaseProPlan(plan) {
+  if (revenueCatState.busy) return;
+  if (!getAuthToken()) { window.location.href = 'login.html'; return; }
+  if (!isNativeRevenueCatAvailable()) {
+    toast('Open ClipAI in the Android app to subscribe with Google Play.', 5000);
+    return;
+  }
+
+  const Purchases = getRevenueCatPlugin();
+  const note = document.getElementById('paywall-note');
+  const button = document.getElementById('paywall-' + plan);
+  revenueCatState.busy = true;
+  if (button) button.disabled = true;
+  if (note) note.textContent = 'Opening Google Play checkout...';
+
+  try {
+    const offering = await getRevenueCatOffering();
+    const pkg = revenueCatPackageForPlan(offering, plan);
+    if (!pkg) throw new Error('This plan is not available yet.');
+
+    const result = await Purchases.purchasePackage({ aPackage: pkg });
+    if (!customerHasPro(result?.customerInfo)) {
+      throw new Error('Purchase completed, but Pro entitlement is not active yet.');
+    }
+
+    if (note) note.textContent = 'Payment confirmed. Updating your ClipAI account...';
+    const status = await waitForSupabaseSubscription();
+    if (status?.isSubscribed) {
+      closePaywall();
+      updateDashboardBilling(status);
+      toast('ClipAI Pro unlocked. You can keep exporting.', 3500);
+    } else {
+      toast('Purchase confirmed. Account update is still syncing; try export again in a moment.', 6000);
+    }
+  } catch (err) {
+    if (err?.userCancelled) {
+      toast('Purchase cancelled.');
+    } else {
+      toast(formatUserError(err, 'We could not complete the purchase. Please try again.'), 6000);
+      console.warn('[ClipAI] Purchase failed:', err);
+    }
+  } finally {
+    revenueCatState.busy = false;
+    if (button) button.disabled = false;
+    refreshPaywallPlans();
+  }
+}
+
+async function restoreProPurchases() {
+  if (!isNativeRevenueCatAvailable()) {
+    toast('Restore is available inside the Android app.', 5000);
+    return;
+  }
+  try {
+    const Purchases = getRevenueCatPlugin();
+    await initRevenueCat();
+    const result = await Purchases.restorePurchases();
+    if (customerHasPro(result?.customerInfo)) {
+      const status = await waitForSupabaseSubscription();
+      updateDashboardBilling(status);
+      closePaywall();
+      toast('Purchase restored. ClipAI Pro is active.', 3500);
+    } else {
+      toast('No active ClipAI Pro subscription was found.');
+    }
+  } catch (err) {
+    toast(formatUserError(err, 'We could not restore purchases. Please try again.'), 6000);
+  }
 }
 
 async function ensureExportAllowed() {
@@ -4337,6 +4527,7 @@ state.unlockedStage = 0;
 initTheme();
 loadViralMemory();
 requestNativeNotifications();
+initRevenueCat();
 goStage(0);
 initAuth();
 
