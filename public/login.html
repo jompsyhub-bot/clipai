@@ -386,6 +386,52 @@
     .btn:hover { transform: translateY(-1px); box-shadow: 0 22px 42px rgba(141,124,255,0.24); }
     .btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
 
+    .btn-google {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      border: 1px solid var(--line2);
+      border-radius: 14px;
+      padding: 13px;
+      background: rgba(255,255,255,0.04);
+      color: var(--ink);
+      font-family: var(--body);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-google:hover { background: rgba(255,255,255,0.08); border-color: var(--line2); }
+    .btn-google:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn-google svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+    .or-divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 18px 0;
+      color: var(--soft);
+      font-size: 12px;
+      letter-spacing: 0.04em;
+    }
+    .or-divider::before, .or-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--line);
+    }
+
+    .device-note {
+      margin-top: 14px;
+      font-size: 11.5px;
+      line-height: 1.6;
+      color: var(--soft);
+      text-align: center;
+    }
+    .device-note a { color: var(--cyan); text-decoration: none; }
+
     .msg {
       display: none;
       margin-top: 16px;
@@ -534,6 +580,11 @@
       </div>
 
       <div id="form-login">
+        <button class="btn-google" id="google-login-btn" onclick="signInWithGoogle()" type="button">
+          <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.99.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Continue with Google
+        </button>
+        <div class="or-divider">OR</div>
         <div class="field">
           <label>Email</label>
           <input type="email" id="login-email" placeholder="you@example.com" autocomplete="email" />
@@ -546,6 +597,11 @@
       </div>
 
       <div id="form-signup" style="display:none">
+        <button class="btn-google" id="google-signup-btn" onclick="signInWithGoogle()" type="button">
+          <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.99.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Continue with Google
+        </button>
+        <div class="or-divider">OR</div>
         <div class="field">
           <label>Email</label>
           <input type="email" id="signup-email" placeholder="you@example.com" autocomplete="email" />
@@ -555,6 +611,7 @@
           <input type="password" id="signup-password" placeholder="••••••••" autocomplete="new-password" />
         </div>
         <button class="btn" id="signup-btn" onclick="doSignup()">Create Account</button>
+        <div class="device-note">One free account per device. We use a privacy-friendly device check to keep ClipAI sustainable for everyone.</div>
       </div>
 
       <div id="msg" class="msg"></div>
@@ -569,11 +626,150 @@
     </section>
   </main>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   const API_URL = 'https://clipai-ten.vercel.app';
+  const SUPABASE_URL = 'https://YOUR_SUPABASE_PROJECT.supabase.co'; // TODO: replace with your Supabase project URL
+  const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // TODO: replace with your Supabase anon public key
 
   if (localStorage.getItem('clipai_token')) {
     window.location.href = 'app.html';
+  }
+
+  // ── DEVICE FINGERPRINT ──
+  // Generates a stable hash from device/browser characteristics.
+  // This is privacy-friendly (no personal data) but lets the backend detect
+  // repeat signups from the same device to gatekeep the free tier.
+  async function getDeviceFingerprint() {
+    const cached = localStorage.getItem('clipai_device_fp');
+    if (cached) return cached;
+
+    const parts = [];
+    try {
+      parts.push(navigator.userAgent || '');
+      parts.push(navigator.language || '');
+      parts.push(String(screen.width) + 'x' + String(screen.height));
+      parts.push(String(screen.colorDepth || ''));
+      parts.push(Intl.DateTimeFormat().resolvedOptions().timeZone || '');
+      parts.push(String(navigator.hardwareConcurrency || ''));
+      parts.push(String(navigator.deviceMemory || ''));
+      parts.push(String(navigator.maxTouchPoints || ''));
+
+      // Canvas fingerprint
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = 200; canvas.height = 40;
+      ctx.textBaseline = 'top';
+      ctx.font = '14px Arial';
+      ctx.fillStyle = '#f60';
+      ctx.fillRect(0, 0, 100, 20);
+      ctx.fillStyle = '#069';
+      ctx.fillText('clipai-fp-' + navigator.userAgent.length, 2, 2);
+      parts.push(canvas.toDataURL());
+
+      // WebGL renderer info
+      try {
+        const gl = document.createElement('canvas').getContext('webgl');
+        if (gl) {
+          const ext = gl.getExtension('WEBGL_debug_renderer_info');
+          if (ext) {
+            parts.push(gl.getParameter(ext.UNMASKED_VENDOR_WEBGL) || '');
+            parts.push(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || '');
+          }
+        }
+      } catch(e) {}
+    } catch(e) {}
+
+    const raw = parts.join('|||');
+    const encoder = new TextEncoder();
+    const data = encoder.encode(raw);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    localStorage.setItem('clipai_device_fp', hash);
+    return hash;
+  }
+
+  // ── GOOGLE OAUTH (via Supabase) ──
+  let supabaseClient = null;
+  function getSupabase() {
+    if (supabaseClient) return supabaseClient;
+    if (!window.supabase) return null;
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    return supabaseClient;
+  }
+
+  async function signInWithGoogle() {
+    const sb = getSupabase();
+    if (!sb) { showMsg('Sign-in service is still loading. Try again in a moment.', 'error'); return; }
+
+    const fingerprint = await getDeviceFingerprint();
+    // Store fingerprint so we can check it right after the OAuth redirect comes back
+    sessionStorage.setItem('clipai_pending_fp', fingerprint);
+
+    const { error } = await sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin + window.location.pathname + '?oauth=google' }
+    });
+    if (error) showMsg(error.message || 'Google sign-in failed', 'error');
+  }
+
+  // Handle the redirect back from Google OAuth
+  async function handleOAuthRedirect() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('oauth') !== 'google') return;
+
+    const sb = getSupabase();
+    if (!sb) return;
+
+    setLoading('login-btn', true);
+    showMsg('Finishing Google sign-in...', 'success');
+
+    const { data: sessionData } = await sb.auth.getSession();
+    const session = sessionData?.session;
+    if (!session) {
+      showMsg('Google sign-in did not complete. Please try again.', 'error');
+      setLoading('login-btn', false);
+      return;
+    }
+
+    const fingerprint = sessionStorage.getItem('clipai_pending_fp') || await getDeviceFingerprint();
+    sessionStorage.removeItem('clipai_pending_fp');
+
+    try {
+      // Exchange the Supabase OAuth session for a ClipAI session,
+      // and let the backend enforce one-account-per-device.
+      const res = await fetch(API_URL + '/api/auth', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action: 'oauth',
+          provider: 'google',
+          supabaseAccessToken: session.access_token,
+          email: session.user.email,
+          deviceFingerprint: fingerprint
+        })
+      });
+      const data = await readJsonResponse(res);
+      if (!res.ok) {
+        if (res.status === 409) {
+          // Device already has an account
+          await sb.auth.signOut();
+          showMsg(data.error || 'An account already exists on this device. Please sign in with that account instead.', 'error');
+          setLoading('login-btn', false);
+          return;
+        }
+        throw new Error(data.error || 'Google sign-in failed');
+      }
+      localStorage.setItem('clipai_token', data.token);
+      localStorage.setItem('clipai_user', JSON.stringify(data.user));
+      showMsg('Signed in successfully.', 'success');
+      setTimeout(() => window.location.href = 'app.html', 500);
+    } catch (err) {
+      showMsg(err, 'error');
+      setLoading('login-btn', false);
+    }
   }
 
   function switchTab(tab) {
@@ -647,10 +843,11 @@
     if (!email || !password) return showMsg('Please fill in all fields', 'error');
     setLoading('login-btn', true);
     try {
+      const fingerprint = await getDeviceFingerprint();
       const res = await fetch(API_URL + '/api/auth', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ action: 'login', email, password })
+        body: JSON.stringify({ action: 'login', email, password, deviceFingerprint: fingerprint })
       });
       const data = await readJsonResponse(res);
       if (!res.ok) throw new Error(data.error || 'Login failed');
@@ -671,13 +868,19 @@
     if (password.length < 6) return showMsg('Password must be at least 6 characters', 'error');
     setLoading('signup-btn', true);
     try {
+      const fingerprint = await getDeviceFingerprint();
       const res = await fetch(API_URL + '/api/auth', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ action: 'signup', email, password })
+        body: JSON.stringify({ action: 'signup', email, password, deviceFingerprint: fingerprint })
       });
       const data = await readJsonResponse(res);
-      if (!res.ok) throw new Error(data.error || 'Signup failed');
+      if (!res.ok) {
+        if (res.status === 409) {
+          throw new Error(data.error || 'An account already exists on this device. Please sign in instead.');
+        }
+        throw new Error(data.error || 'Signup failed');
+      }
       showMsg('Account created. You can now sign in.', 'success');
       setLoading('signup-btn', false);
       setTimeout(() => switchTab('login'), 1800);
@@ -693,6 +896,9 @@
       active === 'login' ? doLogin() : doSignup();
     }
   });
+
+  // If we just came back from a Google OAuth redirect, finish the sign-in
+  handleOAuthRedirect();
 </script>
 </body>
 </html>
