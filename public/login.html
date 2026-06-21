@@ -700,14 +700,41 @@
     return supabaseClient;
   }
 
+  function isNativeApp() {
+    return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  }
+
   async function signInWithGoogle() {
     const sb = getSupabase();
     if (!sb) { showMsg('Sign-in service is still loading. Try again in a moment.', 'error'); return; }
 
     const fingerprint = await getDeviceFingerprint();
-    // Store fingerprint so we can check it right after the OAuth redirect comes back
+    // Store fingerprint so we can check it right after the OAuth flow comes back
     sessionStorage.setItem('clipai_pending_fp', fingerprint);
+    localStorage.setItem('clipai_pending_fp', fingerprint); // survives the app being fully closed/reopened by Android
 
+    if (isNativeApp()) {
+      // Inside the Capacitor app: open Google sign-in in the system browser
+      // and use a custom URL scheme so Android can hand control back to the app.
+      const { data, error } = await sb.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: 'clipai://oauth-callback', skipBrowserRedirect: true }
+      });
+      if (error || !data?.url) {
+        showMsg((error && error.message) || 'Google sign-in failed', 'error');
+        return;
+      }
+      try {
+        const { Browser } = await import('https://cdn.jsdelivr.net/npm/@capacitor/browser@6/+esm');
+        await Browser.open({ url: data.url });
+      } catch (err) {
+        // Fallback if the Browser plugin import fails for any reason
+        window.location.href = data.url;
+      }
+      return;
+    }
+
+    // Regular web flow: normal HTTPS redirect, comes back to this same page.
     const { error } = await sb.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: window.location.origin + window.location.pathname + '?oauth=google' }
@@ -715,31 +742,22 @@
     if (error) showMsg(error.message || 'Google sign-in failed', 'error');
   }
 
-  // Handle the redirect back from Google OAuth
-  async function handleOAuthRedirect() {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('oauth') !== 'google') return;
-
+  // Shared logic: take a Supabase session and turn it into a ClipAI session,
+  // enforcing one-account-per-device on the backend. Used by both the web
+  // redirect handler and the native deep-link handler below.
+  async function finishGoogleSignIn(session) {
     const sb = getSupabase();
-    if (!sb) return;
-
-    setLoading('login-btn', true);
-    showMsg('Finishing Google sign-in...', 'success');
-
-    const { data: sessionData } = await sb.auth.getSession();
-    const session = sessionData?.session;
     if (!session) {
       showMsg('Google sign-in did not complete. Please try again.', 'error');
       setLoading('login-btn', false);
       return;
     }
 
-    const fingerprint = sessionStorage.getItem('clipai_pending_fp') || await getDeviceFingerprint();
+    const fingerprint = sessionStorage.getItem('clipai_pending_fp') || localStorage.getItem('clipai_pending_fp') || await getDeviceFingerprint();
     sessionStorage.removeItem('clipai_pending_fp');
+    localStorage.removeItem('clipai_pending_fp');
 
     try {
-      // Exchange the Supabase OAuth session for a ClipAI session,
-      // and let the backend enforce one-account-per-device.
       const res = await fetch(API_URL + '/api/auth', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -754,8 +772,7 @@
       const data = await readJsonResponse(res);
       if (!res.ok) {
         if (res.status === 409) {
-          // Device already has an account
-          await sb.auth.signOut();
+          if (sb) await sb.auth.signOut();
           showMsg(data.error || 'An account already exists on this device. Please sign in with that account instead.', 'error');
           setLoading('login-btn', false);
           return;
@@ -770,6 +787,57 @@
       showMsg(err, 'error');
       setLoading('login-btn', false);
     }
+  }
+
+  // Handle the redirect back from Google OAuth on the WEB version
+  async function handleOAuthRedirect() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('oauth') !== 'google') return;
+
+    const sb = getSupabase();
+    if (!sb) return;
+
+    setLoading('login-btn', true);
+    showMsg('Finishing Google sign-in...', 'success');
+
+    const { data: sessionData } = await sb.auth.getSession();
+    await finishGoogleSignIn(sessionData?.session);
+  }
+
+  // Handle the app being reopened via clipai://oauth-callback on ANDROID/iOS
+  async function handleNativeOAuthReturn(url) {
+    if (!url || !url.startsWith('clipai://oauth-callback')) return;
+    const sb = getSupabase();
+    if (!sb) return;
+
+    setLoading('login-btn', true);
+    showMsg('Finishing Google sign-in...', 'success');
+
+    // Supabase returns the session inside the URL fragment (#access_token=...)
+    const hashIndex = url.indexOf('#');
+    if (hashIndex === -1) {
+      showMsg('Google sign-in did not complete. Please try again.', 'error');
+      setLoading('login-btn', false);
+      return;
+    }
+    const params = new URLSearchParams(url.substring(hashIndex + 1));
+    const access_token = params.get('access_token');
+    const refresh_token = params.get('refresh_token');
+    if (!access_token) {
+      showMsg('Google sign-in did not complete. Please try again.', 'error');
+      setLoading('login-btn', false);
+      return;
+    }
+
+    const { data: sessionData } = await sb.auth.setSession({ access_token, refresh_token });
+    await finishGoogleSignIn(sessionData?.session);
+  }
+
+  // Listen for Android/iOS reopening the app via the clipai:// custom scheme
+  if (isNativeApp() && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+    window.Capacitor.Plugins.App.addListener('appUrlOpen', ({ url }) => {
+      handleNativeOAuthReturn(url);
+    });
   }
 
   function switchTab(tab) {
