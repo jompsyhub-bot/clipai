@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Terms of Service — ClipAI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #07080d;
+      --ink: #f4f1ff;
+      --muted: #a7a3bc;
+      --soft: #6f6a86;
+      --line: rgba(255,255,255,0.1);
+      --line2: rgba(255,255,255,0.16);
+      --violet: #8d7cff;
+      --cyan: #3ee7ff;
+      --green: #3ecf8e;
+      --amber: #ffb86b;
+      --font: 'Syne', sans-serif;
+      --body: 'DM Sans', sans-serif;
+      --mono: 'DM Mono', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background:
+        radial-gradient(circle at 12% 8%, rgba(62,231,255,0.06), transparent 30%),
+        radial-gradient(circle at 88% 14%, rgba(141,124,255,0.08), transparent 34%),
+        var(--bg);
+      color: var(--ink);
+      font-family: var(--body);
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(7,8,13,0.86);
+      backdrop-filter: blur(14px);
+    }
+    .logo {
+      font-family: var(--font);
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: -0.03em;
+      text-decoration: none;
+      color: var(--ink);
+    }
+    .logo span { color: var(--cyan); }
+    .back-link {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      text-decoration: none;
+      border: 1px solid var(--line2);
+      border-radius: 999px;
+      padding: 7px 14px;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .back-link:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 56px 24px 100px;
+    }
+    .eyebrow {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--violet);
+      border: 1px solid rgba(141,124,255,0.35);
+      background: rgba(141,124,255,0.07);
+      border-radius: 999px;
+      padding: 5px 12px;
+      margin-bottom: 18px;
+    }
+    h1 {
+      font-family: var(--font);
+      font-size: clamp(30px, 6vw, 42px);
+      letter-spacing: -0.04em;
+      line-height: 1.08;
+      margin-bottom: 10px;
+    }
+    .updated {
+      color: var(--soft);
+      font-family: var(--mono);
+      font-size: 12px;
+      margin-bottom: 40px;
+    }
+    .intro {
+      color: var(--muted);
+      font-size: 15px;
+      margin-bottom: 44px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid var(--line);
+    }
+    h2 {
+      font-family: var(--font);
+      font-size: 19px;
+      letter-spacing: -0.02em;
+      margin: 40px 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h2::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--cyan);
+      flex-shrink: 0;
+    }
+    p, li {
+      color: var(--muted);
+      font-size: 14.5px;
+      margin-bottom: 12px;
+    }
+    ul, ol { padding-left: 20px; margin-bottom: 12px; }
+    li::marker { color: var(--cyan); }
+    strong { color: var(--ink); font-weight: 700; }
+    a.inline { color: var(--cyan); text-decoration: none; border-bottom: 1px solid rgba(62,231,255,0.35); }
+    a.inline:hover { border-color: var(--cyan); }
+
+    .callout {
+      border: 1px solid rgba(255,184,107,0.32);
+      background: rgba(255,184,107,0.07);
+      border-radius: 16px;
+      padding: 16px 18px;
+      margin: 16px 0 24px;
+      display: flex;
+      gap: 12px;
+    }
+    .callout .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--amber);
+      flex-shrink: 0;
+      margin-top: 6px;
+    }
+    .callout p { color: var(--muted); margin-bottom: 0; font-size: 13.5px; }
+    .callout strong { color: var(--amber); }
+
+    .plan-table {
+      border: 1px solid var(--line2);
+      border-radius: 16px;
+      overflow: hidden;
+      margin: 16px 0 24px;
+      background: rgba(255,255,255,0.03);
+    }
+    .plan-row {
+      display: grid;
+      grid-template-columns: 1fr 1.4fr;
+      gap: 16px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    .plan-row:last-child { border-bottom: none; }
+    .plan-row .label {
+      font-family: var(--mono);
+      font-size: 11.5px;
+      color: var(--violet);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .plan-row .value { font-size: 13.5px; color: var(--muted); }
+
+    .contact-card {
+      margin-top: 48px;
+      border: 1px solid var(--line2);
+      border-radius: 20px;
+      padding: 26px;
+      background: rgba(255,255,255,0.04);
+      text-align: center;
+    }
+    .contact-card p { margin-bottom: 4px; color: var(--muted); }
+    .contact-card a {
+      color: var(--ink);
+      font-family: var(--font);
+      font-weight: 800;
+      font-size: 17px;
+      text-decoration: none;
+    }
+    .contact-card a:hover { color: var(--cyan); }
+
+    footer {
+      border-top: 1px solid var(--line);
+      padding: 28px 24px;
+      text-align: center;
+      color: var(--soft);
+      font-family: var(--mono);
+      font-size: 11.5px;
+    }
+    footer a { color: var(--soft); text-decoration: none; margin: 0 8px; }
+    footer a:hover { color: var(--cyan); }
+
+    @media (max-width: 600px) {
+      .plan-row { grid-template-columns: 1fr; gap: 4px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <a href="app.html" class="logo">clip<span>ai</span></a>
+    <a href="javascript:history.back()" class="back-link">← Back</a>
+  </div>
+
+  <main>
+    <span class="eyebrow">Legal</span>
+    <h1>Terms of Service</h1>
+    <div class="updated">Last updated: June 25, 2026</div>
+
+    <p class="intro">
+      These Terms of Service ("Terms") govern your access to and use of ClipAI, including our
+      website, application, and related services (the "Service"), operated by ClipAI ("we", "us",
+      "our"). By creating an account or using the Service, you agree to these Terms. If you do not
+      agree, please do not use ClipAI.
+    </p>
+
+    <h2>1. Eligibility</h2>
+    <p>
+      You must be at least 13 years old to use ClipAI. By using the Service, you confirm that you meet
+      this requirement and that you have the legal capacity to enter into these Terms.
+    </p>
+
+    <h2>2. Your account</h2>
+    <ul>
+      <li>You are responsible for keeping your login credentials secure and for all activity under your account.</li>
+      <li>You must provide accurate information when creating an account.</li>
+      <li>You may not share your account or use it on behalf of someone else without our permission.</li>
+    </ul>
+
+    <div class="callout">
+      <div class="dot"></div>
+      <p><strong>One free account per device.</strong> To keep the free tier fair and sustainable, ClipAI limits each device to one free account. Attempting to bypass this limit — including by using different email addresses, sign-in methods, clearing browser data, or using another device to circumvent this restriction — is a violation of these Terms and may result in suspension of all related accounts.</p>
+    </div>
+
+    <h2>3. Plans and payments</h2>
+    <div class="plan-table">
+      <div class="plan-row">
+        <div class="label">Free plan</div>
+        <div class="value">Limited usage, subject to the one-account-per-device policy above and any usage caps shown in the app.</div>
+      </div>
+      <div class="plan-row">
+        <div class="label">Paid plans</div>
+        <div class="value">Paid subscriptions unlock additional usage and features. Pricing is shown in the app at the time of purchase and may change with notice.</div>
+      </div>
+      <div class="plan-row">
+        <div class="label">Billing</div>
+        <div class="value">Subscriptions renew automatically until cancelled. You can cancel anytime; access continues until the end of the current billing period.</div>
+      </div>
+      <div class="plan-row">
+        <div class="label">Refunds</div>
+        <div class="value">Fees are generally non-refundable except where required by law. Contact us if you believe you were charged in error.</div>
+      </div>
+    </div>
+
+    <h2>4. Acceptable use</h2>
+    <p>You agree not to use ClipAI to:</p>
+    <ul>
+      <li>Upload or process content you do not have the legal right to use, including copyrighted material without permission.</li>
+      <li>Create content that is illegal, defamatory, harassing, hateful, or sexually exploitative, including of minors.</li>
+      <li>Attempt to circumvent free-tier limits, device fingerprint checks, or any rate limits.</li>
+      <li>Reverse-engineer, scrape, or interfere with the Service or its infrastructure.</li>
+      <li>Use the Service to violate any applicable law or third-party platform's terms (e.g. YouTube, TikTok, Instagram).</li>
+    </ul>
+    <p>We reserve the right to suspend or terminate accounts that violate this section.</p>
+
+    <h2>5. Your content</h2>
+    <ul>
+      <li>You retain ownership of the videos, audio, and other content you upload to ClipAI ("Your Content").</li>
+      <li>You grant us a limited license to process, store, and transmit Your Content solely to provide the Service to you (e.g. transcription, clip generation, export).</li>
+      <li>You are solely responsible for ensuring you have the rights to upload and use Your Content, including footage downloaded from third-party platforms.</li>
+      <li>We do not claim ownership of clips, captions, or exports generated from Your Content.</li>
+    </ul>
+
+    <h2>6. Third-party platforms and content</h2>
+    <p>
+      ClipAI may allow you to import video from third-party sources such as YouTube. You are responsible
+      for complying with the terms of service of any third-party platform you use in connection with
+      ClipAI. We are not affiliated with, and do not represent, any third-party platform.
+    </p>
+
+    <h2>7. AI-generated content</h2>
+    <p>
+      ClipAI uses third-party AI models to generate transcripts, clip suggestions, captions, and hooks.
+      AI output may contain errors or inaccuracies. You are responsible for reviewing AI-generated
+      content before publishing or relying on it.
+    </p>
+
+    <h2>8. Service availability</h2>
+    <p>
+      We aim to keep ClipAI available and reliable but do not guarantee uninterrupted access. The
+      Service may be modified, suspended, or discontinued, in whole or in part, at any time, with or
+      without notice, particularly for free-tier features.
+    </p>
+
+    <h2>9. Disclaimer of warranties</h2>
+    <p>
+      The Service is provided "as is" and "as available" without warranties of any kind, whether
+      express or implied, including but not limited to fitness for a particular purpose, accuracy, or
+      non-infringement.
+    </p>
+
+    <h2>10. Limitation of liability</h2>
+    <p>
+      To the fullest extent permitted by law, ClipAI and its operators shall not be liable for any
+      indirect, incidental, special, or consequential damages arising from your use of, or inability to
+      use, the Service, including loss of data, revenue, or business opportunities.
+    </p>
+
+    <h2>11. Termination</h2>
+    <p>
+      We may suspend or terminate your access to the Service at any time if you violate these Terms,
+      including the one-account-per-device policy. You may stop using the Service and request account
+      deletion at any time by contacting us.
+    </p>
+
+    <h2>12. Changes to these Terms</h2>
+    <p>
+      We may update these Terms from time to time. Material changes will be reflected by updating the
+      "Last updated" date above. Continued use of ClipAI after changes take effect constitutes
+      acceptance of the revised Terms.
+    </p>
+
+    <h2>13. Governing law</h2>
+    <p>
+      These Terms are governed by the laws of the Federal Republic of Nigeria, without regard to
+      conflict-of-law principles. Any disputes arising from these Terms or your use of the Service
+      shall be subject to the exclusive jurisdiction of the courts of Nigeria.
+    </p>
+
+    <h2>14. Contact</h2>
+    <p>
+      Questions about these Terms can be sent to the email below.
+    </p>
+
+    <div class="contact-card">
+      <p>Questions about these Terms?</p>
+      <a href="mailto:jompsyhub@gmail.com">jompsyhub@gmail.com</a>
+    </div>
+  </main>
+
+  <footer>
+    <a href="privacy.html">Privacy Policy</a>·<a href="terms.html">Terms of Service</a>·<a href="app.html">ClipAI</a>
+  </footer>
+</body>
+</html>
