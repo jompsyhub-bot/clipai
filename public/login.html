@@ -432,6 +432,24 @@
     }
     .device-note a { color: var(--cyan); text-decoration: none; }
 
+    .legal-footer {
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      text-align: center;
+      font-size: 12px;
+      color: var(--soft);
+      line-height: 1.7;
+    }
+    .legal-footer a {
+      color: var(--soft);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .legal-footer a:hover { color: var(--cyan); border-color: rgba(62,231,255,0.4); }
+    .legal-footer .sep { margin: 0 8px; color: var(--line2); }
+
     .msg {
       display: none;
       margin-top: 16px;
@@ -615,6 +633,11 @@
       </div>
 
       <div id="msg" class="msg"></div>
+
+      <div class="legal-footer">
+        By continuing, you agree to ClipAI's<br>
+        <a href="terms.html">Terms of Service</a><span class="sep">·</span><a href="privacy.html">Privacy Policy</a>
+      </div>
 
       <div class="trust-row" aria-hidden="true">
         <span>Ghost Editor</span>
