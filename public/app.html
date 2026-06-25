@@ -2011,6 +2011,18 @@ function getAuthToken() {
   return localStorage.getItem('clipai_token') || '';
 }
 
+function getClipAIDeviceId() {
+  let deviceId = localStorage.getItem('clipai_device_id');
+  if (!deviceId) {
+    const randomId = (window.crypto && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : 'clipai_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    deviceId = randomId;
+    localStorage.setItem('clipai_device_id', deviceId);
+  }
+  return deviceId;
+}
+
 function handleExpiredSession() {
   localStorage.removeItem('clipai_token');
   localStorage.removeItem('clipai_user');
@@ -2034,10 +2046,11 @@ async function requestBilling(action) {
     method: action ? 'POST' : 'GET',
     headers: {
       'content-type': 'application/json',
-      authorization: 'Bearer ' + token
+      authorization: 'Bearer ' + token,
+      'x-clipai-device-id': getClipAIDeviceId()
     }
   };
-  if (action) options.body = JSON.stringify({ action });
+  if (action) options.body = JSON.stringify({ action, deviceId: getClipAIDeviceId() });
   const res = await fetch(API_URL + '/api/billing', options);
   const data = await readBillingJson(res);
   if (res.status === 401) {
@@ -2188,9 +2201,15 @@ function showPaywall(status) {
     document.body.appendChild(modal);
   }
   const sub = document.getElementById('paywall-sub');
-  if (sub) sub.textContent = status?.requiresPayment
-    ? 'You have used your 3 free exports. Choose a plan to continue exporting.'
-    : 'Choose a plan to continue exporting without limits.';
+  if (sub) {
+    if (status?.trialBlocked) {
+      sub.textContent = 'A free trial has already been used on this device or network. Choose a plan to continue.';
+    } else if (status?.requiresPayment) {
+      sub.textContent = 'You have used your ' + String(status.freeExportsLimit || 3) + ' free exports. Choose a plan to continue exporting.';
+    } else {
+      sub.textContent = 'Choose a plan to continue exporting without limits.';
+    }
+  }
   modal.style.display = 'flex';
   refreshPaywallPlans();
 }
