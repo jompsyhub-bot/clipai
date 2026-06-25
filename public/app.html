@@ -1879,7 +1879,8 @@ const state = {
   viralMemory: [],
   memoryProfile: null,
   memoryBusy: false,
-  clipsReadyNotified: false
+  clipsReadyNotified: false,
+  lastSavedProjectKey: ''
 };
 
 const compilationState = {
@@ -2309,6 +2310,8 @@ async function recordSuccessfulExport() {
   } catch (err) {
     console.warn('[ClipAI] Billing usage update failed:', err);
   }
+  await autoSaveProjectAfterExport();
+  loadDashboardStats();
 }
 
 function updateDashboardBilling(status) {
@@ -4478,6 +4481,9 @@ async function deleteProject(btn, id, i) {
 }
 
 function loadProject(p) {
+  if (typeof p === 'string') {
+    try { p = JSON.parse(p); } catch (err) { toast('Could not load project'); return; }
+  }
 
   // Restore full state
   state.transcript = p.transcript || '';
@@ -4538,6 +4544,97 @@ function loadProject(p) {
 function closeSidebar() {
   document.getElementById('projects-sidebar').style.display = 'none';
   document.getElementById('sidebar-overlay').style.display = 'none';
+}
+
+function projectTitleFromState() {
+  const firstClip = state.clips.find(Boolean);
+  const fromClip = firstClip?.title || firstClip?.hook || '';
+  if (fromClip) return fromClip.slice(0, 70);
+  const transcriptWords = String(state.transcript || '').trim().split(/\s+/).filter(Boolean).slice(0, 7).join(' ');
+  return transcriptWords || 'Untitled Project';
+}
+
+function getProjectSaveKey(payload) {
+  return [
+    state.transcriptId || '',
+    state.localFileId || '',
+    payload.title || '',
+    payload.clips.length,
+    payload.duration || 0
+  ].join('|');
+}
+
+function buildProjectPayload() {
+  return {
+    title: projectTitleFromState(),
+    transcript: state.transcript || '',
+    clips: (state.clips || []).map((clip, index) => ({
+      ...clip,
+      selected: state.selectedClips.has(index)
+    })),
+    utterances: state.utterances || [],
+    highlights: state.highlights || [],
+    duration: state.duration || 0,
+    videoFilename: state.localFileId || state.transcriptId || ''
+  };
+}
+
+async function saveProject(options = {}) {
+  const token = getAuthToken();
+  if (!token) {
+    if (!options.silent) window.location.href = 'login.html';
+    return false;
+  }
+  if (!state.transcript && !state.clips.length) {
+    if (!options.silent) toast('Create clips before saving this project.');
+    return false;
+  }
+
+  const payload = buildProjectPayload();
+  const saveKey = getProjectSaveKey(payload);
+  if (options.auto && state.lastSavedProjectKey === saveKey) {
+    loadDashboardStats();
+    return true;
+  }
+
+  try {
+    if (!options.silent) toast('Saving project...');
+    const res = await fetch(API_URL + '/api/projects', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: 'Bearer ' + token,
+        'x-requested-with': 'clipai'
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await readBillingJson(res);
+    if (res.status === 401) {
+      handleExpiredSession();
+      return false;
+    }
+    if (res.status === 409 || data?.error === 'duplicate') {
+      state.lastSavedProjectKey = saveKey;
+      loadDashboardStats();
+      if (!options.silent) toast('Project is already saved.');
+      return true;
+    }
+    if (!res.ok) throw new Error(data.error || data.message || 'Project could not be saved');
+
+    state.lastSavedProjectKey = saveKey;
+    loadDashboardStats();
+    if (!options.silent) toast('Project saved.');
+    return true;
+  } catch (err) {
+    if (!options.silent) toast(formatUserError(err, 'We could not save this project. Please try again.'), 6000);
+    console.warn('[ClipAI] save project failed:', err);
+    return false;
+  }
+}
+
+async function autoSaveProjectAfterExport() {
+  if (!state.transcript && !state.clips.length) return false;
+  return saveProject({ auto: true, silent: true });
 }
 
 // Init
@@ -4715,9 +4812,14 @@ function loadDashboardStats() {
     .then(updateDashboardBilling)
     .catch(err => console.warn('[ClipAI] dashboard billing unavailable:', err));
 
-  // Load projects for recent list
-  fetch('/api/projects', { headers: { 'authorization': 'Bearer ' + token } })
-    .then(r => r.json())
+  fetch(API_URL + '/api/projects', { headers: { 'authorization': 'Bearer ' + token, 'x-requested-with': 'clipai' } })
+    .then(async r => {
+      if (r.status === 401) {
+        handleExpiredSession();
+        return [];
+      }
+      return r.json();
+    })
     .then(projects => {
       if (!Array.isArray(projects)) return;
       document.getElementById('dash-stat-projects').textContent = projects.length;
@@ -4726,32 +4828,43 @@ function loadDashboardStats() {
       const totalClips = projects.reduce((sum, p) => sum + (p.clips?.length || 0), 0);
       document.getElementById('dash-stat-clips').textContent = totalClips;
 
-      // Show recent projects
+      window._dashboardProjectsMap = {};
       if (projects.length > 0) {
         const section = document.getElementById('recent-projects-section');
         const list = document.getElementById('recent-projects-list');
         if (section) section.style.display = 'block';
         if (list) {
-          list.innerHTML = projects.slice(0, 3).map(p => `
-            <div class="recent-project-row" onclick="loadProjectFromDashboard('${JSON.stringify(p).replace(/'/g, "\'")}')" >
+          list.innerHTML = projects.slice(0, 3).map((p, index) => {
+            window._dashboardProjectsMap[index] = p;
+            return `
+            <div class="recent-project-row" onclick="loadProjectFromDashboard(${index})" >
               <div class="recent-project-icon">🎬</div>
-              <div class="recent-project-title">${p.title || 'Untitled Project'}</div>
+              <div class="recent-project-title">${escapeHTML(p.title || 'Untitled Project')}</div>
               <div class="recent-project-meta">${p.clips?.length || 0} clips · ${new Date(p.created_at).toLocaleDateString()}</div>
             </div>
-          `).join('');
+          `;
+          }).join('');
         }
+      } else {
+        const section = document.getElementById('recent-projects-section');
+        const list = document.getElementById('recent-projects-list');
+        if (section) section.style.display = 'none';
+        if (list) list.innerHTML = '';
       }
     })
     .catch(() => {});
 }
 
-function loadProjectFromDashboard(projectJson) {
+function loadProjectFromDashboard(projectRef) {
   try {
-    const p = typeof projectJson === 'string' ? JSON.parse(projectJson) : projectJson;
-    // Switch to clips workspace first
+    const p = typeof projectRef === 'number'
+      ? window._dashboardProjectsMap?.[projectRef]
+      : typeof projectRef === 'string'
+        ? JSON.parse(projectRef)
+        : projectRef;
+    if (!p) throw new Error('Project not found');
     chooseCreationMode('clips');
-    // Then load project
-    setTimeout(() => loadProject(JSON.stringify(p)), 100);
+    setTimeout(() => loadProject(p), 100);
   } catch(e) {
     toast('Could not load project');
   }
