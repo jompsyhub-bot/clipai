@@ -1797,6 +1797,13 @@
       </div>
       <div class="card">
         <div class="card-title">Export &amp; share</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:14px">
+          <div>
+            <div style="font-size:14px;font-weight:800;color:var(--text)">ClipAI watermark</div>
+            <div id="watermark-status" style="font-size:12px;color:var(--text3);line-height:1.5;margin-top:3px">Free exports include a small ClipAI watermark.</div>
+          </div>
+          <button class="btn btn-ghost" id="watermark-toggle-btn" type="button" onclick="toggleWatermarkRemoval()" style="padding:9px 12px;white-space:nowrap">Remove</button>
+        </div>
         <div class="export-grid">
           <div class="export-card" onclick="exportTo('mp4')">
             <span class="ex-icon">⬇</span>
@@ -1870,6 +1877,7 @@ const state = {
     position: 78,
     words: 3
   },
+  removeWatermark: false,
   ghostBrief: '',
   ghostPlan: null,
   ghostAutoRun: false,
@@ -2316,10 +2324,56 @@ async function recordSuccessfulExport() {
 
 function updateDashboardBilling(status) {
   const exportsEl = document.getElementById('dash-stat-exports');
-  if (!exportsEl || !status) return;
-  exportsEl.textContent = status.isSubscribed
-    ? String(status.exportsUsed || 0)
-    : String(status.exportsUsed || 0) + '/' + String(status.freeExportsLimit || 1);
+  if (exportsEl && status) {
+    exportsEl.textContent = status.isSubscribed
+      ? String(status.exportsUsed || 0)
+      : String(status.exportsUsed || 0) + '/' + String(status.freeExportsLimit || 1);
+  }
+  renderWatermarkControls();
+}
+
+function isProUser() {
+  return Boolean(billingState.status?.isSubscribed);
+}
+
+function renderWatermarkControls() {
+  const statusEl = document.getElementById('watermark-status');
+  const btn = document.getElementById('watermark-toggle-btn');
+  if (!statusEl || !btn) return;
+
+  if (isProUser()) {
+    statusEl.textContent = state.removeWatermark
+      ? 'Watermark removed for this Pro export.'
+      : 'Pro users can export with or without the ClipAI watermark.';
+    btn.textContent = state.removeWatermark ? 'Keep watermark' : 'Remove';
+    btn.className = state.removeWatermark ? 'btn btn-primary' : 'btn btn-ghost';
+    return;
+  }
+
+  state.removeWatermark = false;
+  statusEl.textContent = 'Free exports include a small ClipAI watermark. Upgrade to remove it.';
+  btn.textContent = 'Remove';
+  btn.className = 'btn btn-ghost';
+}
+
+async function toggleWatermarkRemoval() {
+  let status = billingState.status;
+  if (!status) {
+    try { status = await requestBilling(); } catch (err) {}
+  }
+
+  if (!status?.isSubscribed) {
+    showPaywall(status || { requiresPayment: true });
+    toast('Upgrade to ClipAI Pro to remove the watermark.', 4000);
+    return;
+  }
+
+  state.removeWatermark = !state.removeWatermark;
+  renderWatermarkControls();
+}
+
+function shouldRemoveWatermark() {
+  return Boolean(state.removeWatermark && isProUser());
 }
 
 function chooseCreationMode(mode) {
@@ -2622,6 +2676,7 @@ async function buildCompilationVideo() {
       body: JSON.stringify({
         title: compilationState.plan.title || 'ClipAI Compilation',
         quality: '720p',
+        removeWatermark: shouldRemoveWatermark(),
         plan: compilationState.plan,
         sources: compilationState.sources.map(source => ({
           index: source.index,
@@ -2741,6 +2796,8 @@ function goStage(n) {
   if (n === 3) {
     renderCaptionPresets();
     renderCaptionControls();
+    renderWatermarkControls();
+    requestBilling().then(updateDashboardBilling).catch(() => renderWatermarkControls());
     renderExportSummary();
     setTimeout(() => drawAllVisibleCaptions(), 150);
   }
@@ -4339,6 +4396,7 @@ async function exportTo(platform) {
           captionSettings: state.captionSettings,
           hookOverlay: clip.hook_overlay || clip.hook || '',
           hookAngle: clip.hook_angle || '',
+          removeWatermark: shouldRemoveWatermark(),
           words: state.words ? state.words.filter(w => w.start >= (clip.start_ms || 0) && w.start <= (clip.end_ms || 0)).slice(0, 300) : []
         })
       });
