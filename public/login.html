@@ -962,6 +962,9 @@
     if (lower.includes('invalid') || lower.includes('credential') || lower.includes('login') || lower.includes('password')) {
       return 'The email or password is not correct. Please try again.';
     }
+    if (lower.includes('device')) {
+      return raw;
+    }
     if (lower.includes('already') || lower.includes('exists')) {
       return 'An account with this email already exists. Try signing in instead.';
     }
