@@ -592,6 +592,9 @@
       background:
         linear-gradient(135deg, rgba(240,168,50,0.10), transparent 46%),
         var(--bg2);
+      min-width: 0;
+      max-width: 100%;
+      overflow-x: hidden;
     }
     .hook-lab-head {
       display: flex;
@@ -618,6 +621,12 @@
       line-height: 1.4;
     }
     .hook-benefit strong { display: block; color: var(--text); font-size: 12px; margin-bottom: 2px; }
+    .hook-lab-output {
+      display: none;
+      margin-top: 14px;
+      gap: 10px;
+    }
+    .hook-lab-output.show { display: grid; }
     .hook-lab-output {
       display: none;
       margin-top: 14px;
@@ -1799,6 +1808,13 @@
         <div class="card-title">Export &amp; share</div>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:14px">
           <div>
+            <div style="font-size:14px;font-weight:800;color:var(--text)">Captions in export</div>
+            <div id="caption-export-status" style="font-size:12px;color:var(--text3);line-height:1.5;margin-top:3px">Generated captions will be burned into downloaded clips.</div>
+          </div>
+          <button class="btn btn-primary" id="caption-export-toggle-btn" type="button" onclick="toggleExportCaptions()" style="padding:9px 12px;white-space:nowrap">On</button>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:14px">
+          <div>
             <div style="font-size:14px;font-weight:800;color:var(--text)">ClipAI watermark</div>
             <div id="watermark-status" style="font-size:12px;color:var(--text3);line-height:1.5;margin-top:3px">Free exports include a small ClipAI watermark.</div>
           </div>
@@ -1877,6 +1893,7 @@ const state = {
     position: 78,
     words: 3
   },
+  burnCaptions: true,
   removeWatermark: false,
   ghostBrief: '',
   ghostPlan: null,
@@ -2376,6 +2393,31 @@ function shouldRemoveWatermark() {
   return Boolean(state.removeWatermark && isProUser());
 }
 
+function renderCaptionExportControls() {
+  const statusEl = document.getElementById('caption-export-status');
+  const btn = document.getElementById('caption-export-toggle-btn');
+  if (!statusEl || !btn) return;
+
+  const enabled = state.burnCaptions !== false;
+  statusEl.textContent = enabled
+    ? 'Generated captions will be burned into downloaded clips.'
+    : 'Downloaded clips will keep the original video clean with no generated captions.';
+  btn.textContent = enabled ? 'On' : 'Off';
+  btn.className = enabled ? 'btn btn-primary' : 'btn btn-ghost';
+}
+
+function toggleExportCaptions() {
+  state.burnCaptions = state.burnCaptions === false;
+  renderCaptionExportControls();
+  drawAllVisibleCaptions();
+  renderExportSummary();
+  toast(state.burnCaptions === false ? 'Captions turned off for export.' : 'Captions turned on for export.');
+}
+
+function shouldBurnCaptions() {
+  return state.burnCaptions !== false;
+}
+
 function chooseCreationMode(mode) {
   currentCreationMode = mode === 'compilation' ? 'compilation' : 'clips';
   const isCompilation = currentCreationMode === 'compilation';
@@ -2796,6 +2838,7 @@ function goStage(n) {
   if (n === 3) {
     renderCaptionPresets();
     renderCaptionControls();
+    renderCaptionExportControls();
     renderWatermarkControls();
     requestBilling().then(updateDashboardBilling).catch(() => renderWatermarkControls());
     renderExportSummary();
@@ -2843,6 +2886,8 @@ function createNewClips() {
     localFileId: null,
     localPreviewUrl: '',
     captionSettings: { size: 100, position: 78, words: 3 },
+    burnCaptions: true,
+    removeWatermark: false,
     ghostBrief: '',
     ghostPlan: null,
     ghostAutoRun: false,
@@ -4131,6 +4176,8 @@ function drawCaption(canvas, clip, currentMs) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, rect.width, rect.height);
 
+  if (!shouldBurnCaptions()) return;
+
   const style = CAPTION_STYLES[state.captionStyle] || CAPTION_STYLES.tiktok;
   const settings = state.captionSettings || { size: 100, position: Math.round(style.y * 100), words: 3 };
   const relativeMs = Math.max(0, currentMs - (clip.start_ms || 0));
@@ -4341,6 +4388,7 @@ function renderExportSummary() {
     el.textContent = 'No clips selected. Go back to Clips tab to select clips.';
     return;
   }
+  const captionStatus = shouldBurnCaptions() ? 'captions on' : 'captions off';
   el.innerHTML = selected.map((c, i) =>
     `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
       <strong style="color:var(--text)">${i + 1}. ${c.title}</strong>
@@ -4348,7 +4396,7 @@ function renderExportSummary() {
       <div style="color:var(--text2);font-size:13px;margin-top:4px">${c.why}</div>
       ${c.hook_overlay ? `<div style="color:var(--green);font-size:12px;margin-top:6px;font-family:var(--mono)">Hook overlay: ${escapeHTML(c.hook_overlay)}</div>` : ''}
     </div>`
-  ).join('') + `<div style="padding-top:12px;color:var(--text3);font-size:13px">${selected.length} clip${selected.length !== 1 ? 's' : ''} ready to export</div>`;
+  ).join('') + `<div style="padding-top:12px;color:var(--text3);font-size:13px">${selected.length} clip${selected.length !== 1 ? 's' : ''} ready to export · ${captionStatus}</div>`;
 }
 
 // Track ongoing export so we can show progress
@@ -4394,6 +4442,7 @@ async function exportTo(platform) {
           captionStyle: state.captionStyle,
           captionPreset: selectedPreset,
           captionSettings: state.captionSettings,
+          burnCaptions: shouldBurnCaptions(),
           hookOverlay: clip.hook_overlay || clip.hook || '',
           hookAngle: clip.hook_angle || '',
           removeWatermark: shouldRemoveWatermark(),
