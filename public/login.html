@@ -432,6 +432,26 @@
     }
     .device-note a { color: var(--cyan); text-decoration: none; }
 
+    .forgot-row {
+      text-align: right;
+      margin: -6px 0 16px;
+    }
+    .forgot-row a {
+      font-size: 12.5px;
+      color: var(--muted);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .forgot-row a:hover { color: var(--cyan); border-color: rgba(62,231,255,0.4); }
+
+    .panel-sub {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+      margin-bottom: 18px;
+    }
+
     .legal-footer {
       margin-top: 22px;
       padding-top: 18px;
@@ -611,7 +631,35 @@
           <label>Password</label>
           <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" />
         </div>
+        <div class="forgot-row">
+          <a href="javascript:void(0)" onclick="showForgotPassword()">Forgot password?</a>
+        </div>
         <button class="btn" id="login-btn" onclick="doLogin()">Sign In</button>
+      </div>
+
+      <div id="form-forgot" style="display:none">
+        <p class="panel-sub">Enter the email on your account and we'll send you a link to reset your password.</p>
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="forgot-email" placeholder="you@example.com" autocomplete="email" />
+        </div>
+        <button class="btn" id="forgot-btn" onclick="doForgotPassword()">Send reset link</button>
+        <div class="forgot-row" style="margin-top:14px">
+          <a href="javascript:void(0)" onclick="switchTab('login')">← Back to sign in</a>
+        </div>
+      </div>
+
+      <div id="form-reset" style="display:none">
+        <p class="panel-sub">Choose a new password for your account.</p>
+        <div class="field">
+          <label>New password (min 6 characters)</label>
+          <input type="password" id="reset-password" placeholder="••••••••" autocomplete="new-password" />
+        </div>
+        <div class="field">
+          <label>Confirm new password</label>
+          <input type="password" id="reset-password-confirm" placeholder="••••••••" autocomplete="new-password" />
+        </div>
+        <button class="btn" id="reset-btn" onclick="doResetPassword()">Update password</button>
       </div>
 
       <div id="form-signup" style="display:none">
@@ -864,15 +912,29 @@
   }
 
   function switchTab(tab) {
+    const isAuthTab = tab === 'login' || tab === 'signup';
     document.getElementById('tab-login').classList.toggle('active', tab === 'login');
     document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
+    document.querySelector('.tabs').style.display = isAuthTab ? 'flex' : 'none';
     document.getElementById('form-login').style.display = tab === 'login' ? 'block' : 'none';
     document.getElementById('form-signup').style.display = tab === 'signup' ? 'block' : 'none';
-    document.querySelector('.form-head h2').textContent = tab === 'login' ? 'Sign in to ClipAI' : 'Create your workspace';
-    document.querySelector('.form-head p').textContent = tab === 'login'
-      ? 'Access your clips, Ghost Editor briefs, saved projects, and Compilation Studio.'
-      : 'Start turning long videos into clips, hooks, and compilation plans.';
+    document.getElementById('form-forgot').style.display = tab === 'forgot' ? 'block' : 'none';
+    document.getElementById('form-reset').style.display = tab === 'reset' ? 'block' : 'none';
+
+    const headings = {
+      login: ['Sign in to ClipAI', 'Access your clips, Ghost Editor briefs, saved projects, and Compilation Studio.'],
+      signup: ['Create your workspace', 'Start turning long videos into clips, hooks, and compilation plans.'],
+      forgot: ['Reset your password', 'No worries — we\'ll send you a link to get back in.'],
+      reset: ['Choose a new password', 'Almost done. Set a new password to finish resetting your account.']
+    };
+    const [heading, sub] = headings[tab] || headings.login;
+    document.querySelector('.form-head h2').textContent = heading;
+    document.querySelector('.form-head p').textContent = sub;
     document.getElementById('msg').className = 'msg';
+  }
+
+  function showForgotPassword() {
+    switchTab('forgot');
   }
 
   function showMsg(text, type) {
@@ -981,15 +1043,87 @@
     }
   }
 
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Enter') {
-      const active = document.getElementById('form-login').style.display !== 'none' ? 'login' : 'signup';
-      active === 'login' ? doLogin() : doSignup();
+  // ── FORGOT / RESET PASSWORD ──
+  async function doForgotPassword() {
+    const email = document.getElementById('forgot-email').value.trim();
+    if (!email) return showMsg('Please enter your email address', 'error');
+
+    const sb = getSupabase();
+    if (!sb) { showMsg('Sign-in service is still loading. Try again in a moment.', 'error'); return; }
+
+    setLoading('forgot-btn', true);
+    try {
+      const { error } = await sb.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + window.location.pathname + '?reset=password'
+      });
+      if (error) throw new Error(error.message || 'Could not send reset email');
+      showMsg('Check your email for a link to reset your password.', 'success');
+    } catch (err) {
+      showMsg(err, 'error');
     }
+    setLoading('forgot-btn', false);
+  }
+
+  async function doResetPassword() {
+    const password = document.getElementById('reset-password').value;
+    const confirm = document.getElementById('reset-password-confirm').value;
+    if (!password || !confirm) return showMsg('Please fill in both fields', 'error');
+    if (password.length < 6) return showMsg('Password must be at least 6 characters', 'error');
+    if (password !== confirm) return showMsg('Passwords do not match', 'error');
+
+    const sb = getSupabase();
+    if (!sb) { showMsg('Sign-in service is still loading. Try again in a moment.', 'error'); return; }
+
+    setLoading('reset-btn', true);
+    try {
+      const { error } = await sb.auth.updateUser({ password });
+      if (error) throw new Error(error.message || 'Could not update password');
+      showMsg('Password updated! You can now sign in.', 'success');
+      setTimeout(() => {
+        window.history.replaceState({}, '', window.location.pathname);
+        switchTab('login');
+      }, 1800);
+    } catch (err) {
+      showMsg(err, 'error');
+    }
+    setLoading('reset-btn', false);
+  }
+
+  // If the user arrived here from a password-reset email link, Supabase
+  // appends the recovery session to the URL. Detect that and show the
+  // "choose a new password" panel instead of the normal login form.
+  async function handlePasswordRecoveryRedirect() {
+    const params = new URLSearchParams(window.location.search);
+    const hash = window.location.hash || '';
+    const isRecovery = params.get('reset') === 'password' || hash.includes('type=recovery');
+    if (!isRecovery) return;
+
+    const sb = getSupabase();
+    if (!sb) return;
+
+    // Supabase's JS client automatically detects the recovery token in the
+    // URL hash and establishes a session for it on load.
+    const { data: sessionData } = await sb.auth.getSession();
+    if (sessionData?.session) {
+      switchTab('reset');
+    } else {
+      showMsg('This reset link is invalid or has expired. Please request a new one.', 'error');
+      switchTab('forgot');
+    }
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    if (document.getElementById('form-login').style.display !== 'none') doLogin();
+    else if (document.getElementById('form-signup').style.display !== 'none') doSignup();
+    else if (document.getElementById('form-forgot').style.display !== 'none') doForgotPassword();
+    else if (document.getElementById('form-reset').style.display !== 'none') doResetPassword();
   });
 
   // If we just came back from a Google OAuth redirect, finish the sign-in
   handleOAuthRedirect();
+  // If we just came back from a password-reset email link, show the reset panel
+  handlePasswordRecoveryRedirect();
 </script>
 </body>
 </html>
