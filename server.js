@@ -126,6 +126,10 @@ function streamVideoFile(req, res, filePath, contentType = 'video/mp4') {
   fs.createReadStream(filePath).pipe(res);
 }
 
+function localPreviewUrl(req, localFileId) {
+  return `${publicBaseUrl(req)}/api/serve-upload-file/${encodeURIComponent(localFileId)}`;
+}
+
 // ─── BINARY DOWNLOADER ───────────────────────────────────────────────────────
 function downloadFile(url, dest, callback) {
   const file = fs.createWriteStream(dest);
@@ -343,8 +347,9 @@ app.post('/api/youtube-upload', async (req, res) => {
 
   console.log('✅ Video ready, size:', fs.statSync(outputPath).size);
 
+  const previewUrl = localPreviewUrl(req, localFileId);
   const ASSEMBLYAI_KEY = process.env.ASSEMBLYAI_API_KEY;
-  if (!ASSEMBLYAI_KEY) return res.json({ localFileId, uploadUrl: `https://${req.headers.host}/api/serve-upload/${localFileId}` });
+  if (!ASSEMBLYAI_KEY) return res.json({ localFileId, uploadUrl: previewUrl, previewUrl });
 
   try {
     const fileData = fs.readFileSync(outputPath);
@@ -355,16 +360,21 @@ app.post('/api/youtube-upload', async (req, res) => {
     });
     const uploadData = JSON.parse(uploadRes);
     console.log('✅ Uploaded to AssemblyAI:', uploadData.upload_url);
-    res.json({ localFileId, uploadUrl: uploadData.upload_url });
+    res.json({ localFileId, uploadUrl: uploadData.upload_url, previewUrl });
   } catch (uploadErr) {
     console.error('AssemblyAI upload error:', uploadErr.message);
-    res.json({ localFileId, uploadUrl: `https://${req.headers.host}/api/serve-upload/${localFileId}` });
+    res.json({ localFileId, uploadUrl: previewUrl, previewUrl });
   }
 });
 
 // ─── SERVE UPLOADED FILE ──────────────────────────────────────────────────────
 app.get('/api/serve-upload/:id', (req, res) => {
   const filePath = path.join(UPLOAD_DIR, req.params.id + '.mp4');
+  streamVideoFile(req, res, filePath, 'video/mp4');
+});
+
+app.get('/api/serve-upload-file/:id', (req, res) => {
+  const filePath = findUploadPath(req.params.id);
   streamVideoFile(req, res, filePath, 'video/mp4');
 });
 
@@ -381,8 +391,9 @@ app.post('/api/upload-local', async (req, res) => {
 
   writeStream.on('finish', async () => {
     console.log('✅ File saved, size:', fs.statSync(outputPath).size);
+    const previewUrl = localPreviewUrl(req, localFileId);
     const ASSEMBLYAI_KEY = process.env.ASSEMBLYAI_API_KEY;
-    if (!ASSEMBLYAI_KEY) return res.json({ localFileId, uploadUrl: `https://${req.headers.host}/api/serve-upload-raw/${localFileId}${ext}` });
+    if (!ASSEMBLYAI_KEY) return res.json({ localFileId, uploadUrl: previewUrl, previewUrl });
     try {
       const fileData = fs.readFileSync(outputPath);
       const uploadRes = await fetchWithBuffer('https://api.assemblyai.com/v2/upload', {
@@ -392,10 +403,10 @@ app.post('/api/upload-local', async (req, res) => {
       });
       const uploadData = JSON.parse(uploadRes);
       console.log('✅ Uploaded to AssemblyAI:', uploadData.upload_url);
-      res.json({ localFileId, uploadUrl: uploadData.upload_url });
+      res.json({ localFileId, uploadUrl: uploadData.upload_url, previewUrl });
     } catch (err) {
       console.error('AssemblyAI upload error:', err.message);
-      res.json({ localFileId, uploadUrl: `https://${req.headers.host}/api/serve-upload-raw/${localFileId}${ext}` });
+      res.json({ localFileId, uploadUrl: previewUrl, previewUrl });
     }
   });
   writeStream.on('error', (err) => res.status(500).json({ error: 'Failed to save file' }));
@@ -736,7 +747,34 @@ function normalizeHookOverlayText(text) {
     .slice(0, 95);
 }
 
-function buildVideoFilterScript(captionLines, words, startMs, endMs, requestId, captionStyle, captionPreset, captionSettings, hookOverlay, exportFormat) {
+function drawtextWatermarkFilter(textFilePath, exportFormat) {
+  const format = exportFormat || normalizeExportFormat();
+  const scale = format.fontScale || 1;
+  const margin = Math.round(30 * scale);
+  const fontSize = Math.max(22, Math.round(26 * scale));
+  const shadowOffset = Math.max(2, Math.round(2 * scale));
+  const xExpr = `if(lt(mod(t\\,8)\\,4)\\,${margin}\\,w-text_w-${margin})`;
+  const yExpr = `if(lt(mod(t\\,8)\\,4)\\,${margin}\\,h-text_h-${margin})`;
+  return 'drawtext=textfile=' + escapeFilterPath(textFilePath) +
+    getDrawtextFontOption() +
+    ':fontcolor=white@0.92' +
+    ':fontsize=' + fontSize +
+    ':box=0' +
+    ':x=' + xExpr +
+    ':y=' + yExpr +
+    ':shadowcolor=black@0.9' +
+    ':shadowx=' + shadowOffset +
+    ':shadowy=' + shadowOffset;
+}
+
+function buildWatermarkFilterPart(requestId, exportFormat, cleanupPaths) {
+  const watermarkFilePath = path.join(DOWNLOAD_DIR, `watermark_${requestId}.txt`);
+  fs.writeFileSync(watermarkFilePath, '@ClipAI', 'utf8');
+  cleanupPaths.push(watermarkFilePath);
+  return drawtextWatermarkFilter(watermarkFilePath, exportFormat);
+}
+
+function buildVideoFilterScript(captionLines, words, startMs, endMs, requestId, captionStyle, captionPreset, captionSettings, hookOverlay, exportFormat, removeWatermark, burnCaptions = true) {
   const format = exportFormat || normalizeExportFormat();
   const filters = [
     `scale=${format.width}:${format.height}:force_original_aspect_ratio=decrease`,
@@ -755,18 +793,25 @@ function buildVideoFilterScript(captionLines, words, startMs, endMs, requestId, 
     filters.push(drawtextHookOverlayFilter(hookFilePath, format));
   }
 
-  const chunks = buildCaptionChunks(words, startMs, endMs, captionLines, captionSettings);
-  chunks.forEach((chunk, index) => {
-    const textFilePath = path.join(DOWNLOAD_DIR, `caption_${requestId}_${index}.txt`);
-    fs.writeFileSync(textFilePath, style.uppercase ? chunk.text.toUpperCase() : chunk.text, 'utf8');
-    cleanupPaths.push(textFilePath);
-    filters.push(drawtextFilterForChunk(chunk, textFilePath, style));
-  });
+  const chunks = burnCaptions ? buildCaptionChunks(words, startMs, endMs, captionLines, captionSettings) : [];
+  if (burnCaptions) {
+    chunks.forEach((chunk, index) => {
+      const textFilePath = path.join(DOWNLOAD_DIR, `caption_${requestId}_${index}.txt`);
+      fs.writeFileSync(textFilePath, style.uppercase ? chunk.text.toUpperCase() : chunk.text, 'utf8');
+      cleanupPaths.push(textFilePath);
+      filters.push(drawtextFilterForChunk(chunk, textFilePath, style));
+    });
+  }
+  if (!removeWatermark) {
+    filters.push(buildWatermarkFilterPart(requestId, format, cleanupPaths));
+  }
   console.log('Caption chunks:', chunks.length);
+  console.log('Captions:', burnCaptions ? 'enabled' : 'disabled');
   console.log('Caption style:', normalizeCaptionStyle(captionStyle, captionPreset));
   console.log('Caption settings:', normalizeCaptionSettings(captionSettings));
   console.log('Export format:', format);
   if (hookText) console.log('Hook overlay:', hookText);
+  console.log('Watermark:', removeWatermark ? 'removed' : 'enabled');
   if (chunks.length) console.log('First caption chunk:', chunks[0]);
 
   const scriptPath = path.join(DOWNLOAD_DIR, `filter_${requestId}.txt`);
@@ -789,7 +834,9 @@ app.post('/api/cut-clip', (req, res) => {
     captionSettings,
     hookOverlay,
     exportPreset,
-    exportQuality
+    exportQuality,
+    burnCaptions,
+    removeWatermark
   } = req.body;
   if (!localFileId) return res.status(400).json({ error: 'localFileId required' });
 
@@ -810,7 +857,7 @@ app.post('/api/cut-clip', (req, res) => {
     const startSec = (startMs / 1000).toFixed(3);
     const durationSec = ((endMs - startMs) / 1000).toFixed(3);
     const exportFormat = normalizeExportFormat(exportPreset, exportQuality);
-    const { scriptPath, cleanupPaths } = buildVideoFilterScript(captionLines, words, startMs, endMs, requestId, captionStyle, captionPreset, captionSettings, hookOverlay, exportFormat);
+    const { scriptPath, cleanupPaths } = buildVideoFilterScript(captionLines, words, startMs, endMs, requestId, captionStyle, captionPreset, captionSettings, hookOverlay, exportFormat, Boolean(removeWatermark), burnCaptions !== false);
     const args = [
       '-y',
       '-ss', startSec,
@@ -963,7 +1010,7 @@ function concatFileLine(filePath) {
 }
 
 app.post('/api/build-compilation', async (req, res) => {
-  const { sources = [], plan = {}, title = '', quality = '720p' } = req.body || {};
+  const { sources = [], plan = {}, title = '', quality = '720p', removeWatermark = false } = req.body || {};
   if (!Array.isArray(sources) || sources.length < 2) {
     return res.status(400).json({ error: 'At least two downloaded sources are required.' });
   }
@@ -981,6 +1028,7 @@ app.post('/api/build-compilation', async (req, res) => {
   const width = quality === '1080p' ? 1920 : 1280;
   const height = quality === '1080p' ? 1080 : 720;
   const crf = quality === '1080p' ? '23' : '25';
+  const compilationFormat = { width, height, fontScale: quality === '1080p' ? 1.25 : 1 };
   const segments = normalizeCompilationSegments(plan, sources);
 
   if (!segments.length) {
@@ -998,7 +1046,18 @@ app.post('/api/build-compilation', async (req, res) => {
       tempFiles.push(outputPath);
       const startSec = (segment.startMs / 1000).toFixed(3);
       const durationSec = (segment.durationMs / 1000).toFixed(3);
-      const filter = `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,fps=30`;
+      const filterParts = [
+        `scale=${width}:${height}:force_original_aspect_ratio=decrease`,
+        `pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black`,
+        'setsar=1',
+        'fps=30'
+      ];
+      if (!removeWatermark) {
+        const watermarkFilePath = path.join(buildDir, 'watermark.txt');
+        if (!fs.existsSync(watermarkFilePath)) fs.writeFileSync(watermarkFilePath, '@ClipAI', 'utf8');
+        filterParts.push(drawtextWatermarkFilter(watermarkFilePath, compilationFormat));
+      }
+      const filter = filterParts.join(',');
       const args = [
         '-y',
         '-ss', startSec,
