@@ -1829,17 +1829,17 @@
           <div class="export-card" onclick="exportTo('tiktok')">
             <span class="ex-icon">▶</span>
             <div class="ex-name">TikTok</div>
-            <div class="ex-sub">Direct publish</div>
+            <div class="ex-sub">Share from phone</div>
           </div>
           <div class="export-card" onclick="exportTo('reels')">
             <span class="ex-icon">◈</span>
             <div class="ex-name">Instagram Reels</div>
-            <div class="ex-sub">Direct publish</div>
+            <div class="ex-sub">Share from phone</div>
           </div>
           <div class="export-card" onclick="exportTo('shorts')">
             <span class="ex-icon">▷</span>
             <div class="ex-name">YouTube Shorts</div>
-            <div class="ex-sub">Direct publish</div>
+            <div class="ex-sub">Share from phone</div>
           </div>
         </div>
       </div>
@@ -2031,6 +2031,31 @@ async function saveExportedVideo(blob, filename) {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   return { native: false };
+}
+
+function socialPlatformName(platform) {
+  const names = {
+    tiktok: 'TikTok',
+    reels: 'Instagram Reels',
+    shorts: 'YouTube Shorts'
+  };
+  return names[platform] || 'your app';
+}
+
+async function shareExportedVideo(blob, filename, platform) {
+  const native = getClipAINative();
+  const platformName = socialPlatformName(platform);
+
+  if (native?.shareVideo) {
+    const base64 = await blobToBase64(blob);
+    await native.shareVideo({ base64, filename, platform });
+    await notifyNative('ClipAI clip ready to share', 'Choose ' + platformName + ' from the share sheet.');
+    return { native: true, shared: true };
+  }
+
+  await saveExportedVideo(blob, filename);
+  toast('Clip downloaded. Open ' + platformName + ' and upload it from your device.', 6000);
+  return { native: false, shared: false };
 }
 
 function getAuthToken() {
@@ -4459,9 +4484,12 @@ async function exportTo(platform) {
       const blob = await res.blob();
       const safeTitle = label.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
       const filename = safeTitle + '_9x16.mp4';
-      const saved = await saveExportedVideo(blob, filename);
+      const isSocialShare = platform !== 'mp4';
+      const saved = isSocialShare
+        ? await shareExportedVideo(blob, filename, platform)
+        : await saveExportedVideo(blob, filename);
 
-      toast('"' + label + '" ' + (saved.native ? 'saved to Gallery!' : 'downloaded!'), 3000);
+      toast('"' + label + '" ' + (saved.shared ? 'ready to share!' : (saved.native ? 'saved to Gallery!' : 'downloaded!')), 3000);
       await recordSuccessfulExport();
 
     } catch (err) {
@@ -4472,16 +4500,11 @@ async function exportTo(platform) {
 
   exportInProgress = false;
 
-  // Show social platform instructions after download
   if (platform !== 'mp4') {
-    const instructions = {
-      tiktok: 'Your clips are downloaded! Upload them at tiktok.com/upload or via the TikTok mobile app.',
-      reels: 'Your clips are downloaded! Upload via the Instagram app or creators.instagram.com.',
-      shorts: 'Your clips are downloaded! Upload at youtube.com/upload and add #Shorts to the title.'
-    };
+    const platformName = socialPlatformName(platform);
     summaryEl.innerHTML = '<div style="background:#0f1a10;border:1px solid #2a4030;border-radius:10px;padding:16px;color:#80c090;font-size:13px;line-height:1.8">' +
-      '<strong style="color:#a0e0b0;display:block;margin-bottom:6px">Clips downloaded!</strong>' +
-      (instructions[platform] || '') +
+      '<strong style="color:#a0e0b0;display:block;margin-bottom:6px">Clip ready to share</strong>' +
+      'Choose ' + platformName + ' from your phone share sheet. If it does not appear, the clip is saved/downloaded so you can upload it manually.' +
       '</div>';
   } else {
     renderExportSummary();
