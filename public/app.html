@@ -3031,6 +3031,10 @@ function getPreviewSource() {
   return state.sourceVideoUrl || state.localPreviewUrl || getBackendPreviewUrl();
 }
 
+function looksLikeLocalFileId(value) {
+  return /^(upload|yt)_\d+/i.test(String(value || ''));
+}
+
 async function uploadFile(file) {
   const maxSize = 500 * 1024 * 1024;
   if (file.size > maxSize) { toast('File too large. Max 500MB.'); return; }
@@ -4321,6 +4325,35 @@ function drawAllVisibleCaptions() {
   });
 }
 
+function waitForVideoMetadata(video) {
+  if (!video) return Promise.reject(new Error('Video element unavailable'));
+  if (video.readyState >= 1) return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const cleanup = () => {
+      video.removeEventListener('loadedmetadata', onLoaded);
+      video.removeEventListener('canplay', onLoaded);
+      video.removeEventListener('error', onError);
+      clearTimeout(timer);
+    };
+    const finish = (fn) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      fn();
+    };
+    const onLoaded = () => finish(resolve);
+    const onError = () => finish(() => reject(new Error('Preview source could not be loaded')));
+    const timer = setTimeout(() => finish(() => reject(new Error('Preview source timed out'))), 12000);
+
+    video.addEventListener('loadedmetadata', onLoaded);
+    video.addEventListener('canplay', onLoaded);
+    video.addEventListener('error', onError);
+    video.load();
+  });
+}
+
 async function toggleClipPreview(i) {
   const clip = state.clips[i];
   const video = document.getElementById('preview-video-' + i);
@@ -4347,13 +4380,18 @@ async function toggleClipPreview(i) {
 
   if (video.paused) {
     try {
+      await waitForVideoMetadata(video);
       if (Math.abs(video.currentTime - start) > 0.5 || video.currentTime >= end) {
         video.currentTime = start;
       }
       await video.play();
       runPreviewLoop(video, canvas, clip, end);
     } catch (err) {
-      toast('Preview is not available for this video right now.', 5000);
+      const message = state.localFileId
+        ? 'Preview could not load the source video. If this is an older saved project, re-upload the original video once to restore preview.'
+        : 'Preview needs the original video. Please re-upload the source video for this project.';
+      toast(message, 7000);
+      console.warn('[ClipAI] Preview failed:', err);
     }
   } else {
     video.pause();
@@ -4641,7 +4679,9 @@ function loadProject(p) {
   state.utterances = p.utterances || [];
   state.highlights = p.highlights || [];
   state.words = p.words || [];
-  state.localFileId = p.localFileId || p.videoFilename || state.localFileId || null;
+  const savedLocalFileId = p.localFileId || p.local_file_id || p.videoFilename || p.video_filename || '';
+  state.localFileId = looksLikeLocalFileId(savedLocalFileId) ? savedLocalFileId : null;
+  setPreviewVideoUrl(p.previewUrl || p.preview_url || '');
   if (!getPreviewSource() && state.localFileId) {
     setPreviewVideoUrl(getBackendPreviewUrl(state.localFileId));
   }
