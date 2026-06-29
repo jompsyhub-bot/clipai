@@ -3023,6 +3023,14 @@ function setPreviewVideoUrl(url) {
   state.sourceVideoUrl = state.localPreviewUrl;
 }
 
+function getBackendPreviewUrl(localFileId = state.localFileId) {
+  return localFileId ? RAILWAY_URL + '/api/serve-upload-file/' + encodeURIComponent(localFileId) : '';
+}
+
+function getPreviewSource() {
+  return state.sourceVideoUrl || state.localPreviewUrl || getBackendPreviewUrl();
+}
+
 async function uploadFile(file) {
   const maxSize = 500 * 1024 * 1024;
   if (file.size > maxSize) { toast('File too large. Max 500MB.'); return; }
@@ -3067,6 +3075,11 @@ async function uploadFile(file) {
         document.getElementById('upload-size').textContent = formatBytes(file.size) + ' uploaded';
         state.localFileId = data.localFileId;
         state.transcriptionUrl = data.uploadUrl;
+        if (data.previewUrl || data.videoUrl || data.localVideoUrl) {
+          setPreviewVideoUrl(data.previewUrl || data.videoUrl || data.localVideoUrl);
+        } else if (!getPreviewSource()) {
+          setPreviewVideoUrl(getBackendPreviewUrl(data.localFileId));
+        }
         notifyNative('ClipAI upload complete', 'Your video uploaded successfully. Transcription is starting now.');
         await startTranscription(state.transcriptionUrl);
       } else {
@@ -3141,7 +3154,7 @@ async function submitUrl() {
 
       state.localFileId = data.localFileId;
       state.transcriptionUrl = data.uploadUrl;
-      setPreviewVideoUrl(data.previewUrl || data.videoUrl || data.localVideoUrl || '');
+      setPreviewVideoUrl(data.previewUrl || data.videoUrl || data.localVideoUrl || getBackendPreviewUrl(data.localFileId));
       notifyNative('ClipAI upload complete', 'Your video is ready. Analysis is starting now.');
       if (!state.sourceVideoUrl) {
         toast('Video imported, but preview URL was not returned by backend.', 5000);
@@ -3790,7 +3803,7 @@ function renderClips() {
 
     return '<div class="clip-card sel" id="clip' + i + '">' +
       '<div class="clip-preview-wrap">' +
-        '<video class="clip-preview-video" id="preview-video-' + i + '" muted playsinline preload="metadata" src="' + escapeHTML(state.sourceVideoUrl || '') + '"></video>' +
+        '<video class="clip-preview-video" id="preview-video-' + i + '" muted playsinline preload="metadata" src="' + escapeHTML(getPreviewSource()) + '"></video>' +
         '<canvas class="clip-caption-canvas" id="preview-canvas-' + i + '"></canvas>' +
         '<button class="preview-play" onclick="event.stopPropagation(); toggleClipPreview(' + i + ')">▶</button>' +
         '<div class="clip-dur">' + dur + '</div>' +
@@ -4312,9 +4325,15 @@ async function toggleClipPreview(i) {
   const clip = state.clips[i];
   const video = document.getElementById('preview-video-' + i);
   const canvas = document.getElementById('preview-canvas-' + i);
-  if (!clip || !video || !state.sourceVideoUrl) {
+  const previewSource = getPreviewSource();
+  if (!clip || !video || !previewSource) {
     toast('Preview source not available. Re-upload the video first.');
     return;
+  }
+
+  if (video.getAttribute('src') !== previewSource) {
+    video.setAttribute('src', previewSource);
+    video.load();
   }
 
   if (activePreviewIndex !== null && activePreviewIndex !== i) {
@@ -4622,6 +4641,10 @@ function loadProject(p) {
   state.utterances = p.utterances || [];
   state.highlights = p.highlights || [];
   state.words = p.words || [];
+  state.localFileId = p.localFileId || p.videoFilename || state.localFileId || null;
+  if (!getPreviewSource() && state.localFileId) {
+    setPreviewVideoUrl(getBackendPreviewUrl(state.localFileId));
+  }
 
   closeSidebar();
 
@@ -4705,6 +4728,7 @@ function buildProjectPayload() {
     utterances: state.utterances || [],
     highlights: state.highlights || [],
     duration: state.duration || 0,
+    localFileId: state.localFileId || '',
     videoFilename: state.localFileId || state.transcriptId || ''
   };
 }
