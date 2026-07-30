@@ -1117,11 +1117,83 @@
       max-width: 92%;
       text-shadow: 2px 2px 0 #000;
     }
+    .export-preview-layout {
+      display: grid;
+      grid-template-columns: minmax(210px, 280px) minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+    .export-preview-stage {
+      width: min(100%, 260px);
+      aspect-ratio: 9 / 16;
+      background: #050507;
+      border: 1px solid var(--border2);
+      border-radius: var(--r2);
+      overflow: hidden;
+      position: relative;
+      margin: 0 auto;
+    }
+    .export-preview-stage .clip-preview-video,
+    .export-preview-stage .clip-caption-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+    .export-preview-watermark {
+      position: absolute;
+      z-index: 5;
+      color: rgba(255,255,255,0.92);
+      font-family: Arial, sans-serif;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.95), 0 0 5px rgba(0,0,0,0.7);
+      pointer-events: none;
+      animation: exportWatermarkMove 9s steps(1, end) infinite;
+    }
+    .export-preview-watermark.hidden { display: none; }
+    @keyframes exportWatermarkMove {
+      0%, 24% { left: 18px; top: 18px; right: auto; bottom: auto; }
+      25%, 49% { right: 18px; top: 18px; left: auto; bottom: auto; }
+      50%, 74% { right: 18px; bottom: 54px; left: auto; top: auto; }
+      75%, 100% { left: 18px; bottom: 54px; right: auto; top: auto; }
+    }
+    .export-preview-meta {
+      display: grid;
+      gap: 10px;
+    }
+    .export-preview-select {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: var(--r);
+      color: var(--text);
+      padding: 11px 12px;
+      font-family: var(--font);
+      outline: none;
+    }
+    .export-preview-pills {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .export-preview-pill {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text3);
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 5px 9px;
+    }
     #p3 > .card > .card:first-child {
       display: none;
     }
     @media (max-width: 600px) {
       .caption-control-grid { grid-template-columns: 1fr; }
+      .export-preview-layout { grid-template-columns: 1fr; }
+      .export-preview-stage { width: min(100%, 230px); }
     }
 
   
@@ -1805,6 +1877,25 @@
         <div class="ai-output" id="cap-ai-out"></div>
       </div>
       <div class="card">
+        <div class="card-title">Export preview</div>
+        <div class="export-preview-layout">
+          <div class="export-preview-stage">
+            <video class="clip-preview-video" id="export-preview-video" muted playsinline preload="metadata"></video>
+            <canvas class="clip-caption-canvas" id="export-preview-canvas"></canvas>
+            <div class="export-preview-watermark" id="export-preview-watermark">@ClipAI</div>
+            <button class="preview-play" id="export-preview-play" onclick="toggleExportPreview()" type="button">▶</button>
+          </div>
+          <div class="export-preview-meta">
+            <select class="export-preview-select" id="export-preview-select" onchange="setExportPreviewIndex(this.value)"></select>
+            <div style="color:var(--text2);font-size:13px;line-height:1.65" id="export-preview-copy">
+              Select a clip to preview the final caption and watermark setup before export.
+            </div>
+            <div class="export-preview-pills" id="export-preview-pills"></div>
+            <button class="btn btn-ghost btn-full" type="button" onclick="refreshExportPreview()">Refresh Preview</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
         <div class="card-title">Export &amp; share</div>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:14px">
           <div>
@@ -2375,6 +2466,7 @@ function updateDashboardBilling(status) {
       : String(status.exportsUsed || 0) + '/' + String(status.freeExportsLimit || 1);
   }
   renderWatermarkControls();
+  renderExportPreview();
 }
 
 function isProUser() {
@@ -2392,6 +2484,7 @@ function renderWatermarkControls() {
       : 'Pro users can export with or without the ClipAI watermark.';
     btn.textContent = state.removeWatermark ? 'Keep watermark' : 'Remove';
     btn.className = state.removeWatermark ? 'btn btn-primary' : 'btn btn-ghost';
+    updateExportPreviewWatermark();
     return;
   }
 
@@ -2399,6 +2492,7 @@ function renderWatermarkControls() {
   statusEl.textContent = 'Free exports include a small ClipAI watermark. Upgrade to remove it.';
   btn.textContent = 'Remove';
   btn.className = 'btn btn-ghost';
+  updateExportPreviewWatermark();
 }
 
 async function toggleWatermarkRemoval() {
@@ -2415,6 +2509,7 @@ async function toggleWatermarkRemoval() {
 
   state.removeWatermark = !state.removeWatermark;
   renderWatermarkControls();
+  renderExportPreview();
 }
 
 function shouldRemoveWatermark() {
@@ -2439,6 +2534,7 @@ function toggleExportCaptions() {
   renderCaptionExportControls();
   drawAllVisibleCaptions();
   renderExportSummary();
+  renderExportPreview();
   toast(state.burnCaptions === false ? 'Captions turned off for export.' : 'Captions turned on for export.');
 }
 
@@ -2870,6 +2966,7 @@ function goStage(n) {
     renderWatermarkControls();
     requestBilling().then(updateDashboardBilling).catch(() => renderWatermarkControls());
     renderExportSummary();
+    renderExportPreview();
     setTimeout(() => drawAllVisibleCaptions(), 150);
   }
   updateNewClipsButton();
@@ -3827,6 +3924,7 @@ function setCaptionStyle(key) {
   renderCaptionPresets();
   renderCaptionControls();
   drawAllVisibleCaptions();
+  renderExportPreview();
 }
 
 function renderCaptionControls() {
@@ -3865,6 +3963,7 @@ function updateCaptionSetting(key, value) {
   if (key === 'words') state.captionSettings.words = Math.max(2, Math.min(4, Math.round(next)));
   renderCaptionControls();
   drawAllVisibleCaptions();
+  renderExportPreview();
 }
 
 
@@ -3950,6 +4049,7 @@ function renderClips() {
   unlockStage(3);
   renderCaptionPresets();
   renderCaptionControls();
+  renderExportPreview();
   if (!state.clipsReadyNotified) {
     state.clipsReadyNotified = true;
     notifyNative('ClipAI clips ready', 'Your clips are ready for captions and export.');
@@ -3968,6 +4068,8 @@ function toggleClip(i) {
     state.selectedClips.add(i);
     el.classList.add('sel');
   }
+  renderExportPreview();
+  renderExportSummary();
 }
 
 async function askClipAI() {
@@ -4286,6 +4388,8 @@ async function runViralMemory() {
 
 let activePreviewIndex = null;
 let previewRaf = null;
+let exportPreviewIndex = 0;
+let exportPreviewRaf = null;
 let previewRenderInProgress = false;
 let previewRenderPromise = null;
 
@@ -4441,6 +4545,107 @@ function drawAllVisibleCaptions() {
     if (!canvas) return;
     drawCaption(canvas, clip, clip.start_ms || 0);
   });
+  drawExportPreviewFrame();
+}
+
+function getSelectedClipEntries() {
+  const selectedIndexes = Array.from(state.selectedClips || []);
+  const indexes = selectedIndexes.length
+    ? selectedIndexes
+    : state.clips.map((_, index) => index);
+
+  return indexes
+    .map(index => ({ index, clip: state.clips[index] }))
+    .filter(item => item.clip);
+}
+
+function getExportPreviewEntry() {
+  const entries = getSelectedClipEntries();
+  if (!entries.length) return null;
+  if (!entries.some(item => item.index === exportPreviewIndex)) {
+    exportPreviewIndex = entries[0].index;
+  }
+  return entries.find(item => item.index === exportPreviewIndex) || entries[0];
+}
+
+function updateExportPreviewWatermark() {
+  const watermark = document.getElementById('export-preview-watermark');
+  if (!watermark) return;
+  watermark.classList.toggle('hidden', shouldRemoveWatermark());
+}
+
+function drawExportPreviewFrame() {
+  const entry = getExportPreviewEntry();
+  const canvas = document.getElementById('export-preview-canvas');
+  const video = document.getElementById('export-preview-video');
+  if (!entry || !canvas) return;
+  const usingRenderedPreview = Boolean(entry.clip.previewObjectUrl && video?.getAttribute('src') === entry.clip.previewObjectUrl);
+  const currentMs = usingRenderedPreview
+    ? (entry.clip.start_ms || 0) + ((video?.currentTime || 0) * 1000)
+    : video && video.readyState >= 1
+      ? video.currentTime * 1000
+      : (entry.clip.start_ms || 0);
+  drawCaption(canvas, entry.clip, currentMs);
+  updateExportPreviewWatermark();
+}
+
+function renderExportPreview() {
+  const select = document.getElementById('export-preview-select');
+  const copy = document.getElementById('export-preview-copy');
+  const pills = document.getElementById('export-preview-pills');
+  const video = document.getElementById('export-preview-video');
+  const entries = getSelectedClipEntries();
+
+  if (!select || !copy || !pills || !video) return;
+  if (!entries.length) {
+    select.innerHTML = '<option>No clips selected</option>';
+    copy.textContent = 'Select at least one clip before previewing the export.';
+    pills.innerHTML = '';
+    video.removeAttribute('src');
+    drawExportPreviewFrame();
+    return;
+  }
+
+  const entry = getExportPreviewEntry();
+  select.innerHTML = entries.map(item =>
+    '<option value="' + item.index + '"' + (item.index === entry.index ? ' selected' : '') + '>' +
+      escapeHTML((item.index + 1) + '. ' + (item.clip.title || 'Clip')) +
+    '</option>'
+  ).join('');
+
+  const clip = entry.clip;
+  const start = clip.start_ms ? formatTime(clip.start_ms) : '0:00';
+  const end = clip.end_ms ? formatTime(clip.end_ms) : '?';
+  copy.textContent = (clip.title || 'Selected clip') + ' - ' + start + ' to ' + end;
+  pills.innerHTML =
+    '<span class="export-preview-pill">' + (shouldBurnCaptions() ? 'Captions on' : 'Captions off') + '</span>' +
+    '<span class="export-preview-pill">' + (shouldRemoveWatermark() ? 'No watermark' : 'Watermark on') + '</span>' +
+    '<span class="export-preview-pill">' + escapeHTML((CAPTION_STYLES[state.captionStyle] || CAPTION_STYLES.tiktok).label) + '</span>';
+
+  const previewSource = clip.previewObjectUrl || getPreviewSource();
+  if (previewSource && video.getAttribute('src') !== previewSource) {
+    video.setAttribute('src', previewSource);
+    video.load();
+  }
+  drawExportPreviewFrame();
+}
+
+function setExportPreviewIndex(value) {
+  const next = Number(value);
+  if (Number.isFinite(next)) exportPreviewIndex = next;
+  const video = document.getElementById('export-preview-video');
+  if (video) {
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+  }
+  if (exportPreviewRaf) cancelAnimationFrame(exportPreviewRaf);
+  renderExportPreview();
+}
+
+function refreshExportPreview() {
+  renderExportPreview();
+  toast('Preview updated');
 }
 
 function waitForVideoMetadata(video) {
@@ -4529,6 +4734,102 @@ async function renderPlayablePreviewClip(clip, video, options = {}) {
     previewRenderInProgress = false;
     previewRenderPromise = null;
   }
+}
+
+async function toggleExportPreview() {
+  const entry = getExportPreviewEntry();
+  const video = document.getElementById('export-preview-video');
+  const canvas = document.getElementById('export-preview-canvas');
+  const btn = document.getElementById('export-preview-play');
+  if (!entry || !video || !canvas) {
+    toast('Select a clip to preview first.');
+    return;
+  }
+
+  renderExportPreview();
+  if (!video.getAttribute('src')) {
+    toast('Preview source not available. Re-upload the video first.');
+    return;
+  }
+
+  const clip = entry.clip;
+  const setButton = () => {
+    if (btn) btn.textContent = video.paused ? '▶' : 'II';
+  };
+
+  if (!video.paused) {
+    video.pause();
+    if (exportPreviewRaf) cancelAnimationFrame(exportPreviewRaf);
+    setButton();
+    return;
+  }
+
+  let usingRenderedPreview = Boolean(clip.previewObjectUrl && video.getAttribute('src') === clip.previewObjectUrl);
+  let start = usingRenderedPreview ? 0 : (clip.start_ms || 0) / 1000;
+  let end = usingRenderedPreview
+    ? Math.max(1, ((clip.end_ms || ((clip.start_ms || 0) + 45000)) - (clip.start_ms || 0)) / 1000)
+    : (clip.end_ms || ((clip.start_ms || 0) + 45000)) / 1000;
+
+  try {
+    await waitForVideoMetadata(video);
+  } catch (err) {
+    console.warn('[ClipAI] Export source preview failed, trying rendered preview:', err);
+    if (clip.previewObjectUrl && isBlobUrl(clip.previewObjectUrl)) {
+      try { URL.revokeObjectURL(clip.previewObjectUrl); } catch (revokeErr) {}
+      clip.previewObjectUrl = '';
+    }
+    try {
+      await renderPlayablePreviewClip(clip, video);
+      usingRenderedPreview = true;
+      start = 0;
+      end = Math.max(1, ((clip.end_ms || ((clip.start_ms || 0) + 45000)) - (clip.start_ms || 0)) / 1000);
+      await waitForVideoMetadata(video);
+    } catch (fallbackErr) {
+      toast('Preview could not load this video right now. Try re-uploading the original video, then preview again.', 7000);
+      console.warn('[ClipAI] Export preview failed:', fallbackErr);
+      return;
+    }
+  }
+
+  try {
+    if (Math.abs(video.currentTime - start) > 0.5 || video.currentTime >= end) {
+      video.currentTime = start;
+    }
+    await video.play();
+    setButton();
+    runExportPreviewLoop(video, canvas, clip, end, usingRenderedPreview ? (clip.start_ms || 0) : 0);
+  } catch (err) {
+    toast('Preview could not play right now. Please try again.', 5000);
+    console.warn('[ClipAI] Export preview play failed:', err);
+    setButton();
+  }
+}
+
+function runExportPreviewLoop(video, canvas, clip, endSec, captionOffsetMs = 0) {
+  if (exportPreviewRaf) cancelAnimationFrame(exportPreviewRaf);
+
+  const tick = () => {
+    if (video.paused) {
+      const btn = document.getElementById('export-preview-play');
+      if (btn) btn.textContent = '▶';
+      return;
+    }
+
+    if (video.currentTime >= endSec) {
+      video.pause();
+      video.currentTime = captionOffsetMs ? 0 : (clip.start_ms || 0) / 1000;
+      drawCaption(canvas, clip, captionOffsetMs || (clip.start_ms || 0));
+      const btn = document.getElementById('export-preview-play');
+      if (btn) btn.textContent = '▶';
+      return;
+    }
+
+    drawCaption(canvas, clip, captionOffsetMs + video.currentTime * 1000);
+    updateExportPreviewWatermark();
+    exportPreviewRaf = requestAnimationFrame(tick);
+  };
+
+  tick();
 }
 
 async function toggleClipPreview(i) {
@@ -5075,6 +5376,7 @@ function selectPreset(el, preset) {
   renderCaptionPresets();
   renderCaptionControls();
   drawAllVisibleCaptions();
+  renderExportPreview();
   previewCaptionStyle(CAPTION_PRESETS[preset]);
   toast('Style: ' + CAPTION_PRESETS[preset].description);
 }
