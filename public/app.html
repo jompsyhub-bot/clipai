@@ -3041,19 +3041,62 @@ function looksLikeLocalFileId(value) {
   return /^(upload|yt)_\d+/i.test(String(value || ''));
 }
 
+function isBlobUrl(value) {
+  return String(value || '').startsWith('blob:');
+}
+
+function persistentPreviewUrl(value) {
+  const url = String(value || '');
+  return isBlobUrl(url) ? '' : url;
+}
+
+function normalizeSourceMeta(meta = {}) {
+  return {
+    localFileId: meta.localFileId || meta.local_file_id || '',
+    originalSourceUrl: meta.originalSourceUrl || meta.original_source_url || '',
+    directSourceUrl: meta.directSourceUrl || meta.direct_source_url || '',
+    previewUrl: persistentPreviewUrl(meta.previewUrl || meta.preview_url || ''),
+    sourceType: meta.sourceType || meta.source_type || ''
+  };
+}
+
+function cleanClipForStorage(clip, index) {
+  const {
+    previewObjectUrl,
+    previewUrl,
+    localPreviewUrl,
+    sourceVideoUrl,
+    ...rest
+  } = clip || {};
+
+  return {
+    ...rest,
+    selected: state.selectedClips.has(index)
+  };
+}
+
+function cleanLoadedClip(clip) {
+  const copy = { ...(clip || {}) };
+  delete copy.previewObjectUrl;
+  if (isBlobUrl(copy.previewUrl)) delete copy.previewUrl;
+  if (isBlobUrl(copy.localPreviewUrl)) delete copy.localPreviewUrl;
+  if (isBlobUrl(copy.sourceVideoUrl)) delete copy.sourceVideoUrl;
+  return copy;
+}
+
 function getProjectSourceMeta(project) {
   const raw = project?.sourceMeta || project?.source_meta || project?.videoFilename || project?.video_filename || '';
-  if (raw && typeof raw === 'object') return raw;
+  if (raw && typeof raw === 'object') return normalizeSourceMeta(raw);
   if (typeof raw === 'string' && raw.trim().startsWith('{')) {
-    try { return JSON.parse(raw); } catch (err) {}
+    try { return normalizeSourceMeta(JSON.parse(raw)); } catch (err) {}
   }
-  return {
+  return normalizeSourceMeta({
     localFileId: raw,
     originalSourceUrl: project?.originalSourceUrl || project?.original_source_url || '',
     directSourceUrl: project?.directSourceUrl || project?.direct_source_url || '',
     previewUrl: project?.previewUrl || project?.preview_url || '',
     sourceType: project?.sourceType || project?.source_type || ''
-  };
+  });
 }
 
 function buildSourceMeta() {
@@ -3061,7 +3104,7 @@ function buildSourceMeta() {
     localFileId: state.localFileId || '',
     originalSourceUrl: state.originalSourceUrl || '',
     directSourceUrl: state.directSourceUrl || '',
-    previewUrl: state.sourceVideoUrl || state.localPreviewUrl || '',
+    previewUrl: persistentPreviewUrl(state.sourceVideoUrl || state.localPreviewUrl || ''),
     sourceType: state.sourceType || ''
   };
 }
@@ -4525,6 +4568,10 @@ async function toggleClipPreview(i) {
       runPreviewLoop(video, canvas, clip, end, 0);
     } catch (err) {
       console.warn('[ClipAI] Source preview failed, trying rendered preview:', err);
+      if (clip.previewObjectUrl && isBlobUrl(clip.previewObjectUrl)) {
+        try { URL.revokeObjectURL(clip.previewObjectUrl); } catch (revokeErr) {}
+        clip.previewObjectUrl = '';
+      }
       try {
         await renderPlayablePreviewClip(clip, video);
         start = 0;
@@ -4837,7 +4884,7 @@ function loadProject(p) {
 
   // Restore full state
   state.transcript = p.transcript || '';
-  state.clips = p.clips || [];
+  state.clips = Array.isArray(p.clips) ? p.clips.map(cleanLoadedClip) : [];
   state.duration = p.duration || 0;
   state.utterances = p.utterances || [];
   state.highlights = p.highlights || [];
@@ -4929,10 +4976,7 @@ function buildProjectPayload() {
   return {
     title: projectTitleFromState(),
     transcript: state.transcript || '',
-    clips: (state.clips || []).map((clip, index) => ({
-      ...clip,
-      selected: state.selectedClips.has(index)
-    })),
+    clips: (state.clips || []).map(cleanClipForStorage),
     utterances: state.utterances || [],
     highlights: state.highlights || [],
     duration: state.duration || 0,
