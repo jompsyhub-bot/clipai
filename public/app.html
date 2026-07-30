@@ -2857,7 +2857,7 @@ async function toggleSelectedMusicPreview() {
     audio.setAttribute('src', previewUrl);
     audio.load();
   }
-  audio.volume = Math.max(0.05, Math.min(1, music.musicVolume || 0.18));
+  audio.volume = Math.max(0.45, Math.min(1, Number(music.musicVolume || 0.18) * 2.5));
   try {
     await waitForAudioReady(audio);
     audio.currentTime = 0;
