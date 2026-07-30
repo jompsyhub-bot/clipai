@@ -1887,6 +1887,9 @@ const state = {
   transcriptionUrl: '',
   localFileId: null,
   localPreviewUrl: '',
+  originalSourceUrl: '',
+  directSourceUrl: '',
+  sourceType: '',
   captionStyle: 'tiktok',
   captionSettings: {
     size: 100,
@@ -2910,6 +2913,9 @@ function createNewClips() {
     transcriptionUrl: '',
     localFileId: null,
     localPreviewUrl: '',
+    originalSourceUrl: '',
+    directSourceUrl: '',
+    sourceType: '',
     captionSettings: { size: 100, position: 78, words: 3 },
     burnCaptions: true,
     removeWatermark: false,
@@ -3035,11 +3041,69 @@ function looksLikeLocalFileId(value) {
   return /^(upload|yt)_\d+/i.test(String(value || ''));
 }
 
+function getProjectSourceMeta(project) {
+  const raw = project?.sourceMeta || project?.source_meta || project?.videoFilename || project?.video_filename || '';
+  if (raw && typeof raw === 'object') return raw;
+  if (typeof raw === 'string' && raw.trim().startsWith('{')) {
+    try { return JSON.parse(raw); } catch (err) {}
+  }
+  return {
+    localFileId: raw,
+    originalSourceUrl: project?.originalSourceUrl || project?.original_source_url || '',
+    directSourceUrl: project?.directSourceUrl || project?.direct_source_url || '',
+    previewUrl: project?.previewUrl || project?.preview_url || '',
+    sourceType: project?.sourceType || project?.source_type || ''
+  };
+}
+
+function buildSourceMeta() {
+  return {
+    localFileId: state.localFileId || '',
+    originalSourceUrl: state.originalSourceUrl || '',
+    directSourceUrl: state.directSourceUrl || '',
+    previewUrl: state.sourceVideoUrl || state.localPreviewUrl || '',
+    sourceType: state.sourceType || ''
+  };
+}
+
+function isRecoverableSource() {
+  return Boolean(state.originalSourceUrl || state.directSourceUrl);
+}
+
+async function recoverSourceVideo() {
+  if (!isRecoverableSource()) return false;
+
+  const originalUrl = state.originalSourceUrl || state.directSourceUrl;
+  const isYouTube = /youtube\.com|youtu\.be|youtube-nocookie\.com/.test(originalUrl);
+  toast('Restoring preview source...', 5000);
+
+  const directUrl = isYouTube ? await getYouTubeDirectUrl(originalUrl) : (state.directSourceUrl || originalUrl);
+  const res = await fetch(RAILWAY_URL + '/api/youtube-upload', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ url: directUrl, originalUrl })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Could not restore source video');
+
+  state.localFileId = data.localFileId;
+  state.transcriptionUrl = data.uploadUrl || state.transcriptionUrl;
+  state.originalSourceUrl = data.originalUrl || originalUrl;
+  state.directSourceUrl = data.directUrl || directUrl;
+  state.sourceType = isYouTube ? 'youtube' : 'url';
+  setPreviewVideoUrl(data.previewUrl || data.videoUrl || data.localVideoUrl || getBackendPreviewUrl(data.localFileId));
+  await saveProject({ auto: true, silent: true });
+  return true;
+}
+
 async function uploadFile(file) {
   const maxSize = 500 * 1024 * 1024;
   if (file.size > maxSize) { toast('File too large. Max 500MB.'); return; }
 
   setPreviewVideoUrl(URL.createObjectURL(file));
+  state.originalSourceUrl = '';
+  state.directSourceUrl = '';
+  state.sourceType = 'file';
 
   document.getElementById('upload-progress').style.display = 'block';
   document.getElementById('upload-status').textContent = 'Uploading ' + file.name + '...';
@@ -3118,6 +3182,8 @@ async function submitUrl() {
   const isYouTube = /youtube\.com|youtu\.be|youtube-nocookie\.com/.test(url);
 
   if (isYouTube) {
+    state.originalSourceUrl = url;
+    state.sourceType = 'youtube';
     document.getElementById('upload-progress').style.display = 'block';
     document.getElementById('upload-status').textContent = 'Downloading YouTube audio... (1-2 minutes)';
     document.getElementById('upload-bar').style.width = '5%';
@@ -3137,6 +3203,7 @@ async function submitUrl() {
       // Step 1: Get direct download URL from the same helper Compilation Studio uses.
       document.getElementById('upload-size').textContent = 'Getting download link...';
       const directUrl = await getYouTubeDirectUrl(url);
+      state.directSourceUrl = directUrl;
 
       document.getElementById('upload-size').textContent = 'Preparing your video...';
 
@@ -3158,6 +3225,9 @@ async function submitUrl() {
 
       state.localFileId = data.localFileId;
       state.transcriptionUrl = data.uploadUrl;
+      state.originalSourceUrl = data.originalUrl || url;
+      state.directSourceUrl = data.directUrl || directUrl;
+      state.sourceType = 'youtube';
       setPreviewVideoUrl(data.previewUrl || data.videoUrl || data.localVideoUrl || getBackendPreviewUrl(data.localFileId));
       notifyNative('ClipAI upload complete', 'Your video is ready. Analysis is starting now.');
       if (!state.sourceVideoUrl) {
@@ -3173,6 +3243,9 @@ async function submitUrl() {
   }
 
   state.transcriptionUrl = url;
+  state.originalSourceUrl = url;
+  state.directSourceUrl = url;
+  state.sourceType = 'url';
   setPreviewVideoUrl(url);
   await startTranscription(state.transcriptionUrl);
 }
@@ -4171,6 +4244,7 @@ async function runViralMemory() {
 let activePreviewIndex = null;
 let previewRaf = null;
 let previewRenderInProgress = false;
+let previewRenderPromise = null;
 
 function getClipCaptionText(clip) {
   const lines = clip.caption_lines || [];
@@ -4355,18 +4429,16 @@ function waitForVideoMetadata(video) {
   });
 }
 
-async function renderPlayablePreviewClip(clip, video) {
+async function renderPlayablePreviewClip(clip, video, options = {}) {
   if (!state.localFileId) {
     throw new Error('Original video is not available for preview rendering');
   }
-  if (previewRenderInProgress) {
-    throw new Error('Preview is already being prepared');
-  }
+  if (previewRenderPromise) return previewRenderPromise;
 
   previewRenderInProgress = true;
   toast('Preparing preview...', 4000);
 
-  try {
+  previewRenderPromise = (async () => {
     const res = await fetch(RAILWAY_URL + '/api/cut-clip', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -4392,6 +4464,11 @@ async function renderPlayablePreviewClip(clip, video) {
         const err = await res.json();
         message = err.error || message;
       } catch (e) {}
+      if (!options.recovered && /source file not found|re-upload/i.test(message) && await recoverSourceVideo()) {
+        previewRenderInProgress = false;
+        previewRenderPromise = null;
+        return renderPlayablePreviewClip(clip, video, { recovered: true });
+      }
       throw new Error(message);
     }
 
@@ -4401,8 +4478,13 @@ async function renderPlayablePreviewClip(clip, video) {
     video.setAttribute('src', clip.previewObjectUrl);
     video.load();
     return clip.previewObjectUrl;
+  })();
+
+  try {
+    return await previewRenderPromise;
   } finally {
     previewRenderInProgress = false;
+    previewRenderPromise = null;
   }
 }
 
@@ -4558,12 +4640,21 @@ async function exportTo(platform) {
 
   // The backend cuts from its saved local file, not the AssemblyAI upload URL.
   if (!state.localFileId) {
-    toast('This project needs the original video again. Please re-upload and try export.', 5000);
-    return;
+    try {
+      const recovered = await recoverSourceVideo();
+      if (!recovered) {
+        toast('This project needs the original video again. Please re-upload and try export.', 5000);
+        return;
+      }
+    } catch (err) {
+      toast(formatUserError(err, 'This project needs the original video again. Please re-upload and try export.'), 6000);
+      return;
+    }
   }
 
   exportInProgress = true;
   const summaryEl = document.getElementById('export-summary');
+  const retriedExportIndexes = new Set();
 
   // Cut each selected clip one by one
   for (let idx = 0; idx < selected.length; idx++) {
@@ -4575,7 +4666,7 @@ async function exportTo(platform) {
       '<div class="spinner"></div> Cutting "' + label + '" (' + (idx+1) + '/' + selected.length + ')... this may take a minute</div>';
 
     try {
-      if (!state.localFileId) {
+      if (!state.localFileId && !(await recoverSourceVideo())) {
         throw new Error('Original video is no longer available for this project.');
       }
       const res = await fetch(RAILWAY_URL + '/api/cut-clip', {
@@ -4601,6 +4692,11 @@ async function exportTo(platform) {
 
       if (!res.ok) {
         const err = await res.json();
+        if (!retriedExportIndexes.has(idx) && /source file not found|re-upload/i.test(err.error || '') && await recoverSourceVideo()) {
+          retriedExportIndexes.add(idx);
+          idx--;
+          continue;
+        }
         throw new Error(err.error || 'Cut failed');
       }
 
@@ -4746,9 +4842,13 @@ function loadProject(p) {
   state.utterances = p.utterances || [];
   state.highlights = p.highlights || [];
   state.words = p.words || [];
-  const savedLocalFileId = p.localFileId || p.local_file_id || p.videoFilename || p.video_filename || '';
+  const sourceMeta = getProjectSourceMeta(p);
+  const savedLocalFileId = sourceMeta.localFileId || '';
   state.localFileId = looksLikeLocalFileId(savedLocalFileId) ? savedLocalFileId : null;
-  setPreviewVideoUrl(p.previewUrl || p.preview_url || '');
+  state.originalSourceUrl = sourceMeta.originalSourceUrl || '';
+  state.directSourceUrl = sourceMeta.directSourceUrl || '';
+  state.sourceType = sourceMeta.sourceType || '';
+  setPreviewVideoUrl(sourceMeta.previewUrl || '');
   if (!getPreviewSource() && state.localFileId) {
     setPreviewVideoUrl(getBackendPreviewUrl(state.localFileId));
   }
@@ -4825,6 +4925,7 @@ function getProjectSaveKey(payload) {
 }
 
 function buildProjectPayload() {
+  const sourceMeta = buildSourceMeta();
   return {
     title: projectTitleFromState(),
     transcript: state.transcript || '',
@@ -4836,7 +4937,8 @@ function buildProjectPayload() {
     highlights: state.highlights || [],
     duration: state.duration || 0,
     localFileId: state.localFileId || '',
-    videoFilename: state.localFileId || state.transcriptId || ''
+    sourceMeta,
+    videoFilename: JSON.stringify(sourceMeta)
   };
 }
 
