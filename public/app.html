@@ -1961,6 +1961,14 @@
           </div>
           <div class="music-library-grid" id="music-library-grid"></div>
           <div id="music-status" style="color:var(--text2);font-size:13px;line-height:1.6">No background music selected.</div>
+          <div id="music-upload-progress" style="display:none" class="progress-wrap">
+            <div class="progress-label">
+              <span id="music-upload-status">Uploading music...</span>
+              <span id="music-upload-pct">0%</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" id="music-upload-bar" style="width:0%"></div></div>
+            <div id="music-upload-size" style="font-size:12px;color:var(--text3);margin-top:6px;font-family:var(--mono)"></div>
+          </div>
           <div class="music-control-grid">
             <div class="caption-control">
               <label for="music-volume-range">Music <strong id="music-volume-value">18%</strong></label>
@@ -2723,6 +2731,26 @@ async function loadMusicLibrary(query = '') {
   }
 }
 
+function setMusicUploadProgress(pct, label, sizeText = '') {
+  const wrap = document.getElementById('music-upload-progress');
+  const bar = document.getElementById('music-upload-bar');
+  const pctEl = document.getElementById('music-upload-pct');
+  const status = document.getElementById('music-upload-status');
+  const size = document.getElementById('music-upload-size');
+  if (wrap) wrap.style.display = 'block';
+  if (bar) bar.style.width = Math.max(0, Math.min(100, pct)) + '%';
+  if (pctEl) pctEl.textContent = Math.round(Math.max(0, Math.min(100, pct))) + '%';
+  if (status && label) status.textContent = label;
+  if (size) size.textContent = sizeText;
+}
+
+function hideMusicUploadProgress(delay = 1200) {
+  setTimeout(() => {
+    const wrap = document.getElementById('music-upload-progress');
+    if (wrap) wrap.style.display = 'none';
+  }, delay);
+}
+
 async function handleMusicFilePicked() {
   const input = document.getElementById('music-file-input');
   const file = input?.files?.[0];
@@ -2733,34 +2761,62 @@ async function handleMusicFilePicked() {
   }
 
   toast('Uploading background music...', 4000);
-  try {
-    const res = await fetch(RAILWAY_URL + '/api/upload-music', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/octet-stream',
-        'x-filename': encodeURIComponent(file.name)
-      },
-      body: file
+  setMusicUploadProgress(0, 'Uploading ' + file.name + '...', '0 B / ' + formatBytes(file.size));
+
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', RAILWAY_URL + '/api/upload-music', true);
+    xhr.setRequestHeader('content-type', 'application/octet-stream');
+    xhr.setRequestHeader('x-filename', encodeURIComponent(file.name));
+
+    xhr.upload.addEventListener('progress', (e) => {
+      if (!e.lengthComputable) return;
+      const pct = Math.round((e.loaded / e.total) * 100);
+      setMusicUploadProgress(
+        pct,
+        pct >= 100 ? 'Processing music...' : 'Uploading ' + file.name + '...',
+        formatBytes(e.loaded) + ' / ' + formatBytes(e.total)
+      );
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Upload failed');
-    state.backgroundMusic = {
-      ...(state.backgroundMusic || {}),
-      enabled: true,
-      source: 'upload',
-      musicFileId: data.musicFileId,
-      musicTrackId: '',
-      title: file.name,
-      previewUrl: data.previewUrl
-    };
-    invalidateExportPreviewClip();
-    renderMusicControls();
-    toast('Background music added');
-  } catch (err) {
-    toast('Music upload failed. Please try another audio file.', 6000);
-  } finally {
-    if (input) input.value = '';
-  }
+
+    xhr.addEventListener('load', () => {
+      try {
+        const data = JSON.parse(xhr.responseText || '{}');
+        if (xhr.status < 200 || xhr.status >= 300) {
+          throw new Error(data.error || 'Upload failed');
+        }
+        state.backgroundMusic = {
+          ...(state.backgroundMusic || {}),
+          enabled: true,
+          source: 'upload',
+          musicFileId: data.musicFileId,
+          musicTrackId: '',
+          title: file.name,
+          previewUrl: data.previewUrl
+        };
+        setMusicUploadProgress(100, 'Music upload complete', formatBytes(file.size) + ' uploaded');
+        invalidateExportPreviewClip();
+        renderMusicControls();
+        toast('Background music added');
+        hideMusicUploadProgress();
+      } catch (err) {
+        setMusicUploadProgress(0, 'Music upload failed', '');
+        toast('Music upload failed. Please try another audio file.', 6000);
+      } finally {
+        if (input) input.value = '';
+        resolve();
+      }
+    });
+
+    xhr.addEventListener('error', () => {
+      setMusicUploadProgress(0, 'Music upload failed', '');
+      toast('Music upload failed. Check your connection and try again.', 6000);
+      if (input) input.value = '';
+      resolve();
+    });
+
+    xhr.send(file);
+  });
 }
 
 function selectLibraryMusic(trackId) {
