@@ -4170,6 +4170,7 @@ async function runViralMemory() {
 
 let activePreviewIndex = null;
 let previewRaf = null;
+let previewRenderInProgress = false;
 
 function getClipCaptionText(clip) {
   const lines = clip.caption_lines || [];
@@ -4354,11 +4355,62 @@ function waitForVideoMetadata(video) {
   });
 }
 
+async function renderPlayablePreviewClip(clip, video) {
+  if (!state.localFileId) {
+    throw new Error('Original video is not available for preview rendering');
+  }
+  if (previewRenderInProgress) {
+    throw new Error('Preview is already being prepared');
+  }
+
+  previewRenderInProgress = true;
+  toast('Preparing preview...', 4000);
+
+  try {
+    const res = await fetch(RAILWAY_URL + '/api/cut-clip', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        localFileId: state.localFileId,
+        startMs: clip.start_ms || 0,
+        endMs: clip.end_ms || ((clip.start_ms || 0) + 45000),
+        clipTitle: clip.title || 'Preview',
+        captionLines: clip.caption_lines || [],
+        captionStyle: state.captionStyle,
+        captionPreset: selectedPreset,
+        captionSettings: state.captionSettings,
+        burnCaptions: false,
+        hookOverlay: '',
+        removeWatermark: true,
+        words: state.words ? state.words.filter(w => w.start >= (clip.start_ms || 0) && w.start <= (clip.end_ms || 0)).slice(0, 300) : []
+      })
+    });
+
+    if (!res.ok) {
+      let message = 'Preview could not be prepared';
+      try {
+        const err = await res.json();
+        message = err.error || message;
+      } catch (e) {}
+      throw new Error(message);
+    }
+
+    const blob = await res.blob();
+    if (clip.previewObjectUrl) URL.revokeObjectURL(clip.previewObjectUrl);
+    clip.previewObjectUrl = URL.createObjectURL(blob);
+    video.setAttribute('src', clip.previewObjectUrl);
+    video.load();
+    return clip.previewObjectUrl;
+  } finally {
+    previewRenderInProgress = false;
+  }
+}
+
 async function toggleClipPreview(i) {
   const clip = state.clips[i];
   const video = document.getElementById('preview-video-' + i);
   const canvas = document.getElementById('preview-canvas-' + i);
-  const previewSource = getPreviewSource();
+  const previewSource = clip?.previewObjectUrl || getPreviewSource();
   if (!clip || !video || !previewSource) {
     toast('Preview source not available. Re-upload the video first.');
     return;
@@ -4375,8 +4427,11 @@ async function toggleClipPreview(i) {
   }
 
   activePreviewIndex = i;
-  const start = (clip.start_ms || 0) / 1000;
-  const end = (clip.end_ms || ((clip.start_ms || 0) + 45000)) / 1000;
+  let usingRenderedPreview = Boolean(clip.previewObjectUrl && video.getAttribute('src') === clip.previewObjectUrl);
+  let start = usingRenderedPreview ? 0 : (clip.start_ms || 0) / 1000;
+  let end = usingRenderedPreview
+    ? Math.max(1, ((clip.end_ms || ((clip.start_ms || 0) + 45000)) - (clip.start_ms || 0)) / 1000)
+    : (clip.end_ms || ((clip.start_ms || 0) + 45000)) / 1000;
 
   if (video.paused) {
     try {
@@ -4385,13 +4440,25 @@ async function toggleClipPreview(i) {
         video.currentTime = start;
       }
       await video.play();
-      runPreviewLoop(video, canvas, clip, end);
+      runPreviewLoop(video, canvas, clip, end, 0);
     } catch (err) {
-      const message = state.localFileId
-        ? 'Preview could not load the source video. If this is an older saved project, re-upload the original video once to restore preview.'
-        : 'Preview needs the original video. Please re-upload the source video for this project.';
-      toast(message, 7000);
-      console.warn('[ClipAI] Preview failed:', err);
+      console.warn('[ClipAI] Source preview failed, trying rendered preview:', err);
+      try {
+        await renderPlayablePreviewClip(clip, video);
+        start = 0;
+        end = Math.max(1, ((clip.end_ms || ((clip.start_ms || 0) + 45000)) - (clip.start_ms || 0)) / 1000);
+        usingRenderedPreview = true;
+        await waitForVideoMetadata(video);
+        video.currentTime = 0;
+        await video.play();
+        runPreviewLoop(video, canvas, clip, end, clip.start_ms || 0);
+      } catch (fallbackErr) {
+        const message = state.localFileId
+          ? 'Preview could not load this video right now. Try re-uploading the original video, then preview again.'
+          : 'Preview needs the original video. Please re-upload the source video for this project.';
+        toast(message, 7000);
+        console.warn('[ClipAI] Preview failed:', fallbackErr);
+      }
     }
   } else {
     video.pause();
@@ -4399,7 +4466,7 @@ async function toggleClipPreview(i) {
   }
 }
 
-function runPreviewLoop(video, canvas, clip, endSec) {
+function runPreviewLoop(video, canvas, clip, endSec, captionOffsetMs = 0) {
   if (previewRaf) cancelAnimationFrame(previewRaf);
 
   const tick = () => {
@@ -4407,12 +4474,12 @@ function runPreviewLoop(video, canvas, clip, endSec) {
 
     if (video.currentTime >= endSec) {
       video.pause();
-      video.currentTime = (clip.start_ms || 0) / 1000;
-      drawCaption(canvas, clip, clip.start_ms || 0);
+      video.currentTime = captionOffsetMs ? 0 : (clip.start_ms || 0) / 1000;
+      drawCaption(canvas, clip, captionOffsetMs || (clip.start_ms || 0));
       return;
     }
 
-    drawCaption(canvas, clip, video.currentTime * 1000);
+    drawCaption(canvas, clip, captionOffsetMs + video.currentTime * 1000);
     previewRaf = requestAnimationFrame(tick);
   };
 
