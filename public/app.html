@@ -2811,6 +2811,34 @@ function updateMusicSetting(key, value) {
   renderMusicControls();
 }
 
+function waitForAudioReady(audio) {
+  if (!audio) return Promise.reject(new Error('Audio player unavailable'));
+  if (audio.readyState >= 3) return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const cleanup = () => {
+      audio.removeEventListener('canplay', onReady);
+      audio.removeEventListener('loadeddata', onReady);
+      audio.removeEventListener('error', onError);
+      clearTimeout(timer);
+    };
+    const finish = (fn) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      fn();
+    };
+    const onReady = () => finish(resolve);
+    const onError = () => finish(() => reject(new Error('Audio could not be loaded')));
+    const timer = setTimeout(() => finish(() => reject(new Error('Audio load timed out'))), 15000);
+    audio.addEventListener('canplay', onReady);
+    audio.addEventListener('loadeddata', onReady);
+    audio.addEventListener('error', onError);
+    audio.load();
+  });
+}
+
 async function toggleSelectedMusicPreview() {
   const music = state.backgroundMusic || {};
   if (!music.previewUrl) {
@@ -2823,14 +2851,20 @@ async function toggleSelectedMusicPreview() {
     audio.pause();
     return;
   }
-  if (audio.getAttribute('src') !== music.previewUrl) {
-    audio.setAttribute('src', music.previewUrl);
+  const previewUrl = music.previewUrl + (music.previewUrl.includes('?') ? '&' : '?') + 'v=' + Date.now();
+  if (audio.getAttribute('src') !== previewUrl) {
+    audio.crossOrigin = 'anonymous';
+    audio.setAttribute('src', previewUrl);
     audio.load();
   }
-  audio.volume = Math.max(0, Math.min(1, music.musicVolume || 0.18));
+  audio.volume = Math.max(0.05, Math.min(1, music.musicVolume || 0.18));
   try {
+    await waitForAudioReady(audio);
+    audio.currentTime = 0;
     await audio.play();
+    toast('Playing music preview');
   } catch (err) {
+    console.warn('[ClipAI] Music preview failed:', err);
     toast('Music preview could not play right now.', 5000);
   }
 }
