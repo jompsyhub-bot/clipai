@@ -1187,6 +1187,54 @@
       border-radius: 999px;
       padding: 5px 9px;
     }
+    .music-studio {
+      display: grid;
+      gap: 14px;
+    }
+    .music-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .music-search-row {
+      display: flex;
+      gap: 10px;
+    }
+    .music-library-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+    }
+    .music-track-card {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .music-track-card:hover,
+    .music-track-card.active {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .music-track-title {
+      color: var(--text);
+      font-weight: 800;
+      font-size: 13px;
+      line-height: 1.3;
+    }
+    .music-track-meta {
+      color: var(--text3);
+      font-family: var(--mono);
+      font-size: 10px;
+      margin-top: 5px;
+    }
+    .music-control-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
     #p3 > .card > .card:first-child {
       display: none;
     }
@@ -1194,6 +1242,9 @@
       .caption-control-grid { grid-template-columns: 1fr; }
       .export-preview-layout { grid-template-columns: 1fr; }
       .export-preview-stage { width: min(100%, 230px); }
+      .music-search-row,
+      .music-actions { flex-direction: column; }
+      .music-control-grid { grid-template-columns: 1fr; }
     }
 
   
@@ -1896,6 +1947,42 @@
         </div>
       </div>
       <div class="card">
+        <div class="card-title">Background music</div>
+        <div class="music-studio">
+          <input type="file" id="music-file-input" accept="audio/*" style="display:none" onchange="handleMusicFilePicked()" />
+          <div class="music-actions">
+            <button class="btn btn-ghost" type="button" onclick="document.getElementById('music-file-input').click()">Upload Audio</button>
+            <button class="btn btn-ghost" type="button" onclick="clearBackgroundMusic()">No Music</button>
+            <button class="btn btn-ghost" type="button" onclick="toggleSelectedMusicPreview()">Preview Music</button>
+          </div>
+          <div class="music-search-row">
+            <input class="ai-input" id="music-search" placeholder="Search ClipAI library: viral, podcast, cinematic..." oninput="loadMusicLibrary(this.value)" />
+            <button class="btn btn-primary" type="button" onclick="loadMusicLibrary(document.getElementById('music-search').value)">Search</button>
+          </div>
+          <div class="music-library-grid" id="music-library-grid"></div>
+          <div id="music-status" style="color:var(--text2);font-size:13px;line-height:1.6">No background music selected.</div>
+          <div class="music-control-grid">
+            <div class="caption-control">
+              <label for="music-volume-range">Music <strong id="music-volume-value">18%</strong></label>
+              <input id="music-volume-range" type="range" min="0" max="60" value="18" oninput="updateMusicSetting('musicVolume', this.value)" />
+            </div>
+            <div class="caption-control">
+              <label for="voice-volume-range">Voice <strong id="voice-volume-value">100%</strong></label>
+              <input id="voice-volume-range" type="range" min="40" max="130" value="100" oninput="updateMusicSetting('voiceVolume', this.value)" />
+            </div>
+            <div class="caption-control">
+              <label for="music-fade-range">Fade <strong id="music-fade-value">1.5s</strong></label>
+              <input id="music-fade-range" type="range" min="0" max="5" step="0.5" value="1.5" oninput="updateMusicSetting('fade', this.value)" />
+            </div>
+          </div>
+          <label style="display:flex;align-items:center;gap:9px;color:var(--text2);font-size:13px">
+            <input id="music-duck-toggle" type="checkbox" checked onchange="updateMusicSetting('autoDuck', this.checked)" />
+            Keep speech clear automatically
+          </label>
+          <audio id="music-preview-audio" preload="none"></audio>
+        </div>
+      </div>
+      <div class="card">
         <div class="card-title">Export &amp; share</div>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:14px">
           <div>
@@ -1989,6 +2076,21 @@ const state = {
   },
   burnCaptions: true,
   removeWatermark: false,
+  backgroundMusic: {
+    enabled: false,
+    source: '',
+    musicFileId: '',
+    musicTrackId: '',
+    title: '',
+    previewUrl: '',
+    musicVolume: 0.18,
+    voiceVolume: 1,
+    musicStart: 0,
+    fadeIn: 1,
+    fadeOut: 1.5,
+    autoDuck: true
+  },
+  musicLibrary: [],
   ghostBrief: '',
   ghostPlan: null,
   ghostAutoRun: false,
@@ -2542,6 +2644,197 @@ function shouldBurnCaptions() {
   return state.burnCaptions !== false;
 }
 
+function getMusicPayload() {
+  const music = state.backgroundMusic || {};
+  return {
+    musicEnabled: Boolean(music.enabled && (music.musicFileId || music.musicTrackId)),
+    musicFileId: music.musicFileId || '',
+    musicTrackId: music.musicTrackId || '',
+    musicVolume: Number(music.musicVolume ?? 0.18),
+    voiceVolume: Number(music.voiceVolume ?? 1),
+    musicStart: Number(music.musicStart ?? 0),
+    musicFadeIn: Number(music.fadeIn ?? 1),
+    musicFadeOut: Number(music.fadeOut ?? 1.5),
+    musicAutoDuck: music.autoDuck !== false
+  };
+}
+
+function invalidateExportPreviewClip() {
+  const entry = getExportPreviewEntry?.();
+  const clip = entry?.clip;
+  if (clip?.previewObjectUrl) {
+    try { URL.revokeObjectURL(clip.previewObjectUrl); } catch (err) {}
+    clip.previewObjectUrl = '';
+  }
+  const video = document.getElementById('export-preview-video');
+  if (video) {
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+  }
+}
+
+function renderMusicControls() {
+  const music = state.backgroundMusic || {};
+  const status = document.getElementById('music-status');
+  const grid = document.getElementById('music-library-grid');
+  const musicValue = document.getElementById('music-volume-value');
+  const voiceValue = document.getElementById('voice-volume-value');
+  const fadeValue = document.getElementById('music-fade-value');
+  const musicRange = document.getElementById('music-volume-range');
+  const voiceRange = document.getElementById('voice-volume-range');
+  const fadeRange = document.getElementById('music-fade-range');
+  const duck = document.getElementById('music-duck-toggle');
+
+  if (status) {
+    status.textContent = music.enabled
+      ? 'Selected: ' + (music.title || 'Background music') + '. It will be mixed under the clip audio.'
+      : 'No background music selected.';
+  }
+  if (musicValue) musicValue.textContent = Math.round((music.musicVolume ?? 0.18) * 100) + '%';
+  if (voiceValue) voiceValue.textContent = Math.round((music.voiceVolume ?? 1) * 100) + '%';
+  if (fadeValue) fadeValue.textContent = Number(music.fadeOut ?? 1.5).toFixed(1) + 's';
+  if (musicRange) musicRange.value = Math.round((music.musicVolume ?? 0.18) * 100);
+  if (voiceRange) voiceRange.value = Math.round((music.voiceVolume ?? 1) * 100);
+  if (fadeRange) fadeRange.value = music.fadeOut ?? 1.5;
+  if (duck) duck.checked = music.autoDuck !== false;
+
+  if (grid) {
+    grid.innerHTML = (state.musicLibrary || []).map(track =>
+      '<div class="music-track-card ' + (music.musicTrackId === track.id ? 'active' : '') + '" onclick="selectLibraryMusic(\'' + escapeHTML(track.id) + '\')">' +
+        '<div class="music-track-title">' + escapeHTML(track.title) + '</div>' +
+        '<div class="music-track-meta">' + escapeHTML(track.mood) + ' - ' + escapeHTML(track.bpm) + ' BPM</div>' +
+      '</div>'
+    ).join('') || '<div style="color:var(--text3);font-size:13px">Search the ClipAI library or upload your own audio.</div>';
+  }
+  renderExportPreview();
+  renderExportSummary();
+}
+
+async function loadMusicLibrary(query = '') {
+  try {
+    const res = await fetch(RAILWAY_URL + '/api/music-library?q=' + encodeURIComponent(query || ''));
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Music library unavailable');
+    state.musicLibrary = data.tracks || [];
+    renderMusicControls();
+  } catch (err) {
+    toast('Music library is unavailable right now.', 5000);
+  }
+}
+
+async function handleMusicFilePicked() {
+  const input = document.getElementById('music-file-input');
+  const file = input?.files?.[0];
+  if (!file) return;
+  if (file.size > 80 * 1024 * 1024) {
+    toast('Audio file is too large. Use a file under 80MB.');
+    return;
+  }
+
+  toast('Uploading background music...', 4000);
+  try {
+    const res = await fetch(RAILWAY_URL + '/api/upload-music', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/octet-stream',
+        'x-filename': encodeURIComponent(file.name)
+      },
+      body: file
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Upload failed');
+    state.backgroundMusic = {
+      ...(state.backgroundMusic || {}),
+      enabled: true,
+      source: 'upload',
+      musicFileId: data.musicFileId,
+      musicTrackId: '',
+      title: file.name,
+      previewUrl: data.previewUrl
+    };
+    invalidateExportPreviewClip();
+    renderMusicControls();
+    toast('Background music added');
+  } catch (err) {
+    toast('Music upload failed. Please try another audio file.', 6000);
+  } finally {
+    if (input) input.value = '';
+  }
+}
+
+function selectLibraryMusic(trackId) {
+  const track = (state.musicLibrary || []).find(item => item.id === trackId);
+  if (!track) return;
+  state.backgroundMusic = {
+    ...(state.backgroundMusic || {}),
+    enabled: true,
+    source: 'library',
+    musicFileId: '',
+    musicTrackId: track.id,
+    title: track.title,
+    previewUrl: track.previewUrl
+  };
+  invalidateExportPreviewClip();
+  renderMusicControls();
+  toast('Music selected: ' + track.title);
+}
+
+function clearBackgroundMusic() {
+  state.backgroundMusic = {
+    ...(state.backgroundMusic || {}),
+    enabled: false,
+    source: '',
+    musicFileId: '',
+    musicTrackId: '',
+    title: '',
+    previewUrl: ''
+  };
+  const audio = document.getElementById('music-preview-audio');
+  if (audio) audio.pause();
+  invalidateExportPreviewClip();
+  renderMusicControls();
+  toast('Background music removed');
+}
+
+function updateMusicSetting(key, value) {
+  const music = state.backgroundMusic || {};
+  if (key === 'musicVolume') music.musicVolume = Math.max(0, Math.min(0.6, Number(value) / 100));
+  if (key === 'voiceVolume') music.voiceVolume = Math.max(0.4, Math.min(1.3, Number(value) / 100));
+  if (key === 'fade') {
+    music.fadeIn = Math.max(0, Math.min(5, Number(value)));
+    music.fadeOut = music.fadeIn;
+  }
+  if (key === 'autoDuck') music.autoDuck = Boolean(value);
+  state.backgroundMusic = music;
+  invalidateExportPreviewClip();
+  renderMusicControls();
+}
+
+async function toggleSelectedMusicPreview() {
+  const music = state.backgroundMusic || {};
+  if (!music.previewUrl) {
+    toast('Choose or upload music first.');
+    return;
+  }
+  const audio = document.getElementById('music-preview-audio');
+  if (!audio) return;
+  if (!audio.paused) {
+    audio.pause();
+    return;
+  }
+  if (audio.getAttribute('src') !== music.previewUrl) {
+    audio.setAttribute('src', music.previewUrl);
+    audio.load();
+  }
+  audio.volume = Math.max(0, Math.min(1, music.musicVolume || 0.18));
+  try {
+    await audio.play();
+  } catch (err) {
+    toast('Music preview could not play right now.', 5000);
+  }
+}
+
 function chooseCreationMode(mode) {
   currentCreationMode = mode === 'compilation' ? 'compilation' : 'clips';
   const isCompilation = currentCreationMode === 'compilation';
@@ -2967,6 +3260,8 @@ function goStage(n) {
     requestBilling().then(updateDashboardBilling).catch(() => renderWatermarkControls());
     renderExportSummary();
     renderExportPreview();
+    renderMusicControls();
+    if (!state.musicLibrary.length) loadMusicLibrary();
     setTimeout(() => drawAllVisibleCaptions(), 150);
   }
   updateNewClipsButton();
@@ -3016,6 +3311,20 @@ function createNewClips() {
     captionSettings: { size: 100, position: 78, words: 3 },
     burnCaptions: true,
     removeWatermark: false,
+    backgroundMusic: {
+      enabled: false,
+      source: '',
+      musicFileId: '',
+      musicTrackId: '',
+      title: '',
+      previewUrl: '',
+      musicVolume: 0.18,
+      voiceVolume: 1,
+      musicStart: 0,
+      fadeIn: 1,
+      fadeOut: 1.5,
+      autoDuck: true
+    },
     ghostBrief: '',
     ghostPlan: null,
     ghostAutoRun: false,
@@ -4620,11 +4929,16 @@ function renderExportPreview() {
   pills.innerHTML =
     '<span class="export-preview-pill">' + (shouldBurnCaptions() ? 'Captions on' : 'Captions off') + '</span>' +
     '<span class="export-preview-pill">' + (shouldRemoveWatermark() ? 'No watermark' : 'Watermark on') + '</span>' +
-    '<span class="export-preview-pill">' + escapeHTML((CAPTION_STYLES[state.captionStyle] || CAPTION_STYLES.tiktok).label) + '</span>';
+    '<span class="export-preview-pill">' + escapeHTML((CAPTION_STYLES[state.captionStyle] || CAPTION_STYLES.tiktok).label) + '</span>' +
+    '<span class="export-preview-pill">' + escapeHTML((state.backgroundMusic?.enabled ? state.backgroundMusic.title : 'No music') || 'Music on') + '</span>';
 
-  const previewSource = clip.previewObjectUrl || getPreviewSource();
+  const previewSource = clip.previewObjectUrl || '';
   if (previewSource && video.getAttribute('src') !== previewSource) {
     video.setAttribute('src', previewSource);
+    video.load();
+  } else if (!previewSource && video.getAttribute('src')) {
+    video.pause();
+    video.removeAttribute('src');
     video.load();
   }
   drawExportPreviewFrame();
@@ -4702,6 +5016,7 @@ async function renderPlayablePreviewClip(clip, video, options = {}) {
         burnCaptions: false,
         hookOverlay: '',
         removeWatermark: true,
+        ...getMusicPayload(),
         words: state.words ? state.words.filter(w => w.start >= (clip.start_ms || 0) && w.start <= (clip.end_ms || 0)).slice(0, 300) : []
       })
     });
@@ -4798,6 +5113,68 @@ async function toggleExportPreview() {
     await video.play();
     setButton();
     runExportPreviewLoop(video, canvas, clip, end, usingRenderedPreview ? (clip.start_ms || 0) : 0);
+  } catch (err) {
+    toast('Preview could not play right now. Please try again.', 5000);
+    console.warn('[ClipAI] Export preview play failed:', err);
+    setButton();
+  }
+}
+
+async function toggleExportPreview() {
+  const entry = getExportPreviewEntry();
+  const video = document.getElementById('export-preview-video');
+  const canvas = document.getElementById('export-preview-canvas');
+  const btn = document.getElementById('export-preview-play');
+  if (!entry || !video || !canvas) {
+    toast('Select a clip to preview first.');
+    return;
+  }
+
+  const clip = entry.clip;
+  const setButton = () => {
+    if (btn) btn.textContent = video.paused ? '▶' : 'II';
+  };
+
+  if (!video.paused) {
+    video.pause();
+    if (exportPreviewRaf) cancelAnimationFrame(exportPreviewRaf);
+    setButton();
+    return;
+  }
+
+  try {
+    if (!clip.previewObjectUrl) {
+      await renderPlayablePreviewClip(clip, video);
+    } else if (video.getAttribute('src') !== clip.previewObjectUrl) {
+      video.setAttribute('src', clip.previewObjectUrl);
+      video.load();
+    }
+    await waitForVideoMetadata(video);
+  } catch (err) {
+    console.warn('[ClipAI] Export preview preparation failed:', err);
+    if (clip.previewObjectUrl && isBlobUrl(clip.previewObjectUrl)) {
+      try { URL.revokeObjectURL(clip.previewObjectUrl); } catch (revokeErr) {}
+      clip.previewObjectUrl = '';
+    }
+    try {
+      await renderPlayablePreviewClip(clip, video);
+      await waitForVideoMetadata(video);
+    } catch (fallbackErr) {
+      toast('Preview could not load this video right now. Try re-uploading the original video, then preview again.', 7000);
+      console.warn('[ClipAI] Export preview failed:', fallbackErr);
+      return;
+    }
+  }
+
+  try {
+    const start = 0;
+    const end = Math.max(1, ((clip.end_ms || ((clip.start_ms || 0) + 45000)) - (clip.start_ms || 0)) / 1000);
+    if (Math.abs(video.currentTime - start) > 0.5 || video.currentTime >= end) {
+      video.currentTime = start;
+    }
+    await video.play();
+    setButton();
+    runExportPreviewLoop(video, canvas, clip, end, clip.start_ms || 0);
   } catch (err) {
     toast('Preview could not play right now. Please try again.', 5000);
     console.warn('[ClipAI] Export preview play failed:', err);
@@ -4968,6 +5345,9 @@ function renderExportSummary() {
     return;
   }
   const captionStatus = shouldBurnCaptions() ? 'captions on' : 'captions off';
+  const musicStatus = state.backgroundMusic?.enabled
+    ? 'music: ' + (state.backgroundMusic.title || 'selected')
+    : 'no music';
   el.innerHTML = selected.map((c, i) =>
     `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
       <strong style="color:var(--text)">${i + 1}. ${c.title}</strong>
@@ -4975,7 +5355,7 @@ function renderExportSummary() {
       <div style="color:var(--text2);font-size:13px;margin-top:4px">${c.why}</div>
       ${c.hook_overlay ? `<div style="color:var(--green);font-size:12px;margin-top:6px;font-family:var(--mono)">Hook overlay: ${escapeHTML(c.hook_overlay)}</div>` : ''}
     </div>`
-  ).join('') + `<div style="padding-top:12px;color:var(--text3);font-size:13px">${selected.length} clip${selected.length !== 1 ? 's' : ''} ready to export · ${captionStatus}</div>`;
+  ).join('') + `<div style="padding-top:12px;color:var(--text3);font-size:13px">${selected.length} clip${selected.length !== 1 ? 's' : ''} ready to export · ${captionStatus} · ${escapeHTML(musicStatus)}</div>`;
 }
 
 // Track ongoing export so we can show progress
@@ -5034,6 +5414,7 @@ async function exportTo(platform) {
           hookOverlay: clip.hook_overlay || clip.hook || '',
           hookAngle: clip.hook_angle || '',
           removeWatermark: shouldRemoveWatermark(),
+          ...getMusicPayload(),
           words: state.words ? state.words.filter(w => w.start >= (clip.start_ms || 0) && w.start <= (clip.end_ms || 0)).slice(0, 300) : []
         })
       });
@@ -5196,6 +5577,24 @@ function loadProject(p) {
   state.originalSourceUrl = sourceMeta.originalSourceUrl || '';
   state.directSourceUrl = sourceMeta.directSourceUrl || '';
   state.sourceType = sourceMeta.sourceType || '';
+  state.backgroundMusic = {
+    enabled: false,
+    source: '',
+    musicFileId: '',
+    musicTrackId: '',
+    title: '',
+    previewUrl: '',
+    musicVolume: 0.18,
+    voiceVolume: 1,
+    musicStart: 0,
+    fadeIn: 1,
+    fadeOut: 1.5,
+    autoDuck: true,
+    ...(p.backgroundMusic || p.background_music || {})
+  };
+  if (state.backgroundMusic.source === 'upload' && !state.backgroundMusic.musicFileId) {
+    state.backgroundMusic.enabled = false;
+  }
   setPreviewVideoUrl(sourceMeta.previewUrl || '');
   if (!getPreviewSource() && state.localFileId) {
     setPreviewVideoUrl(getBackendPreviewUrl(state.localFileId));
@@ -5282,6 +5681,7 @@ function buildProjectPayload() {
     highlights: state.highlights || [],
     duration: state.duration || 0,
     localFileId: state.localFileId || '',
+    backgroundMusic: state.backgroundMusic || {},
     sourceMeta,
     videoFilename: JSON.stringify(sourceMeta)
   };
