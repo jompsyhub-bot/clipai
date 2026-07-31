@@ -1205,6 +1205,42 @@
       grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
       gap: 10px;
     }
+    .pixabay-music-panel {
+      display: grid;
+      gap: 10px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 12px;
+    }
+    .pixabay-music-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .pixabay-music-title {
+      color: var(--text);
+      font-weight: 800;
+      font-size: 14px;
+      line-height: 1.3;
+    }
+    .pixabay-music-sub {
+      color: var(--text3);
+      font-size: 12px;
+      line-height: 1.55;
+      margin-top: 3px;
+    }
+    .pixabay-badge {
+      color: var(--green);
+      border: 1px solid rgba(62,207,142,0.22);
+      background: rgba(62,207,142,0.08);
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-family: var(--mono);
+      font-size: 10px;
+      white-space: nowrap;
+    }
     .music-select {
       width: 100%;
       background: var(--bg3);
@@ -1981,6 +2017,26 @@
             <button class="btn btn-ghost" type="button" onclick="clearBackgroundMusic()">No Music</button>
             <button class="btn btn-ghost" type="button" onclick="toggleSelectedMusicPreview()">Preview Music</button>
           </div>
+          <div class="pixabay-music-panel">
+            <div class="pixabay-music-head">
+              <div>
+                <div class="pixabay-music-title">Jamendo Music</div>
+                <div class="pixabay-music-sub">Search real music from an official provider, then let ClipAI add the selected track to your export automatically.</div>
+              </div>
+              <div class="pixabay-badge">API powered</div>
+            </div>
+            <div class="music-search-row">
+              <input class="ai-input" id="provider-music-search" placeholder="Search music: cinematic, lofi, afrobeat..." />
+              <button class="btn btn-primary" id="provider-music-search-btn" type="button" onclick="searchProviderMusic()">Search</button>
+            </div>
+            <div class="music-picker-grid">
+              <select class="music-select" id="provider-music-select">
+                <option value="">Search to find provider tracks</option>
+              </select>
+              <button class="btn btn-ghost" id="provider-music-add-btn" type="button" onclick="addProviderMusic()">Add Selected Track</button>
+            </div>
+            <div id="provider-music-status" class="pixabay-music-sub">Official provider tracks are cached by ClipAI after you add them.</div>
+          </div>
           <div class="music-picker-grid">
             <select class="music-select" id="music-category-select" onchange="setMusicCategory(this.value)">
               <option value="">All categories</option>
@@ -2135,6 +2191,7 @@ const state = {
   musicLibrary: [],
   musicCategories: [],
   activeMusicCategory: '',
+  providerMusicResults: [],
   ghostBrief: '',
   ghostPlan: null,
   ghostAutoRun: false,
@@ -2786,6 +2843,91 @@ async function loadMusicLibrary(query = '') {
 function setMusicCategory(category) {
   state.activeMusicCategory = category || '';
   loadMusicLibrary(document.getElementById('music-search')?.value || '');
+}
+
+function renderProviderMusicResults() {
+  const select = document.getElementById('provider-music-select');
+  const status = document.getElementById('provider-music-status');
+  const tracks = state.providerMusicResults || [];
+  if (select) {
+    select.innerHTML = '<option value="">Choose a provider track</option>' + tracks.map(track => {
+      const minutes = track.duration ? Math.floor(track.duration / 60) + ':' + String(track.duration % 60).padStart(2, '0') : 'preview';
+      const label = track.title + ' - ' + track.artist + ' - ' + minutes;
+      return '<option value="' + escapeHTML(track.id) + '">' + escapeHTML(label) + '</option>';
+    }).join('');
+  }
+  if (status) {
+    status.textContent = tracks.length
+      ? tracks.length + ' tracks found. Choose one and add it to your clip.'
+      : 'Official provider tracks are cached by ClipAI after you add them.';
+  }
+}
+
+async function searchProviderMusic() {
+  const query = (document.getElementById('provider-music-search')?.value || '').trim();
+  const status = document.getElementById('provider-music-status');
+  if (!query) {
+    toast('Type the music style you want first.');
+    return;
+  }
+  setBtn('provider-music-search-btn', true, 'Searching...');
+  if (status) status.textContent = 'Searching real music tracks...';
+  try {
+    const res = await fetch(RAILWAY_URL + '/api/music-provider/search?provider=jamendo&q=' + encodeURIComponent(query));
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Music search failed');
+    state.providerMusicResults = (data.tracks || []).filter(track => track.canDownload);
+    renderProviderMusicResults();
+    toast(state.providerMusicResults.length ? 'Music tracks found' : 'No downloadable tracks found. Try another style.');
+  } catch (err) {
+    if (status) status.textContent = 'Music search is unavailable right now.';
+    toast(formatUserError(err, 'Music search is unavailable right now.'), 6000);
+  } finally {
+    setBtn('provider-music-search-btn', false);
+  }
+}
+
+async function addProviderMusic() {
+  const select = document.getElementById('provider-music-select');
+  const status = document.getElementById('provider-music-status');
+  const trackId = select?.value || '';
+  const track = (state.providerMusicResults || []).find(item => item.id === trackId);
+  if (!track) {
+    toast('Choose a music track first.');
+    return;
+  }
+  setBtn('provider-music-add-btn', true, 'Adding...');
+  if (status) status.textContent = 'Adding this track to ClipAI...';
+  try {
+    const res = await fetch(RAILWAY_URL + '/api/music-provider/download', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ provider: 'jamendo', trackId })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Track could not be added');
+    state.backgroundMusic = {
+      ...(state.backgroundMusic || {}),
+      enabled: true,
+      source: 'provider',
+      provider: data.provider || 'jamendo',
+      musicFileId: data.musicFileId,
+      musicTrackId: '',
+      title: data.title || track.title,
+      previewUrl: data.previewUrl,
+      licenseUrl: data.licenseUrl || track.licenseUrl || '',
+      pageUrl: data.pageUrl || track.pageUrl || ''
+    };
+    invalidateExportPreviewClip();
+    renderMusicControls();
+    if (status) status.textContent = 'Track added. It will be mixed under your exported clips.';
+    toast('Music added to your clip');
+  } catch (err) {
+    if (status) status.textContent = 'This track could not be added. Try another one.';
+    toast(formatUserError(err, 'This music track could not be added right now.'), 6000);
+  } finally {
+    setBtn('provider-music-add-btn', false);
+  }
 }
 
 function setMusicUploadProgress(pct, label, sizeText = '') {
