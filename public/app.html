@@ -1200,6 +1200,25 @@
       display: flex;
       gap: 10px;
     }
+    .music-picker-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+      gap: 10px;
+    }
+    .music-select {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: var(--r);
+      padding: 12px 14px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 13px;
+      outline: none;
+    }
+    .music-select:focus {
+      border-color: var(--accent);
+    }
     .music-library-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -1230,6 +1249,14 @@
       font-size: 10px;
       margin-top: 5px;
     }
+    .music-track-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 7px;
+      box-shadow: 0 0 10px currentColor;
+    }
     .music-control-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1242,6 +1269,7 @@
       .caption-control-grid { grid-template-columns: 1fr; }
       .export-preview-layout { grid-template-columns: 1fr; }
       .export-preview-stage { width: min(100%, 230px); }
+      .music-picker-grid { grid-template-columns: 1fr; }
       .music-search-row,
       .music-actions { flex-direction: column; }
       .music-control-grid { grid-template-columns: 1fr; }
@@ -1955,8 +1983,16 @@
             <button class="btn btn-ghost" type="button" onclick="clearBackgroundMusic()">No Music</button>
             <button class="btn btn-ghost" type="button" onclick="toggleSelectedMusicPreview()">Preview Music</button>
           </div>
+          <div class="music-picker-grid">
+            <select class="music-select" id="music-category-select" onchange="setMusicCategory(this.value)">
+              <option value="">All categories</option>
+            </select>
+            <select class="music-select" id="music-track-select" onchange="selectLibraryMusic(this.value)">
+              <option value="">Choose a ClipAI sound</option>
+            </select>
+          </div>
           <div class="music-search-row">
-            <input class="ai-input" id="music-search" placeholder="Search ClipAI library: viral, podcast, cinematic..." oninput="loadMusicLibrary(this.value)" />
+            <input class="ai-input" id="music-search" placeholder="Search sounds: Afrobeats, trap, cinematic..." oninput="loadMusicLibrary(this.value)" />
             <button class="btn btn-primary" type="button" onclick="loadMusicLibrary(document.getElementById('music-search').value)">Search</button>
           </div>
           <div class="music-library-grid" id="music-library-grid"></div>
@@ -2099,6 +2135,8 @@ const state = {
     autoDuck: true
   },
   musicLibrary: [],
+  musicCategories: [],
+  activeMusicCategory: '',
   ghostBrief: '',
   ghostPlan: null,
   ghostAutoRun: false,
@@ -2686,6 +2724,8 @@ function renderMusicControls() {
   const music = state.backgroundMusic || {};
   const status = document.getElementById('music-status');
   const grid = document.getElementById('music-library-grid');
+  const categorySelect = document.getElementById('music-category-select');
+  const trackSelect = document.getElementById('music-track-select');
   const musicValue = document.getElementById('music-volume-value');
   const voiceValue = document.getElementById('voice-volume-value');
   const fadeValue = document.getElementById('music-fade-value');
@@ -2707,11 +2747,28 @@ function renderMusicControls() {
   if (fadeRange) fadeRange.value = music.fadeOut ?? 1.5;
   if (duck) duck.checked = music.autoDuck !== false;
 
+  if (categorySelect) {
+    const categories = state.musicCategories || [];
+    categorySelect.innerHTML = '<option value="">All categories</option>' + categories.map(category =>
+      '<option value="' + escapeHTML(category) + '"' + (state.activeMusicCategory === category ? ' selected' : '') + '>' +
+        escapeHTML(category) +
+      '</option>'
+    ).join('');
+  }
+
+  if (trackSelect) {
+    trackSelect.innerHTML = '<option value="">Choose a ClipAI sound</option>' + (state.musicLibrary || []).map(track =>
+      '<option value="' + escapeHTML(track.id) + '"' + (music.musicTrackId === track.id ? ' selected' : '') + '>' +
+        escapeHTML(track.title + ' - ' + (track.mood || track.category || 'Music') + ' - ' + track.bpm + ' BPM') +
+      '</option>'
+    ).join('');
+  }
+
   if (grid) {
     grid.innerHTML = (state.musicLibrary || []).map(track =>
       '<div class="music-track-card ' + (music.musicTrackId === track.id ? 'active' : '') + '" onclick="selectLibraryMusic(\'' + escapeHTML(track.id) + '\')">' +
-        '<div class="music-track-title">' + escapeHTML(track.title) + '</div>' +
-        '<div class="music-track-meta">' + escapeHTML(track.mood) + ' - ' + escapeHTML(track.bpm) + ' BPM</div>' +
+        '<div class="music-track-title"><span class="music-track-dot" style="color:' + escapeHTML(track.color || '#7c6af7') + ';background:' + escapeHTML(track.color || '#7c6af7') + '"></span>' + escapeHTML(track.title) + '</div>' +
+        '<div class="music-track-meta">' + escapeHTML(track.category || 'Library') + ' - ' + escapeHTML(track.mood) + ' - ' + escapeHTML(track.bpm) + ' BPM</div>' +
       '</div>'
     ).join('') || '<div style="color:var(--text3);font-size:13px">Search the ClipAI library or upload your own audio.</div>';
   }
@@ -2721,14 +2778,21 @@ function renderMusicControls() {
 
 async function loadMusicLibrary(query = '') {
   try {
-    const res = await fetch(RAILWAY_URL + '/api/music-library?q=' + encodeURIComponent(query || ''));
+    const category = state.activeMusicCategory || '';
+    const res = await fetch(RAILWAY_URL + '/api/music-library?q=' + encodeURIComponent(query || '') + '&category=' + encodeURIComponent(category));
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Music library unavailable');
     state.musicLibrary = data.tracks || [];
+    state.musicCategories = data.categories || state.musicCategories || [];
     renderMusicControls();
   } catch (err) {
     toast('Music library is unavailable right now.', 5000);
   }
+}
+
+function setMusicCategory(category) {
+  state.activeMusicCategory = category || '';
+  loadMusicLibrary(document.getElementById('music-search')?.value || '');
 }
 
 function setMusicUploadProgress(pct, label, sizeText = '') {
