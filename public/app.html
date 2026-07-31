@@ -1220,9 +1220,7 @@
       border-color: var(--accent);
     }
     .music-library-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 10px;
+      display: none;
     }
     .music-track-card {
       background: var(--bg3);
@@ -2759,18 +2757,13 @@ function renderMusicControls() {
   if (trackSelect) {
     trackSelect.innerHTML = '<option value="">Choose a ClipAI sound</option>' + (state.musicLibrary || []).map(track =>
       '<option value="' + escapeHTML(track.id) + '"' + (music.musicTrackId === track.id ? ' selected' : '') + '>' +
-        escapeHTML(track.title + ' - ' + (track.mood || track.category || 'Music') + ' - ' + track.bpm + ' BPM') +
+        escapeHTML(track.title + ' - ' + (track.category || 'Library') + ' - ' + (track.mood || 'Music')) +
       '</option>'
     ).join('');
   }
 
   if (grid) {
-    grid.innerHTML = (state.musicLibrary || []).map(track =>
-      '<div class="music-track-card ' + (music.musicTrackId === track.id ? 'active' : '') + '" onclick="selectLibraryMusic(\'' + escapeHTML(track.id) + '\')">' +
-        '<div class="music-track-title"><span class="music-track-dot" style="color:' + escapeHTML(track.color || '#7c6af7') + ';background:' + escapeHTML(track.color || '#7c6af7') + '"></span>' + escapeHTML(track.title) + '</div>' +
-        '<div class="music-track-meta">' + escapeHTML(track.category || 'Library') + ' - ' + escapeHTML(track.mood) + ' - ' + escapeHTML(track.bpm) + ' BPM</div>' +
-      '</div>'
-    ).join('') || '<div style="color:var(--text3);font-size:13px">Search the ClipAI library or upload your own audio.</div>';
+    grid.innerHTML = '';
   }
   renderExportPreview();
   renderExportSummary();
