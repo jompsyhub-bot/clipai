@@ -2020,8 +2020,8 @@
           <div class="pixabay-music-panel">
             <div class="pixabay-music-head">
               <div>
-                <div class="pixabay-music-title">Jamendo Music</div>
-                <div class="pixabay-music-sub">Search real music from an official provider, then let ClipAI add the selected track to your export automatically.</div>
+                <div class="pixabay-music-title">Background Music</div>
+                <div class="pixabay-music-sub">Search real music, add one track, then balance it under your clip voice.</div>
               </div>
               <div class="pixabay-badge">API powered</div>
             </div>
@@ -2037,19 +2037,6 @@
             </div>
             <div id="provider-music-status" class="pixabay-music-sub">Official provider tracks are cached by ClipAI after you add them.</div>
           </div>
-          <div class="music-picker-grid">
-            <select class="music-select" id="music-category-select" onchange="setMusicCategory(this.value)">
-              <option value="">All categories</option>
-            </select>
-            <select class="music-select" id="music-track-select" onchange="selectLibraryMusic(this.value)">
-              <option value="">Choose a ClipAI sound</option>
-            </select>
-          </div>
-          <div class="music-search-row">
-            <input class="ai-input" id="music-search" placeholder="Search sounds: Afrobeats, trap, cinematic..." oninput="loadMusicLibrary(this.value)" />
-            <button class="btn btn-primary" type="button" onclick="loadMusicLibrary(document.getElementById('music-search').value)">Search</button>
-          </div>
-          <div class="music-library-grid" id="music-library-grid"></div>
           <div id="music-status" style="color:var(--text2);font-size:13px;line-height:1.6">No background music selected.</div>
           <div id="music-upload-progress" style="display:none" class="progress-wrap">
             <div class="progress-label">
@@ -2061,8 +2048,8 @@
           </div>
           <div class="music-control-grid">
             <div class="caption-control">
-              <label for="music-volume-range">Music <strong id="music-volume-value">18%</strong></label>
-              <input id="music-volume-range" type="range" min="0" max="60" value="18" oninput="updateMusicSetting('musicVolume', this.value)" />
+              <label for="music-volume-range">Music <strong id="music-volume-value">22%</strong></label>
+              <input id="music-volume-range" type="range" min="0" max="70" value="22" oninput="updateMusicSetting('musicVolume', this.value)" />
             </div>
             <div class="caption-control">
               <label for="voice-volume-range">Voice <strong id="voice-volume-value">100%</strong></label>
@@ -2181,7 +2168,7 @@ const state = {
     musicTrackId: '',
     title: '',
     previewUrl: '',
-    musicVolume: 0.18,
+    musicVolume: 0.22,
     voiceVolume: 1,
     musicStart: 0,
     fadeIn: 1,
@@ -2751,7 +2738,7 @@ function getMusicPayload() {
     musicEnabled: Boolean(music.enabled && (music.musicFileId || music.musicTrackId)),
     musicFileId: music.musicFileId || '',
     musicTrackId: music.musicTrackId || '',
-    musicVolume: Number(music.musicVolume ?? 0.18),
+    musicVolume: Number(music.musicVolume ?? 0.22),
     voiceVolume: Number(music.voiceVolume ?? 1),
     musicStart: Number(music.musicStart ?? 0),
     musicFadeIn: Number(music.fadeIn ?? 1),
@@ -2794,10 +2781,10 @@ function renderMusicControls() {
       ? 'Selected: ' + (music.title || 'Background music') + '. It will be mixed under the clip audio.'
       : 'No background music selected.';
   }
-  if (musicValue) musicValue.textContent = Math.round((music.musicVolume ?? 0.18) * 100) + '%';
+  if (musicValue) musicValue.textContent = Math.round((music.musicVolume ?? 0.22) * 100) + '%';
   if (voiceValue) voiceValue.textContent = Math.round((music.voiceVolume ?? 1) * 100) + '%';
   if (fadeValue) fadeValue.textContent = Number(music.fadeOut ?? 1.5).toFixed(1) + 's';
-  if (musicRange) musicRange.value = Math.round((music.musicVolume ?? 0.18) * 100);
+  if (musicRange) musicRange.value = Math.round((music.musicVolume ?? 0.22) * 100);
   if (voiceRange) voiceRange.value = Math.round((music.voiceVolume ?? 1) * 100);
   if (fadeRange) fadeRange.value = music.fadeOut ?? 1.5;
   if (duck) duck.checked = music.autoDuck !== false;
@@ -3054,7 +3041,7 @@ function clearBackgroundMusic() {
 
 function updateMusicSetting(key, value) {
   const music = state.backgroundMusic || {};
-  if (key === 'musicVolume') music.musicVolume = Math.max(0, Math.min(0.6, Number(value) / 100));
+  if (key === 'musicVolume') music.musicVolume = Math.max(0, Math.min(0.7, Number(value) / 100));
   if (key === 'voiceVolume') music.voiceVolume = Math.max(0.4, Math.min(1.3, Number(value) / 100));
   if (key === 'fade') {
     music.fadeIn = Math.max(0, Math.min(5, Number(value)));
@@ -3607,7 +3594,7 @@ function createNewClips() {
       musicTrackId: '',
       title: '',
       previewUrl: '',
-      musicVolume: 0.18,
+      musicVolume: 0.22,
       voiceVolume: 1,
       musicStart: 0,
       fadeIn: 1,
@@ -5873,7 +5860,7 @@ function loadProject(p) {
     musicTrackId: '',
     title: '',
     previewUrl: '',
-    musicVolume: 0.18,
+    musicVolume: 0.22,
     voiceVolume: 1,
     musicStart: 0,
     fadeIn: 1,
