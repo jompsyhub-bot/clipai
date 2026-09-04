@@ -62,7 +62,7 @@ Only return the JSON array. No other text.`;
         'authorization': 'Bearer ' + GROQ_KEY
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'qwen/qwen3.6-27b',
         max_tokens: 2000,
         temperature: 0.5,
         messages: [
