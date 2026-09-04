@@ -30,6 +30,7 @@ async function handler(req, res) {
 Video duration: ${totalDurationSec} seconds
 Key highlights: ${highlightSummary}
 
+
 Transcript (timestamps are in SECONDS from start of video):
 ${utteranceSummary}
 ${userPromptExtra}
