@@ -143,7 +143,7 @@ Rules:
         authorization: 'Bearer ' + GROQ_KEY
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'qwen/qwen3.6-27b',
         max_tokens: 1800,
         temperature: 0.35,
         messages: [
