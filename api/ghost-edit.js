@@ -215,6 +215,7 @@ Return one JSON object:
   ]
 }
 
+
 Rules:
 - start_seconds and end_seconds must be real video timestamps.
 - Honor requested duration when possible, 20-60 seconds per clip.
