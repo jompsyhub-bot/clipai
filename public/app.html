@@ -321,6 +321,39 @@
 
     /* URL input row */
     .url-row { display: flex; gap: 10px; }
+    .import-mode-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .import-mode-btn {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text2);
+      border-radius: var(--r);
+      padding: 12px;
+      text-align: left;
+      font-family: var(--font);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .import-mode-btn strong {
+      display: block;
+      color: var(--text);
+      font-size: 13px;
+      margin-bottom: 3px;
+    }
+    .import-mode-btn span {
+      display: block;
+      color: var(--text3);
+      font-size: 11px;
+      line-height: 1.4;
+    }
+    .import-mode-btn.active {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
     .url-input {
       flex: 1;
       background: var(--bg3);
@@ -1027,9 +1060,11 @@
       .card { padding: 16px; border-radius: 14px; }
       .upload-zone { padding: 38px 16px; }
       .url-row,
+      .import-mode-row,
       .ai-row,
       .action-row,
       .hook-actions { flex-direction: column; }
+      .import-mode-row { grid-template-columns: 1fr; }
       .url-row .btn,
       .ai-row .btn,
       .action-row .btn { width: 100%; justify-content: center; }
@@ -1805,6 +1840,16 @@
           </div>
         </div>
         <div class="or-divider">or paste a public URL</div>
+        <div class="import-mode-row" aria-label="Video import type">
+          <button class="import-mode-btn active" id="import-mode-short" type="button" onclick="setImportMode('short')">
+            <strong>Short video</strong>
+            <span>Fast import for clips under 5 minutes.</span>
+          </button>
+          <button class="import-mode-btn" id="import-mode-long" type="button" onclick="setImportMode('long')">
+            <strong>Long video</strong>
+            <span>Best for podcasts, interviews, and longer YouTube links.</span>
+          </button>
+        </div>
         <div class="url-row">
           <input class="url-input" id="url-input" type="url" placeholder="https://example.com/video.mp4  or  YouTube/podcast URL" />
           <button class="btn btn-primary" onclick="submitUrl()">Analyze</button>
@@ -2153,6 +2198,7 @@ const state = {
   originalSourceUrl: '',
   directSourceUrl: '',
   sourceType: '',
+  importMode: 'short',
   captionStyle: 'tiktok',
   captionSettings: {
     size: 100,
@@ -3188,36 +3234,23 @@ function useCompilationExample(kind) {
   toast('Compilation style loaded');
 }
 
-async function getYouTubeDirectUrl(url) {
-  const RAPIDAPI_KEY = '2739c1edfcmsh6e763515222fb6bp1b7684jsne1a821094a00';
-  const RAPIDAPI_HOST = 'youtube-video-fast-downloader-24-7.p.rapidapi.com';
-  const match = url.match(/(?:v=|youtu\.be\/|shorts\/)([^&\n?#]+)/);
-  const videoId = match ? match[1] : null;
-  if (!videoId) throw new Error('Could not extract video ID from URL');
-
-  const rapidRes = await fetch(`https://${RAPIDAPI_HOST}/download_video/${videoId}?quality=247`, {
-    headers: {
-      'Content-Type': 'application/json',
-      'x-rapidapi-host': RAPIDAPI_HOST,
-      'x-rapidapi-key': RAPIDAPI_KEY
-    }
-  });
-  const rapidData = await rapidRes.json();
-  const directUrl = rapidData?.file || rapidData?.url || rapidData?.link;
-  if (!directUrl) throw new Error('Could not get download link from RapidAPI');
-  return directUrl;
+function setImportMode(mode) {
+  state.importMode = mode === 'long' ? 'long' : 'short';
+  document.getElementById('import-mode-short')?.classList.toggle('active', state.importMode === 'short');
+  document.getElementById('import-mode-long')?.classList.toggle('active', state.importMode === 'long');
 }
 
-async function uploadYouTubeSource(url) {
-  const directUrl = await getYouTubeDirectUrl(url);
+async function uploadYouTubeSource(url, importMode = 'short') {
   const res = await fetch(RAILWAY_URL + '/api/youtube-upload', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ url: directUrl, originalUrl: url })
+    body: JSON.stringify({ url, originalUrl: url, importMode })
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'YouTube download failed');
-  return { ...data, originalUrl: url, directUrl };
+  const raw = await res.text();
+  let data;
+  try { data = JSON.parse(raw); } catch(e) { throw new Error('Video import returned an invalid response'); }
+  if (!res.ok) throw new Error(data.error || 'We could not import this video right now');
+  return { ...data, originalUrl: url, directUrl: data.directUrl || '' };
 }
 
 async function createTranscriptJob(videoUrl) {
@@ -3315,7 +3348,7 @@ async function createCompilationPlan() {
           '<div style="margin-top:10px;color:var(--text3);font-family:var(--mono);font-size:11px;overflow-wrap:anywhere">' + escapeHTML(link) + '</div>';
       }
 
-      const uploaded = await uploadYouTubeSource(link);
+      const uploaded = await uploadYouTubeSource(link, 'long');
 
       if (out) {
         out.innerHTML = '<div style="display:flex;align-items:center;gap:10px"><div class="spinner"></div>Reading video ' + (i + 1) + ' of ' + links.length + '...</div>' +
@@ -3584,6 +3617,7 @@ function createNewClips() {
     originalSourceUrl: '',
     directSourceUrl: '',
     sourceType: '',
+    importMode: 'short',
     captionSettings: { size: 100, position: 78, words: 3 },
     burnCaptions: true,
     removeWatermark: false,
@@ -3738,7 +3772,8 @@ function normalizeSourceMeta(meta = {}) {
     originalSourceUrl: meta.originalSourceUrl || meta.original_source_url || '',
     directSourceUrl: meta.directSourceUrl || meta.direct_source_url || '',
     previewUrl: persistentPreviewUrl(meta.previewUrl || meta.preview_url || ''),
-    sourceType: meta.sourceType || meta.source_type || ''
+    sourceType: meta.sourceType || meta.source_type || '',
+    importMode: meta.importMode || meta.import_mode || 'short'
   };
 }
 
@@ -3777,7 +3812,8 @@ function getProjectSourceMeta(project) {
     originalSourceUrl: project?.originalSourceUrl || project?.original_source_url || '',
     directSourceUrl: project?.directSourceUrl || project?.direct_source_url || '',
     previewUrl: project?.previewUrl || project?.preview_url || '',
-    sourceType: project?.sourceType || project?.source_type || ''
+    sourceType: project?.sourceType || project?.source_type || '',
+    importMode: project?.importMode || project?.import_mode || 'short'
   });
 }
 
@@ -3787,7 +3823,8 @@ function buildSourceMeta() {
     originalSourceUrl: state.originalSourceUrl || '',
     directSourceUrl: state.directSourceUrl || '',
     previewUrl: persistentPreviewUrl(state.sourceVideoUrl || state.localPreviewUrl || ''),
-    sourceType: state.sourceType || ''
+    sourceType: state.sourceType || '',
+    importMode: state.importMode || 'short'
   };
 }
 
@@ -3802,11 +3839,14 @@ async function recoverSourceVideo() {
   const isYouTube = /youtube\.com|youtu\.be|youtube-nocookie\.com/.test(originalUrl);
   toast('Restoring preview source...', 5000);
 
-  const directUrl = isYouTube ? await getYouTubeDirectUrl(originalUrl) : (state.directSourceUrl || originalUrl);
   const res = await fetch(RAILWAY_URL + '/api/youtube-upload', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ url: directUrl, originalUrl })
+    body: JSON.stringify({
+      url: isYouTube ? originalUrl : (state.directSourceUrl || originalUrl),
+      originalUrl,
+      importMode: isYouTube ? (state.importMode || 'long') : 'short'
+    })
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Could not restore source video');
@@ -3814,8 +3854,9 @@ async function recoverSourceVideo() {
   state.localFileId = data.localFileId;
   state.transcriptionUrl = data.uploadUrl || state.transcriptionUrl;
   state.originalSourceUrl = data.originalUrl || originalUrl;
-  state.directSourceUrl = data.directUrl || directUrl;
+  state.directSourceUrl = data.directUrl || state.directSourceUrl || '';
   state.sourceType = isYouTube ? 'youtube' : 'url';
+  state.importMode = data.importMode || state.importMode || 'short';
   setPreviewVideoUrl(data.previewUrl || data.videoUrl || data.localVideoUrl || getBackendPreviewUrl(data.localFileId));
   await saveProject({ auto: true, silent: true });
   return true;
@@ -3907,13 +3948,17 @@ async function submitUrl() {
   const isYouTube = /youtube\.com|youtu\.be|youtube-nocookie\.com/.test(url);
 
   if (isYouTube) {
+    const importMode = state.importMode === 'long' ? 'long' : 'short';
     state.originalSourceUrl = url;
     state.sourceType = 'youtube';
+    state.importMode = importMode;
     document.getElementById('upload-progress').style.display = 'block';
-    document.getElementById('upload-status').textContent = 'Downloading YouTube audio... (1-2 minutes)';
+    document.getElementById('upload-status').textContent = importMode === 'long' ? 'Preparing long video...' : 'Preparing video...';
     document.getElementById('upload-bar').style.width = '5%';
     document.getElementById('upload-pct').textContent = '5%';
-    document.getElementById('upload-size').textContent = 'Connecting to YouTube...';
+    document.getElementById('upload-size').textContent = importMode === 'long'
+      ? 'This may take a few minutes for longer videos.'
+      : 'Connecting to video source...';
 
     let fakePct = 5;
     const fakeTimer = setInterval(() => {
@@ -3925,23 +3970,19 @@ async function submitUrl() {
     }, 500);
 
     try {
-      // Step 1: Get direct download URL from the same helper Compilation Studio uses.
-      document.getElementById('upload-size').textContent = 'Getting download link...';
-      const directUrl = await getYouTubeDirectUrl(url);
-      state.directSourceUrl = directUrl;
-
       document.getElementById('upload-size').textContent = 'Preparing your video...';
 
-      // Step 2: Send direct URL to backend for download + AssemblyAI upload
       const res = await fetch(RAILWAY_URL + '/api/youtube-upload', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ url: directUrl, originalUrl: url })
+        body: JSON.stringify({ url, originalUrl: url, importMode })
       });
-      const data = await res.json();
+      const raw = await res.text();
+      let data;
+      try { data = JSON.parse(raw); } catch(e) { throw new Error('Video import returned an invalid response'); }
       clearInterval(fakeTimer);
 
-      if (!res.ok) throw new Error(data.error || 'YouTube download failed');
+      if (!res.ok) throw new Error(data.error || 'We could not import this video right now');
 
       document.getElementById('upload-bar').style.width = '100%';
       document.getElementById('upload-pct').textContent = '100%';
@@ -3951,8 +3992,9 @@ async function submitUrl() {
       state.localFileId = data.localFileId;
       state.transcriptionUrl = data.uploadUrl;
       state.originalSourceUrl = data.originalUrl || url;
-      state.directSourceUrl = data.directUrl || directUrl;
+      state.directSourceUrl = data.directUrl || '';
       state.sourceType = 'youtube';
+      state.importMode = data.importMode || importMode;
       setPreviewVideoUrl(data.previewUrl || data.videoUrl || data.localVideoUrl || getBackendPreviewUrl(data.localFileId));
       notifyNative('ClipAI upload complete', 'Your video is ready. Analysis is starting now.');
       if (!state.sourceVideoUrl) {
@@ -5853,6 +5895,8 @@ function loadProject(p) {
   state.originalSourceUrl = sourceMeta.originalSourceUrl || '';
   state.directSourceUrl = sourceMeta.directSourceUrl || '';
   state.sourceType = sourceMeta.sourceType || '';
+  state.importMode = sourceMeta.importMode || 'short';
+  setImportMode(state.importMode);
   state.backgroundMusic = {
     enabled: false,
     source: '',
@@ -5957,6 +6001,7 @@ function buildProjectPayload() {
     highlights: state.highlights || [],
     duration: state.duration || 0,
     localFileId: state.localFileId || '',
+    importMode: state.importMode || 'short',
     backgroundMusic: state.backgroundMusic || {},
     sourceMeta,
     videoFilename: JSON.stringify(sourceMeta)
