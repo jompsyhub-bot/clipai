@@ -35,7 +35,7 @@ JSON only, no markdown.`;
         'authorization': `Bearer ${GROQ_KEY}`
       },
       body: JSON.stringify({
-        model: 'qwen/qwen3.6-27b',
+        model: 'openai/gpt-oss-20b',
         max_tokens: 1000,
         temperature: 0.7,
         messages: [
