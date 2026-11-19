@@ -30,7 +30,6 @@ async function handler(req, res) {
 Video duration: ${totalDurationSec} seconds
 Key highlights: ${highlightSummary}
 
-
 Transcript (timestamps are in SECONDS from start of video):
 ${utteranceSummary}
 ${userPromptExtra}
@@ -62,7 +61,7 @@ Only return the JSON array. No other text.`;
         'authorization': 'Bearer ' + GROQ_KEY
       },
       body: JSON.stringify({
-        model: 'qwen/qwen3.6-27b',
+        model: 'openai/gpt-oss-20b',
         max_tokens: 2000,
         temperature: 0.5,
         messages: [
