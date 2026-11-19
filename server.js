@@ -36,9 +36,11 @@ const FFMPEG = path.join(__dirname, 'ffmpeg');
 const COOKIES_FILE = '/tmp/yt-cookies.txt';
 const DOWNLOAD_DIR = '/tmp/clipai';
 const UPLOAD_DIR = '/tmp/clipai-uploads';
+const MUSIC_DIR = '/tmp/clipai-music';
 
 if (!fs.existsSync(DOWNLOAD_DIR)) fs.mkdirSync(DOWNLOAD_DIR, { recursive: true });
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+if (!fs.existsSync(MUSIC_DIR)) fs.mkdirSync(MUSIC_DIR, { recursive: true });
 
 // ─── YouTube bypass args ──────────────────────────────────────────────────────
 const BYPASS = `--extractor-args "youtube:player_client=android_embedded,ios,android" --no-warnings --format-sort "ext:mp4:m4a"`;
@@ -70,14 +72,14 @@ function describeProxyProblem(stderr) {
   return '';
 }
 
-function ytArgList(extra = []) {
+function ytArgList(extra = [], options = {}) {
   const args = [
-    '--extractor-args', 'youtube:player_client=android_embedded,ios,android,web',
     '--no-warnings',
     '--format-sort', 'ext:mp4:m4a',
     '--retries', '3',
     '--fragment-retries', '3'
   ];
+  args.unshift('--extractor-args', `youtube:player_client=${options.clients || 'android_embedded,ios,android,web'}`);
   if (fs.existsSync(COOKIES_FILE)) args.push('--cookies', COOKIES_FILE);
   const proxyUrl = getProxyUrl();
   if (proxyUrl) args.push('--proxy', proxyUrl);
@@ -105,13 +107,67 @@ function streamVideoFile(req, res, filePath, contentType = 'video/mp4') {
   if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' });
   const stat = fs.statSync(filePath);
   const range = req.headers.range;
+  const chunkSize = 2 * 1024 * 1024;
   res.setHeader('Accept-Ranges', 'bytes');
   res.setHeader('Content-Type', contentType);
+  res.setHeader('Cache-Control', 'no-store');
+
+  if (req.method === 'HEAD') {
+    res.setHeader('Content-Length', stat.size);
+    return res.status(200).end();
+  }
 
   if (range) {
     const [startRaw, endRaw] = range.replace(/bytes=/, '').split('-');
     const start = parseInt(startRaw, 10);
-    const end = endRaw ? parseInt(endRaw, 10) : stat.size - 1;
+    const requestedEnd = endRaw ? parseInt(endRaw, 10) : start + chunkSize - 1;
+    const end = Math.min(requestedEnd, stat.size - 1);
+    if (Number.isNaN(start) || Number.isNaN(end) || start >= stat.size || end >= stat.size) {
+      res.setHeader('Content-Range', `bytes */${stat.size}`);
+      return res.status(416).end();
+    }
+    res.status(206);
+    res.setHeader('Content-Range', `bytes ${start}-${end}/${stat.size}`);
+    res.setHeader('Content-Length', end - start + 1);
+    const stream = fs.createReadStream(filePath, { start, end });
+    stream.on('error', err => {
+      console.error('Video stream error:', err.message);
+      if (!res.headersSent) res.status(500).end();
+      else res.destroy(err);
+    });
+    return stream.pipe(res);
+  }
+
+  const end = Math.min(chunkSize - 1, stat.size - 1);
+  res.status(206);
+  res.setHeader('Content-Range', `bytes 0-${end}/${stat.size}`);
+  res.setHeader('Content-Length', end + 1);
+  const stream = fs.createReadStream(filePath, { start: 0, end });
+  stream.on('error', err => {
+    console.error('Video stream error:', err.message);
+    if (!res.headersSent) res.status(500).end();
+    else res.destroy(err);
+  });
+  stream.pipe(res);
+}
+
+function streamAudioFile(req, res, filePath, contentType = 'audio/mpeg') {
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Audio file not found' });
+  const stat = fs.statSync(filePath);
+  const range = req.headers.range;
+  res.setHeader('Accept-Ranges', 'bytes');
+  res.setHeader('Content-Type', contentType);
+  res.setHeader('Cache-Control', 'no-store');
+
+  if (req.method === 'HEAD') {
+    res.setHeader('Content-Length', stat.size);
+    return res.status(200).end();
+  }
+
+  if (range) {
+    const [startRaw, endRaw] = range.replace(/bytes=/, '').split('-');
+    const start = parseInt(startRaw, 10);
+    const end = Math.min(endRaw ? parseInt(endRaw, 10) : stat.size - 1, stat.size - 1);
     if (Number.isNaN(start) || Number.isNaN(end) || start >= stat.size || end >= stat.size) {
       res.setHeader('Content-Range', `bytes */${stat.size}`);
       return res.status(416).end();
@@ -122,13 +178,793 @@ function streamVideoFile(req, res, filePath, contentType = 'video/mp4') {
     return fs.createReadStream(filePath, { start, end }).pipe(res);
   }
 
+  res.status(200);
   res.setHeader('Content-Length', stat.size);
   fs.createReadStream(filePath).pipe(res);
+}
+
+function requestJson(url) {
+  return new Promise((resolve, reject) => {
+    const protocol = url.startsWith('https') ? https : http;
+    protocol.get(url, response => {
+      let body = '';
+      response.setEncoding('utf8');
+      response.on('data', chunk => { body += chunk; });
+      response.on('end', () => {
+        if (response.statusCode < 200 || response.statusCode >= 300) {
+          return reject(new Error(`Request failed with status ${response.statusCode}`));
+        }
+        try {
+          resolve(JSON.parse(body));
+        } catch (err) {
+          reject(new Error('Provider returned invalid data'));
+        }
+      });
+    }).on('error', reject);
+  });
+}
+
+function downloadToFile(url, dest) {
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(dest);
+    const protocol = url.startsWith('https') ? https : http;
+    const req = protocol.get(url, response => {
+      if ([301, 302, 303, 307, 308].includes(response.statusCode)) {
+        file.close();
+        try { fs.unlinkSync(dest); } catch (err) {}
+        return resolve(downloadToFile(response.headers.location, dest));
+      }
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        file.close();
+        try { fs.unlinkSync(dest); } catch (err) {}
+        return reject(new Error(`Download failed with status ${response.statusCode}`));
+      }
+      response.pipe(file);
+      file.on('finish', () => file.close(() => resolve(dest)));
+    });
+    req.on('error', err => {
+      file.close();
+      try { fs.unlinkSync(dest); } catch (unlinkErr) {}
+      reject(err);
+    });
+  });
 }
 
 function localPreviewUrl(req, localFileId) {
   return `${publicBaseUrl(req)}/api/serve-upload-file/${encodeURIComponent(localFileId)}`;
 }
+
+function musicPreviewUrl(req, musicFileId) {
+  return `${publicBaseUrl(req)}/api/serve-music/${encodeURIComponent(musicFileId)}`;
+}
+
+const MUSIC_LIBRARY = [
+  { id: 'viral-pop', title: 'Viral Pop Lift', category: 'Trending', mood: 'Upbeat', bpm: 118, freq: 440, color: '#7c6af7' },
+  { id: 'dance-club', title: 'Dance Club Starter', category: 'Trending', mood: 'Dance', bpm: 126, freq: 262, color: '#22d3ee' },
+  { id: 'fitness-energy', title: 'Fitness Energy', category: 'Trending', mood: 'Fitness', bpm: 132, freq: 494, color: '#00ff88' },
+  { id: 'glitch-future', title: 'Glitch Future Bits', category: 'Trending', mood: 'Glitch', bpm: 128, freq: 311, color: '#2dd4bf' },
+  { id: 'hyper-scroll', title: 'Hyper Scroll Pop', category: 'Trending', mood: 'Fast Pop', bpm: 150, freq: 349, color: '#ff4fd8' },
+  { id: 'clean-podcast', title: 'Clean Podcast Bed', category: 'Creator', mood: 'Podcast', bpm: 88, freq: 220, color: '#3ecf8e' },
+  { id: 'corporate-clean', title: 'Corporate Clean', category: 'Creator', mood: 'Business', bpm: 96, freq: 262, color: '#5eead4' },
+  { id: 'news-pulse', title: 'News Pulse', category: 'Creator', mood: 'News', bpm: 110, freq: 233, color: '#f43f5e' },
+  { id: 'tutorial-glow', title: 'Tutorial Glow', category: 'Creator', mood: 'Explainer', bpm: 92, freq: 294, color: '#60a5fa' },
+  { id: 'luxury-tech', title: 'Luxury Tech Pulse', category: 'Creator', mood: 'Luxury', bpm: 96, freq: 277, color: '#00c8ff' },
+  { id: 'cinematic-rise', title: 'Cinematic Rise', category: 'Cinematic', mood: 'Cinematic', bpm: 72, freq: 330, color: '#f0a832' },
+  { id: 'suspense-low', title: 'Suspense Low Tension', category: 'Cinematic', mood: 'Suspense', bpm: 64, freq: 147, color: '#94a3b8' },
+  { id: 'hero-trailer', title: 'Hero Trailer Hits', category: 'Cinematic', mood: 'Trailer', bpm: 84, freq: 175, color: '#fb923c' },
+  { id: 'dark-documentary', title: 'Dark Documentary Bed', category: 'Cinematic', mood: 'Documentary', bpm: 70, freq: 156, color: '#a78bfa' },
+  { id: 'soft-story', title: 'Soft Storytelling', category: 'Chill', mood: 'Emotional', bpm: 68, freq: 262, color: '#a394ff' },
+  { id: 'lofi-rain', title: 'Lo-fi Rain Keys', category: 'Chill', mood: 'Lo-fi', bpm: 76, freq: 220, color: '#8fb3ff' },
+  { id: 'dreamy-air', title: 'Dreamy Air Pads', category: 'Chill', mood: 'Dreamy', bpm: 84, freq: 330, color: '#c084fc' },
+  { id: 'ambient-focus', title: 'Ambient Focus Bed', category: 'Chill', mood: 'Ambient', bpm: 60, freq: 220, color: '#38bdf8' },
+  { id: 'coffee-shop', title: 'Coffee Shop Rhodes', category: 'Chill', mood: 'Warm', bpm: 82, freq: 247, color: '#c08457' },
+  { id: 'afrobeats-sun', title: 'Afrobeats Sun', category: 'Global', mood: 'Afrobeats', bpm: 102, freq: 247, color: '#ff8a00' },
+  { id: 'amapiano-log', title: 'Amapiano Log Drum', category: 'Global', mood: 'Amapiano', bpm: 112, freq: 196, color: '#00d4ff' },
+  { id: 'reggae-lite', title: 'Reggae Lite Skank', category: 'Global', mood: 'Reggae', bpm: 88, freq: 196, color: '#84cc16' },
+  { id: 'latin-pop', title: 'Latin Pop Snap', category: 'Global', mood: 'Latin', bpm: 116, freq: 294, color: '#fb7185' },
+  { id: 'dancehall-wave', title: 'Dancehall Wave', category: 'Global', mood: 'Dancehall', bpm: 98, freq: 208, color: '#14b8a6' },
+  { id: 'trap-808', title: 'Trap 808 Bounce', category: 'Urban', mood: 'Trap', bpm: 140, freq: 185, color: '#b15cff' },
+  { id: 'hiphop-chill', title: 'Hip Hop Chill', category: 'Urban', mood: 'Hip Hop', bpm: 90, freq: 208, color: '#f97316' },
+  { id: 'drill-night', title: 'Drill Night Pulse', category: 'Urban', mood: 'Drill', bpm: 144, freq: 165, color: '#818cf8' },
+  { id: 'rnb-silk', title: 'R&B Silk Keys', category: 'Urban', mood: 'R&B', bpm: 78, freq: 233, color: '#f472b6' },
+  { id: 'funny-bounce', title: 'Funny Bounce', category: 'Playful', mood: 'Comedy', bpm: 124, freq: 523, color: '#ffe600' },
+  { id: 'cartoon-pop', title: 'Cartoon Pop', category: 'Playful', mood: 'Cartoon', bpm: 132, freq: 587, color: '#facc15' },
+  { id: 'quirky-pluck', title: 'Quirky Pluck', category: 'Playful', mood: 'Quirky', bpm: 108, freq: 392, color: '#34d399' },
+  { id: 'motivation-drive', title: 'Motivation Drive', category: 'Motivation', mood: 'Motivation', bpm: 104, freq: 392, color: '#ff5c8a' },
+  { id: 'winner-rise', title: 'Winner Rise', category: 'Motivation', mood: 'Inspirational', bpm: 100, freq: 330, color: '#f59e0b' },
+  { id: 'acoustic-bright', title: 'Acoustic Bright Pluck', category: 'Organic', mood: 'Acoustic', bpm: 92, freq: 247, color: '#fbbf24' },
+  { id: 'ukulele-smile', title: 'Ukulele Smile', category: 'Organic', mood: 'Happy', bpm: 106, freq: 392, color: '#fde047' },
+  { id: 'handpan-calm', title: 'Handpan Calm', category: 'Organic', mood: 'Calm', bpm: 72, freq: 220, color: '#67e8f9' },
+  { id: 'dark-tech', title: 'Dark Tech Drive', category: 'Tech', mood: 'Tech', bpm: 122, freq: 165, color: '#64748b' },
+  { id: 'cyber-runner', title: 'Cyber Runner', category: 'Tech', mood: 'Cyber', bpm: 136, freq: 185, color: '#06b6d4' },
+  { id: 'minimal-clicks', title: 'Minimal Clicks', category: 'Tech', mood: 'Minimal', bpm: 118, freq: 262, color: '#94a3b8' },
+  { id: 'space-signal', title: 'Space Signal', category: 'Tech', mood: 'Sci-fi', bpm: 80, freq: 311, color: '#8b5cf6' }
+];
+
+function getMusicTrack(id) {
+  return MUSIC_LIBRARY.find(track => track.id === String(id || '').trim());
+}
+
+function musicFilePathForTrack(track) {
+  return path.join(MUSIC_DIR, `library_v7_${track.id}.wav`);
+}
+
+function clampSample(value) {
+  return Math.max(-1, Math.min(1, value));
+}
+
+function noteFrequency(root, semitone) {
+  return root * Math.pow(2, semitone / 12);
+}
+
+function musicPresetForTrack(track) {
+  const presets = {
+    'viral-pop': {
+      root: 261.63,
+      scale: [0, 2, 4, 7, 9, 12],
+      bass: [0, 0, 7, 9, 4, 4, 7, 2],
+      melody: [12, 9, 7, 9, 14, 12, 9, 7],
+      chord: [0, 4, 7],
+      kick: [0, 2],
+      snare: [1, 3],
+      hatEvery: 0.5,
+      swing: 0.03,
+      drive: 0.95
+    },
+    'clean-podcast': {
+      root: 196,
+      scale: [0, 3, 5, 7, 10, 12],
+      bass: [0, 0, 5, 5, 7, 7, 3, 3],
+      melody: [7, 10, 12, 10, 7, 5, 3, 5],
+      chord: [0, 3, 7],
+      kick: [0],
+      snare: [2],
+      hatEvery: 1,
+      swing: 0,
+      drive: 0.45
+    },
+    'cinematic-rise': {
+      root: 174.61,
+      scale: [0, 2, 3, 7, 8, 12],
+      bass: [0, 0, 3, 3, 8, 8, 7, 7],
+      melody: [12, 15, 19, 15, 20, 19, 15, 12],
+      chord: [0, 3, 7],
+      kick: [0, 2.5],
+      snare: [3],
+      hatEvery: 2,
+      swing: 0,
+      drive: 0.7
+    },
+    'luxury-tech': {
+      root: 220,
+      scale: [0, 2, 5, 7, 11, 12],
+      bass: [0, 7, 0, 11, 5, 7, 2, 0],
+      melody: [12, 14, 19, 14, 23, 19, 14, 12],
+      chord: [0, 5, 11],
+      kick: [0, 1.5, 3],
+      snare: [2],
+      hatEvery: 0.5,
+      swing: 0.02,
+      drive: 0.65
+    },
+    'funny-bounce': {
+      root: 293.66,
+      scale: [0, 2, 4, 5, 7, 9, 12],
+      bass: [0, 7, 4, 7, 0, 9, 4, 7],
+      melody: [12, 16, 14, 12, 19, 16, 14, 12],
+      chord: [0, 4, 7],
+      kick: [0, 1, 2, 3],
+      snare: [1.5, 3.5],
+      hatEvery: 0.5,
+      swing: 0.06,
+      drive: 0.8
+    },
+    'motivation-drive': {
+      root: 246.94,
+      scale: [0, 2, 4, 7, 9, 12],
+      bass: [0, 0, 7, 7, 9, 9, 4, 4],
+      melody: [7, 9, 12, 14, 16, 14, 12, 9],
+      chord: [0, 4, 7],
+      kick: [0, 2],
+      snare: [1, 3],
+      hatEvery: 0.5,
+      swing: 0.01,
+      drive: 1
+    },
+    'soft-story': {
+      root: 220,
+      scale: [0, 2, 3, 7, 10, 12],
+      bass: [0, 0, 3, 3, 7, 7, 10, 10],
+      melody: [12, 10, 7, 10, 15, 12, 10, 7],
+      chord: [0, 3, 7],
+      kick: [0],
+      snare: [],
+      hatEvery: 4,
+      swing: 0,
+      drive: 0.35
+    },
+    'fitness-energy': {
+      root: 261.63,
+      scale: [0, 2, 4, 7, 9, 12],
+      bass: [0, 0, 7, 7, 9, 9, 7, 4],
+      melody: [12, 14, 16, 19, 21, 19, 16, 14],
+      chord: [0, 4, 7],
+      kick: [0, 1, 2, 3],
+      snare: [1, 3],
+      hatEvery: 0.25,
+      swing: 0,
+      drive: 1.05
+    },
+    'afrobeats-sun': {
+      root: 246.94,
+      scale: [0, 2, 4, 7, 9, 11, 12],
+      bass: [0, 7, 0, 9, 4, 7, 2, 7],
+      melody: [12, 16, 14, 12, 19, 16, 14, 21],
+      chord: [0, 4, 9],
+      kick: [0, 1.75, 2.5],
+      snare: [1, 3],
+      hatEvery: 0.5,
+      swing: 0.08,
+      drive: 0.88
+    },
+    'amapiano-log': {
+      root: 196,
+      scale: [0, 3, 5, 7, 10, 12],
+      bass: [0, 0, 12, 7, 0, 10, 7, 3],
+      melody: [7, 10, 12, 15, 12, 10, 7, 5],
+      chord: [0, 3, 10],
+      kick: [0, 2],
+      snare: [1.5, 3],
+      hatEvery: 0.5,
+      swing: 0.04,
+      drive: 0.9
+    },
+    'trap-808': {
+      root: 146.83,
+      scale: [0, 3, 5, 7, 10, 12],
+      bass: [0, 0, -12, 7, 0, 10, -5, 0],
+      melody: [12, 12, 15, 19, 17, 15, 12, 10],
+      chord: [0, 3, 7],
+      kick: [0, 0.75, 2.25, 3.25],
+      snare: [1, 3],
+      hatEvery: 0.25,
+      swing: 0.01,
+      drive: 1.15
+    },
+    'lofi-rain': {
+      root: 220,
+      scale: [0, 2, 3, 7, 10, 12],
+      bass: [0, 0, 3, 3, 10, 10, 7, 7],
+      melody: [12, 10, 7, 5, 10, 12, 15, 10],
+      chord: [0, 3, 7, 10],
+      kick: [0, 2.25],
+      snare: [1.5, 3.5],
+      hatEvery: 1,
+      swing: 0.09,
+      drive: 0.42
+    },
+    'corporate-clean': {
+      root: 261.63,
+      scale: [0, 2, 4, 7, 9, 12],
+      bass: [0, 4, 7, 4, 9, 7, 4, 2],
+      melody: [12, 14, 16, 14, 19, 16, 14, 12],
+      chord: [0, 4, 7],
+      kick: [0, 2],
+      snare: [1, 3],
+      hatEvery: 1,
+      swing: 0,
+      drive: 0.55
+    },
+    'news-pulse': {
+      root: 233.08,
+      scale: [0, 2, 3, 7, 10, 12],
+      bass: [0, 0, 7, 0, 10, 7, 3, 0],
+      melody: [12, 7, 12, 15, 12, 10, 7, 10],
+      chord: [0, 3, 7],
+      kick: [0, 1, 2, 3],
+      snare: [2],
+      hatEvery: 0.5,
+      swing: 0,
+      drive: 0.75
+    },
+    'suspense-low': {
+      root: 146.83,
+      scale: [0, 1, 3, 6, 7, 10, 12],
+      bass: [0, -12, 0, 1, 6, 3, 1, 0],
+      melody: [12, 13, 15, 18, 15, 13, 12, 10],
+      chord: [0, 1, 6],
+      kick: [0],
+      snare: [],
+      hatEvery: 2,
+      swing: 0,
+      drive: 0.5
+    },
+    'dreamy-air': {
+      root: 329.63,
+      scale: [0, 2, 4, 7, 11, 12],
+      bass: [0, 0, 7, 7, 11, 11, 4, 4],
+      melody: [12, 16, 19, 23, 19, 16, 14, 12],
+      chord: [0, 4, 11],
+      kick: [0],
+      snare: [],
+      hatEvery: 4,
+      swing: 0.02,
+      drive: 0.38
+    },
+    'dance-club': {
+      root: 261.63,
+      scale: [0, 2, 4, 7, 9, 12],
+      bass: [0, 0, 0, 0, 7, 7, 9, 9],
+      melody: [12, 14, 16, 19, 16, 14, 12, 9],
+      chord: [0, 4, 7],
+      kick: [0, 1, 2, 3],
+      snare: [1, 3],
+      hatEvery: 0.25,
+      swing: 0,
+      drive: 1.1
+    },
+    'reggae-lite': {
+      root: 196,
+      scale: [0, 2, 4, 7, 9, 12],
+      bass: [0, 0, 7, 7, 9, 7, 4, 2],
+      melody: [7, 9, 12, 9, 7, 4, 2, 4],
+      chord: [0, 4, 7],
+      kick: [0, 2],
+      snare: [1, 3],
+      hatEvery: 1,
+      swing: 0.07,
+      drive: 0.6
+    },
+    'latin-pop': {
+      root: 293.66,
+      scale: [0, 2, 4, 5, 7, 9, 12],
+      bass: [0, 7, 9, 7, 5, 7, 4, 2],
+      melody: [12, 16, 17, 16, 14, 12, 9, 12],
+      chord: [0, 4, 7],
+      kick: [0, 1.5, 2.5],
+      snare: [1, 3],
+      hatEvery: 0.5,
+      swing: 0.05,
+      drive: 0.9
+    },
+    'dark-tech': {
+      root: 164.81,
+      scale: [0, 1, 3, 7, 10, 12],
+      bass: [0, 0, 0, 7, 3, 0, 10, 7],
+      melody: [12, 13, 15, 19, 15, 13, 10, 12],
+      chord: [0, 3, 10],
+      kick: [0, 1, 2, 3],
+      snare: [1.5, 3.5],
+      hatEvery: 0.25,
+      swing: 0,
+      drive: 0.95
+    },
+    'acoustic-bright': {
+      root: 246.94,
+      scale: [0, 2, 4, 7, 9, 12],
+      bass: [0, 4, 7, 9, 7, 4, 2, 0],
+      melody: [12, 16, 19, 16, 14, 12, 9, 7],
+      chord: [0, 4, 7],
+      kick: [0],
+      snare: [2],
+      hatEvery: 2,
+      swing: 0.03,
+      drive: 0.5
+    },
+    'ambient-focus': {
+      root: 220,
+      scale: [0, 2, 5, 7, 10, 12],
+      bass: [0, 0, 5, 5, 10, 10, 7, 7],
+      melody: [12, 17, 19, 17, 22, 19, 17, 12],
+      chord: [0, 5, 10],
+      kick: [],
+      snare: [],
+      hatEvery: 8,
+      swing: 0,
+      drive: 0.28
+    },
+    'hiphop-chill': {
+      root: 207.65,
+      scale: [0, 3, 5, 7, 10, 12],
+      bass: [0, 0, 7, 5, 3, 3, 10, 7],
+      melody: [12, 10, 7, 10, 15, 12, 10, 7],
+      chord: [0, 3, 7, 10],
+      kick: [0, 0.75, 2.25],
+      snare: [1, 3],
+      hatEvery: 0.5,
+      swing: 0.08,
+      drive: 0.72
+    },
+    'glitch-future': {
+      root: 311.13,
+      scale: [0, 1, 5, 7, 11, 12],
+      bass: [0, 11, 0, 5, 7, 1, 12, 5],
+      melody: [12, 13, 17, 19, 23, 19, 17, 13],
+      chord: [0, 5, 11],
+      kick: [0, 1.25, 2, 3.5],
+      snare: [1, 3],
+      hatEvery: 0.25,
+      swing: 0.02,
+      drive: 1
+    }
+  };
+  const categoryStyles = {
+    Trending: { wave: 'bright', bassWave: 'saw', chordWave: 'wide', percussion: 'pop', texture: 'spark', leadGain: 1.1, chordGain: 0.9, bassGain: 1, rhythmGain: 0.72 },
+    Creator: { wave: 'soft', bassWave: 'sine', chordWave: 'sine', percussion: 'clean', texture: 'click', leadGain: 0.45, chordGain: 0.72, bassGain: 0.55, rhythmGain: 0.28 },
+    Cinematic: { wave: 'brass', bassWave: 'sine', chordWave: 'pad', percussion: 'cinematic', texture: 'rumble', leadGain: 0.55, chordGain: 1.25, bassGain: 1.05, rhythmGain: 0.42 },
+    Chill: { wave: 'rhodes', bassWave: 'sine', chordWave: 'warm', percussion: 'lofi', texture: 'vinyl', leadGain: 0.6, chordGain: 1.08, bassGain: 0.62, rhythmGain: 0.24 },
+    Global: { wave: 'pluck', bassWave: 'round', chordWave: 'stab', percussion: 'global', texture: 'shaker', leadGain: 0.85, chordGain: 0.78, bassGain: 0.82, rhythmGain: 0.55 },
+    Urban: { wave: 'bell', bassWave: '808', chordWave: 'dark', percussion: 'trap', texture: 'hatroll', leadGain: 0.7, chordGain: 0.62, bassGain: 1.35, rhythmGain: 0.62 },
+    Playful: { wave: 'toy', bassWave: 'square', chordWave: 'pluck', percussion: 'comedy', texture: 'popcorn', leadGain: 1.08, chordGain: 0.7, bassGain: 0.68, rhythmGain: 0.4 },
+    Motivation: { wave: 'anthem', bassWave: 'saw', chordWave: 'wide', percussion: 'drive', texture: 'lift', leadGain: 0.95, chordGain: 1.05, bassGain: 1.05, rhythmGain: 0.58 },
+    Organic: { wave: 'string', bassWave: 'round', chordWave: 'pluck', percussion: 'organic', texture: 'wood', leadGain: 0.74, chordGain: 0.92, bassGain: 0.62, rhythmGain: 0.25 },
+    Tech: { wave: 'bit', bassWave: 'saw', chordWave: 'digital', percussion: 'tech', texture: 'glitch', leadGain: 0.9, chordGain: 0.78, bassGain: 0.9, rhythmGain: 0.48 }
+  };
+  const generatedByCategory = {
+    Trending: { root: 293.66, scale: [0, 2, 4, 7, 9, 12], bass: [0, 0, 7, 9, 0, 4, 7, 12], melody: [12, 14, 16, 19, 21, 19, 16, 14], chord: [0, 4, 7], kick: [0, 1, 2, 3], snare: [1, 3], hatEvery: 0.25, swing: 0.01, drive: 1.05 },
+    Creator: { root: 246.94, scale: [0, 2, 4, 7, 9, 12], bass: [0, 4, 7, 4, 9, 7, 4, 2], melody: [12, 14, 16, 14, 12, 9, 7, 9], chord: [0, 4, 7], kick: [0, 2], snare: [2], hatEvery: 1, swing: 0, drive: 0.45 },
+    Cinematic: { root: 164.81, scale: [0, 2, 3, 7, 8, 12], bass: [0, 0, 3, 3, 8, 8, 7, 7], melody: [12, 15, 19, 20, 19, 15, 12, 8], chord: [0, 3, 7], kick: [0, 2.5], snare: [3], hatEvery: 2, swing: 0, drive: 0.72 },
+    Chill: { root: 220, scale: [0, 2, 3, 7, 10, 12], bass: [0, 0, 3, 3, 10, 10, 7, 7], melody: [12, 10, 7, 5, 10, 12, 15, 10], chord: [0, 3, 7, 10], kick: [0, 2.25], snare: [1.5, 3.5], hatEvery: 1, swing: 0.08, drive: 0.4 },
+    Global: { root: 246.94, scale: [0, 2, 4, 7, 9, 11, 12], bass: [0, 7, 0, 9, 4, 7, 2, 7], melody: [12, 16, 14, 12, 19, 16, 14, 21], chord: [0, 4, 9], kick: [0, 1.75, 2.5], snare: [1, 3], hatEvery: 0.5, swing: 0.08, drive: 0.88 },
+    Urban: { root: 146.83, scale: [0, 3, 5, 7, 10, 12], bass: [0, 0, -12, 7, 0, 10, -5, 0], melody: [12, 12, 15, 19, 17, 15, 12, 10], chord: [0, 3, 7], kick: [0, 0.75, 2.25, 3.25], snare: [1, 3], hatEvery: 0.25, swing: 0.02, drive: 1.08 },
+    Playful: { root: 392, scale: [0, 2, 4, 5, 7, 9, 12], bass: [0, 7, 4, 7, 0, 9, 4, 7], melody: [12, 16, 14, 12, 19, 16, 21, 19], chord: [0, 4, 7], kick: [0, 1, 2, 3], snare: [1.5, 3.5], hatEvery: 0.5, swing: 0.07, drive: 0.82 },
+    Motivation: { root: 246.94, scale: [0, 2, 4, 7, 9, 12], bass: [0, 0, 7, 7, 9, 9, 4, 4], melody: [7, 9, 12, 14, 16, 19, 16, 14], chord: [0, 4, 7], kick: [0, 2], snare: [1, 3], hatEvery: 0.5, swing: 0.01, drive: 1 },
+    Organic: { root: 246.94, scale: [0, 2, 4, 7, 9, 12], bass: [0, 4, 7, 9, 7, 4, 2, 0], melody: [12, 16, 19, 16, 14, 12, 9, 7], chord: [0, 4, 7], kick: [0], snare: [2], hatEvery: 2, swing: 0.03, drive: 0.5 },
+    Tech: { root: 164.81, scale: [0, 1, 3, 7, 10, 12], bass: [0, 0, 0, 7, 3, 0, 10, 7], melody: [12, 13, 15, 19, 15, 13, 10, 12], chord: [0, 3, 10], kick: [0, 1, 2, 3], snare: [1.5, 3.5], hatEvery: 0.25, swing: 0, drive: 0.95 }
+  };
+  const base = presets[track.id] || generatedByCategory[track.category] || presets['viral-pop'];
+  const style = categoryStyles[track.category] || categoryStyles.Trending;
+  const idOffset = String(track.id || '').split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % 7;
+  return {
+    ...style,
+    ...base,
+    melody: (base.melody || []).map((semi, index) => semi + (index % 3 === 0 ? idOffset % 3 : 0)),
+    color: track.color
+  };
+}
+
+function oscillator(shape, phase) {
+  const p = phase - Math.floor(phase);
+  if (shape === 'saw') return 2 * p - 1;
+  if (shape === 'square') return p < 0.5 ? 1 : -1;
+  if (shape === 'triangle') return 1 - 4 * Math.abs(Math.round(p - 0.25) - (p - 0.25));
+  if (shape === 'bit') return Math.round(Math.sin(2 * Math.PI * p) * 4) / 4;
+  if (shape === 'bell') return Math.sin(2 * Math.PI * p) * 0.68 + Math.sin(2 * Math.PI * p * 2.72) * 0.32;
+  if (shape === 'toy') return Math.sin(2 * Math.PI * p) * 0.55 + oscillator('square', p * 2) * 0.22;
+  if (shape === 'pluck') return Math.sin(2 * Math.PI * p) * 0.62 + oscillator('triangle', p * 1.5) * 0.3;
+  if (shape === 'rhodes') return Math.sin(2 * Math.PI * p) * 0.72 + Math.sin(2 * Math.PI * p * 2.01) * 0.18 + Math.sin(2 * Math.PI * p * 3.01) * 0.08;
+  if (shape === 'brass') return oscillator('saw', p) * 0.38 + Math.sin(2 * Math.PI * p) * 0.62;
+  if (shape === 'string') return oscillator('triangle', p) * 0.7 + Math.sin(2 * Math.PI * p * 2) * 0.12;
+  if (shape === 'anthem') return oscillator('saw', p) * 0.34 + Math.sin(2 * Math.PI * p) * 0.66;
+  if (shape === 'bright') return Math.sin(2 * Math.PI * p) * 0.58 + Math.sin(2 * Math.PI * p * 2) * 0.24 + Math.sin(2 * Math.PI * p * 3) * 0.1;
+  if (shape === 'wide') return Math.sin(2 * Math.PI * p) * 0.5 + Math.sin(2 * Math.PI * (p * 1.005 + 0.1)) * 0.28;
+  if (shape === 'pad' || shape === 'warm') return Math.sin(2 * Math.PI * p) * 0.74 + oscillator('triangle', p * 0.5) * 0.18;
+  if (shape === 'dark') return Math.sin(2 * Math.PI * p) * 0.55 + oscillator('saw', p) * 0.18;
+  if (shape === 'digital') return oscillator('bit', p) * 0.52 + oscillator('square', p * 0.5) * 0.18;
+  if (shape === 'round') return Math.sin(2 * Math.PI * p) * 0.85 + Math.sin(2 * Math.PI * p * 0.5) * 0.1;
+  if (shape === '808') return Math.sin(2 * Math.PI * p) * 0.92 + Math.sin(2 * Math.PI * p * 2) * 0.05;
+  return Math.sin(2 * Math.PI * p);
+}
+
+function writeWavFile(filePath, samples, sampleRate) {
+  const dataSize = samples.length * 2;
+  const buffer = Buffer.alloc(44 + dataSize);
+  buffer.write('RIFF', 0);
+  buffer.writeUInt32LE(36 + dataSize, 4);
+  buffer.write('WAVE', 8);
+  buffer.write('fmt ', 12);
+  buffer.writeUInt32LE(16, 16);
+  buffer.writeUInt16LE(1, 20);
+  buffer.writeUInt16LE(1, 22);
+  buffer.writeUInt32LE(sampleRate, 24);
+  buffer.writeUInt32LE(sampleRate * 2, 28);
+  buffer.writeUInt16LE(2, 32);
+  buffer.writeUInt16LE(16, 34);
+  buffer.write('data', 36);
+  buffer.writeUInt32LE(dataSize, 40);
+  for (let i = 0; i < samples.length; i++) {
+    buffer.writeInt16LE(Math.round(clampSample(samples[i]) * 32767), 44 + i * 2);
+  }
+  fs.writeFileSync(filePath, buffer);
+}
+
+function synthLibraryTrack(track, outputPath) {
+  const preset = musicPresetForTrack(track);
+  const sampleRate = 22050;
+  const duration = 32;
+  const samples = new Float32Array(sampleRate * duration);
+  const beatDuration = 60 / (track.bpm || 100);
+  const masterGain = track.category === 'Cinematic' ? 0.62 : track.category === 'Urban' ? 0.68 : 0.72;
+  let noiseSeed = 123456 + String(track.id).split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+  const noise = () => {
+    noiseSeed = (noiseSeed * 1664525 + 1013904223) >>> 0;
+    return (noiseSeed / 4294967295) * 2 - 1;
+  };
+
+  for (let i = 0; i < samples.length; i++) {
+    const t = i / sampleRate;
+    const beat = t / beatDuration;
+    const beatInBar = ((beat % 4) + 4) % 4;
+    const eighth = Math.floor(beat * 2) % preset.bass.length;
+    const sixteenth = Math.floor(beat * 4) % preset.melody.length;
+    const bassSemi = preset.bass[eighth] || 0;
+    const melodySemi = preset.melody[sixteenth] || 12;
+    const bassFreq = noteFrequency(preset.root / 2, bassSemi);
+    const melodyFreq = noteFrequency(preset.root, melodySemi);
+    const chordStep = Math.floor(beat / 4) % 4;
+    const chordShift = [0, 5, 9, 7][chordStep] || 0;
+    const beatFrac = beat - Math.floor(beat);
+    const eighthFrac = beat * 2 - Math.floor(beat * 2);
+    const sixteenthFrac = beat * 4 - Math.floor(beat * 4);
+
+    let sample = 0;
+    const bassDecay = preset.bassWave === '808' ? 1.35 : 3.4;
+    const bassEnv = Math.exp(-beatFrac * bassDecay);
+    const bassPhase = bassFreq * (t + Math.sin(2 * Math.PI * 2 * t) * 0.0008);
+    sample += oscillator(preset.bassWave || 'sine', bassPhase) * 0.3 * bassEnv * (preset.bassGain || 1);
+    if (preset.bassWave === '808') {
+      sample += Math.sin(2 * Math.PI * bassFreq * 0.5 * t) * 0.24 * bassEnv;
+    } else {
+      sample += oscillator('sine', bassFreq * 2 * t) * 0.06 * bassEnv;
+    }
+
+    const chordEnv = 0.18 + 0.16 * Math.sin(2 * Math.PI * beat / 8);
+    for (const semi of preset.chord) {
+      const freq = noteFrequency(preset.root, semi + chordShift);
+      const slowSwell = preset.chordWave === 'pad' ? (0.55 + 0.45 * Math.sin(2 * Math.PI * t / 8)) : 1;
+      sample += oscillator(preset.chordWave || 'sine', freq * t) * 0.058 * chordEnv * slowSwell * (preset.chordGain || 1);
+      sample += oscillator(preset.chordWave || 'sine', freq * 2.01 * t + 0.08) * 0.014 * chordEnv * slowSwell;
+    }
+
+    if (sixteenthFrac < 0.72) {
+      const plucky = ['pluck', 'toy', 'string', 'bit'].includes(preset.wave);
+      const leadEnv = Math.exp(-sixteenthFrac * (plucky ? 8.5 : 4.2));
+      const wobble = Math.sin(2 * Math.PI * 5.5 * t) * 0.003;
+      sample += oscillator(preset.wave || 'sine', melodyFreq * (t + wobble)) * 0.16 * leadEnv * preset.drive * (preset.leadGain || 1);
+      sample += oscillator(preset.wave || 'sine', melodyFreq * 2 * t + 0.03) * 0.028 * leadEnv;
+    }
+
+    for (const kickBeat of preset.kick) {
+      const dist = beatInBar - kickBeat;
+      if (dist >= 0 && dist < 0.18) {
+        const env = Math.exp(-dist * 24);
+        const sweepBase = preset.percussion === 'cinematic' ? 36 : preset.percussion === 'trap' ? 42 : 50;
+        const sweep = sweepBase + (preset.percussion === 'trap' ? 130 : 95) * env;
+        sample += Math.sin(2 * Math.PI * sweep * t) * (preset.percussion === 'cinematic' ? 0.95 : 0.75) * env * (preset.rhythmGain || 0.5);
+      }
+    }
+
+    for (const snareBeat of preset.snare) {
+      const dist = beatInBar - snareBeat;
+      if (dist >= 0 && dist < 0.12) {
+        const env = Math.exp(-dist * 28);
+        const noiseGain = preset.percussion === 'comedy' ? 0.25 : preset.percussion === 'organic' ? 0.18 : 0.42;
+        const tone = preset.percussion === 'global' ? 420 : preset.percussion === 'trap' ? 210 : 190;
+        sample += noise() * noiseGain * env * (preset.rhythmGain || 0.5);
+        sample += Math.sin(2 * Math.PI * tone * t) * 0.14 * env * (preset.rhythmGain || 0.5);
+      }
+    }
+
+    const hatInterval = preset.hatEvery || 1;
+    const hatPhase = (beat / hatInterval) - Math.floor(beat / hatInterval);
+    if (hatPhase < 0.12) {
+      const env = Math.exp(-hatPhase * 38);
+      const hatGain = preset.texture === 'hatroll' ? 0.08 : preset.texture === 'shaker' ? 0.075 : preset.texture === 'vinyl' ? 0.018 : 0.045;
+      sample += noise() * hatGain * env;
+      if (preset.texture === 'shaker' && hatPhase < 0.08) sample += Math.sin(2 * Math.PI * 6500 * t) * 0.012 * env;
+      if (preset.texture === 'popcorn' && hatPhase < 0.06) sample += oscillator('toy', 1200 * t) * 0.035 * env;
+    }
+
+    if (preset.texture === 'vinyl') {
+      sample += noise() * 0.018 + Math.sin(2 * Math.PI * 0.35 * t) * 0.015;
+    } else if (preset.texture === 'rumble') {
+      sample += Math.sin(2 * Math.PI * 42 * t) * 0.045 * (0.7 + 0.3 * Math.sin(2 * Math.PI * t / 6));
+    } else if (preset.texture === 'glitch') {
+      const glitchGate = (Math.floor(beat * 8) + String(track.id).length) % 13 === 0;
+      if (glitchGate) sample += oscillator('bit', melodyFreq * 3 * t) * 0.09 * Math.exp(-sixteenthFrac * 12);
+    } else if (preset.texture === 'wood') {
+      const tapPhase = (beat * 2) - Math.floor(beat * 2);
+      if (tapPhase < 0.08) sample += oscillator('triangle', 780 * t) * 0.055 * Math.exp(-tapPhase * 30);
+    } else if (preset.texture === 'lift') {
+      sample += noise() * 0.025 * Math.min(1, t / 16) * Math.sin(2 * Math.PI * beat / 16);
+    } else if (preset.texture === 'spark') {
+      sample += oscillator('bell', noteFrequency(preset.root * 2, preset.melody[(sixteenth + 3) % preset.melody.length] || 12) * t) * 0.018 * Math.exp(-sixteenthFrac * 10);
+    }
+
+    const fadeIn = Math.min(1, t / 1.5);
+    const fadeOut = Math.min(1, (duration - t) / 1.5);
+    samples[i] = clampSample(Math.tanh(sample * 1.08) * masterGain * fadeIn * fadeOut);
+  }
+
+  writeWavFile(outputPath, samples, sampleRate);
+}
+
+function ensureLibraryMusicTrack(track) {
+  return new Promise((resolve, reject) => {
+    if (!track) return reject(new Error('Music track not found'));
+    const outputPath = musicFilePathForTrack(track);
+    if (fs.existsSync(outputPath) && fs.statSync(outputPath).size > 1024) return resolve(outputPath);
+    try {
+      synthLibraryTrack(track, outputPath);
+      resolve(outputPath);
+    } catch (err) {
+      reject(new Error(err.message || 'Music track could not be prepared'));
+    }
+  });
+}
+
+function findMusicUploadPath(musicFileId) {
+  const id = String(musicFileId || '').trim();
+  if (!/^music_[a-z0-9_]+/i.test(id)) return '';
+  const match = fs.readdirSync(MUSIC_DIR).find(file => file.startsWith(id));
+  return match ? path.join(MUSIC_DIR, match) : '';
+}
+
+function normalizeMusicSettings(body = {}) {
+  const enabled = body.musicEnabled !== false && Boolean(body.musicFileId || body.musicTrackId);
+  return {
+    enabled,
+    musicFileId: body.musicFileId || '',
+    musicTrackId: body.musicTrackId || '',
+    musicVolume: Math.max(0, Math.min(1, Number(body.musicVolume ?? 0.18))),
+    voiceVolume: Math.max(0, Math.min(2, Number(body.voiceVolume ?? 1))),
+    musicStart: Math.max(0, Number(body.musicStart ?? 0)),
+    fadeIn: Math.max(0, Math.min(8, Number(body.musicFadeIn ?? 1))),
+    fadeOut: Math.max(0, Math.min(8, Number(body.musicFadeOut ?? 1.5))),
+    autoDuck: body.musicAutoDuck !== false
+  };
+}
+
+async function resolveMusicPath(body = {}) {
+  const settings = normalizeMusicSettings(body);
+  if (!settings.enabled) return { settings, musicPath: '' };
+  if (settings.musicFileId) {
+    const uploadPath = findMusicUploadPath(settings.musicFileId);
+    if (!uploadPath) throw new Error('Music file not found. Please upload the audio again.');
+    return { settings, musicPath: uploadPath };
+  }
+  const track = getMusicTrack(settings.musicTrackId);
+  const musicPath = await ensureLibraryMusicTrack(track);
+  return { settings, musicPath };
+}
+
+function requireJamendoClientId() {
+  const clientId = (process.env.JAMENDO_CLIENT_ID || '').trim();
+  if (!clientId) throw new Error('Music provider is not configured yet. Add JAMENDO_CLIENT_ID on the backend.');
+  return clientId;
+}
+
+function jamendoTrackToClipAI(track) {
+  const downloadAllowed = track.audiodownload_allowed !== false && Boolean(track.audiodownload);
+  return {
+    id: String(track.id || ''),
+    provider: 'jamendo',
+    title: track.name || 'Jamendo track',
+    artist: track.artist_name || 'Jamendo artist',
+    album: track.album_name || '',
+    duration: Number(track.duration || 0),
+    image: track.album_image || track.image || '',
+    previewUrl: track.audio || '',
+    licenseUrl: track.license_ccurl || '',
+    pageUrl: track.shareurl || '',
+    canDownload: downloadAllowed
+  };
+}
+
+async function searchJamendoTracks(query) {
+  const clientId = requireJamendoClientId();
+  const safeQuery = String(query || 'cinematic background').trim().slice(0, 80) || 'cinematic background';
+  const url = new URL('https://api.jamendo.com/v3.0/tracks/');
+  url.searchParams.set('client_id', clientId);
+  url.searchParams.set('format', 'json');
+  url.searchParams.set('limit', '12');
+  url.searchParams.set('audioformat', 'mp32');
+  url.searchParams.set('audiodlformat', 'mp32');
+  url.searchParams.set('include', 'musicinfo');
+  url.searchParams.set('groupby', 'artist_id');
+  url.searchParams.set('order', 'relevance');
+  url.searchParams.set('search', safeQuery);
+  const data = await requestJson(url.toString());
+  return (data.results || [])
+    .map(jamendoTrackToClipAI)
+    .filter(track => track.id && track.previewUrl);
+}
+
+async function getJamendoTrackForDownload(trackId) {
+  const clientId = requireJamendoClientId();
+  const id = String(trackId || '').trim();
+  if (!/^\d+$/.test(id)) throw new Error('Invalid music track.');
+  const url = new URL('https://api.jamendo.com/v3.0/tracks/');
+  url.searchParams.set('client_id', clientId);
+  url.searchParams.set('format', 'json');
+  url.searchParams.set('limit', '1');
+  url.searchParams.set('audioformat', 'mp32');
+  url.searchParams.set('audiodlformat', 'mp32');
+  url.searchParams.set('id', id);
+  const data = await requestJson(url.toString());
+  const rawTrack = (data.results || [])[0];
+  if (!rawTrack) throw new Error('Track was not found.');
+  const track = jamendoTrackToClipAI(rawTrack);
+  if (!track.canDownload) throw new Error('This track cannot be downloaded through ClipAI.');
+  return { rawTrack, track, downloadUrl: rawTrack.audiodownload };
+}
+
+app.get('/api/music-provider/search', async (req, res) => {
+  try {
+    const provider = String(req.query.provider || 'jamendo').toLowerCase();
+    if (provider !== 'jamendo') return res.status(400).json({ error: 'Music provider is not supported yet.' });
+    const tracks = await searchJamendoTracks(req.query.q);
+    res.json({ provider: 'jamendo', tracks });
+  } catch (err) {
+    res.status(503).json({ error: err.message || 'Music search is unavailable right now.' });
+  }
+});
+
+app.post('/api/music-provider/download', async (req, res) => {
+  try {
+    const provider = String(req.body.provider || 'jamendo').toLowerCase();
+    if (provider !== 'jamendo') return res.status(400).json({ error: 'Music provider is not supported yet.' });
+    const { track, downloadUrl } = await getJamendoTrackForDownload(req.body.trackId);
+    const musicFileId = `music_jamendo_${track.id}`;
+    const outputPath = path.join(MUSIC_DIR, `${musicFileId}.mp3`);
+    if (!fs.existsSync(outputPath) || fs.statSync(outputPath).size < 1024) {
+      await downloadToFile(downloadUrl, outputPath);
+    }
+    const stat = fs.statSync(outputPath);
+    if (stat.size < 2048) {
+      try { fs.unlinkSync(outputPath); } catch (err) {}
+      throw new Error('The selected music track could not be prepared.');
+    }
+    const fd = fs.openSync(outputPath, 'r');
+    const headerBuffer = Buffer.alloc(64);
+    fs.readSync(fd, headerBuffer, 0, headerBuffer.length, 0);
+    fs.closeSync(fd);
+    if (/^\s*</.test(headerBuffer.toString('utf8'))) {
+      try { fs.unlinkSync(outputPath); } catch (err) {}
+      throw new Error('The selected music track could not be prepared.');
+    }
+    res.json({
+      musicFileId,
+      title: `${track.title} - ${track.artist}`,
+      provider: 'jamendo',
+      sourceTrackId: track.id,
+      previewUrl: musicPreviewUrl(req, musicFileId),
+      licenseUrl: track.licenseUrl,
+      pageUrl: track.pageUrl
+    });
+  } catch (err) {
+    res.status(503).json({ error: err.message || 'Music could not be added right now.' });
+  }
+});
+
+app.get('/api/music-library', (req, res) => {
+  const q = String(req.query.q || '').trim().toLowerCase();
+  const category = String(req.query.category || '').trim().toLowerCase();
+  const categories = Array.from(new Set(MUSIC_LIBRARY.map(track => track.category).filter(Boolean)));
+  const tracks = MUSIC_LIBRARY
+    .filter(track => !category || String(track.category || '').toLowerCase() === category)
+    .filter(track => !q || `${track.title} ${track.mood} ${track.category}`.toLowerCase().includes(q))
+    .map(track => ({
+      id: track.id,
+      title: track.title,
+      category: track.category,
+      mood: track.mood,
+      color: track.color,
+      previewUrl: `${publicBaseUrl(req)}/api/music-library/${encodeURIComponent(track.id)}`
+    }));
+  res.json({ categories, tracks });
+});
+
+app.get('/api/music-library/:id', async (req, res) => {
+  try {
+    const track = getMusicTrack(req.params.id);
+    if (!track) return res.status(404).json({ error: 'Track not found' });
+    const musicPath = await ensureLibraryMusicTrack(track);
+    streamAudioFile(req, res, musicPath, 'audio/wav');
+  } catch (err) {
+    res.status(503).json({ error: err.message || 'Music preview unavailable' });
+  }
+});
 
 // ─── BINARY DOWNLOADER ───────────────────────────────────────────────────────
 function downloadFile(url, dest, callback) {
@@ -232,6 +1068,145 @@ function waitForFile(filePath, timeout = 60000) {
   });
 }
 
+function isYouTubeUrl(url) {
+  return /(^|\/\/)(www\.)?(youtube\.com|youtu\.be|youtube-nocookie\.com)\//i.test(String(url || ''));
+}
+
+function cleanDownloadedFile(filePath) {
+  try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch (err) {
+    console.warn('Could not remove partial download:', err.message);
+  }
+}
+
+function downloadRemoteToFile(url, dest, redirects = 0) {
+  return new Promise((resolve, reject) => {
+    if (!url || redirects > 5) return reject(new Error('Download link could not be followed'));
+    let parsed;
+    try { parsed = new URL(url); } catch (err) { return reject(new Error('Invalid download link')); }
+    const protocol = parsed.protocol === 'https:' ? https : http;
+    const file = fs.createWriteStream(dest);
+    const request = protocol.get(parsed, {
+      headers: { 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36', accept: '*/*' },
+      timeout: 120000
+    }, response => {
+      if ([301, 302, 303, 307, 308].includes(response.statusCode)) {
+        file.close();
+        cleanDownloadedFile(dest);
+        return resolve(downloadRemoteToFile(new URL(response.headers.location, parsed).toString(), dest, redirects + 1));
+      }
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        file.close(); cleanDownloadedFile(dest);
+        return reject(new Error('Download server returned status ' + response.statusCode));
+      }
+      response.pipe(file);
+      file.on('finish', () => file.close(() => resolve(dest)));
+    });
+    request.on('timeout', () => request.destroy(new Error('Download timed out')));
+    request.on('error', err => { file.close(); cleanDownloadedFile(dest); reject(err); });
+  });
+}
+
+function extractYouTubeId(url) {
+  const match = String(url || '').match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([a-zA-Z0-9_-]{6,})/);
+  return match ? match[1] : '';
+}
+
+function pickDownloadUrl(payload) {
+  if (!payload || typeof payload !== 'object') return '';
+  for (const key of ['downloadUrl', 'file', 'url', 'link']) if (typeof payload[key] === 'string') return payload[key];
+  for (const listKey of ['formats', 'medias', 'media']) {
+    const items = payload[listKey];
+    if (!Array.isArray(items)) continue;
+    const mp4 = items.find(item => item?.url && /mp4|h264|avc|video/i.test(`${item.ext || ''} ${item.mimeType || ''} ${item.type || ''} ${item.quality || ''}`));
+    if (mp4?.url) return mp4.url;
+    const first = items.find(item => item?.url);
+    if (first?.url) return first.url;
+  }
+  return '';
+}
+
+async function resolveRapidApiDownloadUrl(url) {
+  const key = process.env.RAPIDAPI_KEY || process.env.YOUTUBE_RAPIDAPI_KEY || '';
+  const host = process.env.RAPIDAPI_YOUTUBE_HOST || 'youtube-video-fast-downloader-24-7.p.rapidapi.com';
+  if (!key) throw new Error('RapidAPI key is not configured');
+  const videoId = extractYouTubeId(url);
+  if (!videoId) throw new Error('Could not read the YouTube video ID');
+  const response = await fetch(`https://${host}/download_video/${encodeURIComponent(videoId)}?quality=247`, {
+    headers: { 'content-type': 'application/json', 'x-rapidapi-host': host, 'x-rapidapi-key': key }
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || data.message || 'RapidAPI import failed');
+  const downloadUrl = pickDownloadUrl(data);
+  if (!downloadUrl) throw new Error('RapidAPI did not return a download link');
+  return downloadUrl;
+}
+
+async function requestProviderDownloadUrl(name, endpoint, url, headers = {}) {
+  if (!endpoint) throw new Error(name + ' is not configured');
+  const response = await fetch(endpoint, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify({ url }) });
+  const raw = await response.text();
+  let data = {};
+  try { data = JSON.parse(raw); } catch (err) { data = { raw }; }
+  if (!response.ok) throw new Error(data.error || data.message || name + ' request failed');
+  const downloadUrl = pickDownloadUrl(data);
+  if (!downloadUrl) throw new Error(name + ' did not return a downloadable video');
+  return downloadUrl;
+}
+
+async function runYtDlpDownload(url, outputPath, profile) {
+  if (!(await waitForFile(YTDLP))) throw new Error('YouTube engine is still starting');
+  const args = ytArgList([
+    '--ffmpeg-location', FFMPEG, '--no-playlist', '-f', profile.format,
+    '--merge-output-format', 'mp4', '-o', outputPath, url
+  ], { clients: profile.clients });
+  return new Promise((resolve, reject) => {
+    execFile(YTDLP, args, { maxBuffer: 1024 * 1024 * 200, timeout: profile.timeout || 900000 }, (err, stdout, stderr) => {
+      if (err || !fs.existsSync(outputPath)) {
+        cleanDownloadedFile(outputPath);
+        return reject(new Error(compactProcessError(stderr || err?.message, profile.name + ' failed')));
+      }
+      resolve(profile.name);
+    });
+  });
+}
+
+async function importYouTubeWithStrategies({ url, outputPath, importMode }) {
+  const longMode = importMode === 'long';
+  const strategies = [];
+  const add = (name, run) => strategies.push({ name, run });
+
+  if (!isYouTubeUrl(url)) add('direct-url', () => downloadRemoteToFile(url, outputPath));
+  else if (!longMode) {
+    add('rapidapi-short', async () => { await downloadRemoteToFile(await resolveRapidApiDownloadUrl(url), outputPath); return 'rapidapi-short'; });
+    add('yt-dlp-short-fallback', () => runYtDlpDownload(url, outputPath, { name: 'yt-dlp-short-fallback', clients: 'android_embedded,ios,android,web', format: 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best', timeout: 600000 }));
+  } else {
+    add('youtube-explode', async () => { await downloadRemoteToFile(await requestProviderDownloadUrl('youtube-explode', process.env.YOUTUBE_EXPLODE_SERVICE_URL, url), outputPath); return 'youtube-explode'; });
+    add('yt-dlp-tv', () => runYtDlpDownload(url, outputPath, { name: 'yt-dlp-tv', clients: 'tv,web_safari,android', format: 'bv*[ext=mp4][vcodec^=avc1]+ba[ext=m4a]/b[ext=mp4]/best' }));
+    add('yt-dlp-mobile', () => runYtDlpDownload(url, outputPath, { name: 'yt-dlp-mobile', clients: 'ios,android,android_embedded', format: 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best' }));
+    add('apify', async () => { await downloadRemoteToFile(await requestProviderDownloadUrl('apify', process.env.APIFY_YOUTUBE_IMPORT_URL, url, process.env.APIFY_TOKEN ? { authorization: `Bearer ${process.env.APIFY_TOKEN}` } : {}), outputPath); return 'apify'; });
+    add('easydown', async () => { await downloadRemoteToFile(await requestProviderDownloadUrl('easydown', process.env.EASYDOWN_API_URL, url, process.env.EASYDOWN_API_KEY ? { authorization: `Bearer ${process.env.EASYDOWN_API_KEY}` } : {}), outputPath); return 'easydown'; });
+    add('paid-provider', async () => { await downloadRemoteToFile(await requestProviderDownloadUrl('paid-provider', process.env.LONG_VIDEO_PROVIDER_URL, url, process.env.LONG_VIDEO_PROVIDER_KEY ? { authorization: `Bearer ${process.env.LONG_VIDEO_PROVIDER_KEY}` } : {}), outputPath); return 'paid-provider'; });
+  }
+
+  const errors = [];
+  for (const strategy of strategies) {
+    cleanDownloadedFile(outputPath);
+    try {
+      console.log('Trying YouTube import channel:', strategy.name);
+      const channel = await strategy.run();
+      if (!fs.existsSync(outputPath) || fs.statSync(outputPath).size < 1024) throw new Error('Downloaded file was empty');
+      console.log('✅ YouTube import channel succeeded:', channel || strategy.name);
+      return channel || strategy.name;
+    } catch (err) {
+      errors.push(`${strategy.name}: ${err.message || err}`);
+      console.warn('⚠️ YouTube import channel failed:', strategy.name, err.message || err);
+    }
+  }
+  const error = new Error('We could not import this link right now. Please try again or upload the video file directly.');
+  error.details = errors;
+  throw error;
+}
+
 let drawtextSupportPromise = null;
 function checkDrawtextSupport() {
   if (drawtextSupportPromise) return drawtextSupportPromise;
@@ -289,56 +1264,21 @@ app.get('/api/test-yt', (req, res) => {
 
 // ─── DOWNLOAD FILE ────────────────────────────────────────────────────────────
 app.post('/api/youtube-upload', async (req, res) => {
-  const { url } = req.body;
+  const { url, importMode } = req.body;
   if (!url) return res.status(400).json({ error: 'No URL provided' });
-  console.log('📥 /api/youtube-upload:', url);
+  const selectedMode = importMode === 'long' ? 'long' : 'short';
+  console.log('📥 /api/youtube-upload:', url, 'mode:', selectedMode);
 
   const localFileId = `yt_${Date.now()}`;
   const outputPath = path.join(UPLOAD_DIR, localFileId + '.mp4');
 
-  // Check if it's already a direct download URL (from RapidAPI)
-  const isDirectUrl = !url.includes('youtube.com') && !url.includes('youtu.be');
-
-  if (isDirectUrl) {
-    // Direct MP4 URL — just download it with curl/https
-    console.log('Direct URL detected, downloading directly...');
-    try {
-      await new Promise((resolve, reject) => {
-        const file = fs.createWriteStream(outputPath);
-        const protocol = url.startsWith('https') ? require('https') : require('http');
-        protocol.get(url, (response) => {
-          if (response.statusCode === 302 || response.statusCode === 301) {
-            file.close();
-            const redirectUrl = response.headers.location;
-            const redirectProtocol = redirectUrl.startsWith('https') ? require('https') : require('http');
-            redirectProtocol.get(redirectUrl, (res2) => {
-              res2.pipe(file);
-              file.on('finish', () => { file.close(); resolve(); });
-            }).on('error', reject);
-          } else {
-            response.pipe(file);
-            file.on('finish', () => { file.close(); resolve(); });
-          }
-        }).on('error', reject);
-      });
-    } catch (err) {
-      return res.status(500).json({ error: 'Direct download failed: ' + err.message });
-    }
-  } else {
-    // YouTube URL — use yt-dlp
-    const ready = await waitForFile(YTDLP);
-    if (!ready) return res.status(503).json({ error: 'yt-dlp not ready, please try again.' });
-    const cmd = `"${YTDLP}" ${ytArgs()} --ffmpeg-location "${FFMPEG}" -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" --merge-output-format mp4 -o "${outputPath}" "${url}"`;
-    console.log('Running:', cmd);
-    await new Promise((resolve) => {
-      exec(cmd, { maxBuffer: 1024 * 1024 * 200, timeout: 600000 }, (err, stdout, stderr) => {
-        if (err) {
-          res.status(500).json({ error: 'YouTube download failed: ' + stderr.substring(0, 200) });
-          resolve(false);
-        } else resolve(true);
-      });
-    });
-    if (!fs.existsSync(outputPath)) return;
+  let importMethod = '';
+  try {
+    importMethod = await importYouTubeWithStrategies({ url, outputPath, importMode: selectedMode });
+  } catch (err) {
+    console.error('YouTube import failed:', err.details || err.message);
+    cleanDownloadedFile(outputPath);
+    return res.status(422).json({ error: 'We could not import this link right now. Please try again or upload the video file directly.' });
   }
 
   if (!fs.existsSync(outputPath)) {
@@ -349,7 +1289,8 @@ app.post('/api/youtube-upload', async (req, res) => {
 
   const previewUrl = localPreviewUrl(req, localFileId);
   const ASSEMBLYAI_KEY = process.env.ASSEMBLYAI_API_KEY;
-  if (!ASSEMBLYAI_KEY) return res.json({ localFileId, uploadUrl: previewUrl, previewUrl });
+  const baseResponse = { localFileId, previewUrl, importMethod, importMode: selectedMode, originalUrl: req.body.originalUrl || url };
+  if (!ASSEMBLYAI_KEY) return res.json({ ...baseResponse, uploadUrl: previewUrl });
 
   try {
     const fileData = fs.readFileSync(outputPath);
@@ -360,10 +1301,10 @@ app.post('/api/youtube-upload', async (req, res) => {
     });
     const uploadData = JSON.parse(uploadRes);
     console.log('✅ Uploaded to AssemblyAI:', uploadData.upload_url);
-    res.json({ localFileId, uploadUrl: uploadData.upload_url, previewUrl });
+    res.json({ ...baseResponse, uploadUrl: uploadData.upload_url });
   } catch (uploadErr) {
     console.error('AssemblyAI upload error:', uploadErr.message);
-    res.json({ localFileId, uploadUrl: previewUrl, previewUrl });
+    res.json({ ...baseResponse, uploadUrl: previewUrl });
   }
 });
 
@@ -410,6 +1351,45 @@ app.post('/api/upload-local', async (req, res) => {
     }
   });
   writeStream.on('error', (err) => res.status(500).json({ error: 'Failed to save file' }));
+});
+
+app.post('/api/upload-music', async (req, res) => {
+  const filename = decodeURIComponent(req.headers['x-filename'] || 'music.mp3');
+  const ext = ['.mp3', '.m4a', '.aac', '.wav', '.ogg', '.opus'].includes(path.extname(filename).toLowerCase())
+    ? path.extname(filename).toLowerCase()
+    : '.mp3';
+  const musicFileId = `music_${Date.now()}`;
+  const outputPath = path.join(MUSIC_DIR, musicFileId + ext);
+  console.log('Music upload:', filename);
+
+  const writeStream = fs.createWriteStream(outputPath);
+  req.pipe(writeStream);
+
+  writeStream.on('finish', () => {
+    const stat = fs.statSync(outputPath);
+    if (stat.size < 256) return res.status(400).json({ error: 'Audio file is empty' });
+    res.json({
+      musicFileId,
+      filename,
+      size: stat.size,
+      previewUrl: `${publicBaseUrl(req)}/api/serve-music/${encodeURIComponent(musicFileId)}`
+    });
+  });
+  writeStream.on('error', () => res.status(500).json({ error: 'Failed to save audio file' }));
+});
+
+app.get('/api/serve-music/:id', (req, res) => {
+  const filePath = findMusicUploadPath(req.params.id);
+  if (!filePath) return res.status(404).json({ error: 'Music file not found' });
+  const ext = path.extname(filePath).toLowerCase();
+  const type = ext === '.wav'
+    ? 'audio/wav'
+    : ext === '.m4a' || ext === '.aac'
+      ? 'audio/mp4'
+      : ext === '.ogg' || ext === '.opus'
+        ? 'audio/ogg'
+        : 'audio/mpeg';
+  streamAudioFile(req, res, filePath, type);
 });
 
 app.get('/api/serve-upload-raw/:filename', (req, res) => {
@@ -774,7 +1754,26 @@ function buildWatermarkFilterPart(requestId, exportFormat, cleanupPaths) {
   return drawtextWatermarkFilter(watermarkFilePath, exportFormat);
 }
 
-function buildVideoFilterScript(captionLines, words, startMs, endMs, requestId, captionStyle, captionPreset, captionSettings, hookOverlay, exportFormat, removeWatermark, burnCaptions = true) {
+function buildAudioMixFilter(durationSec, musicSettings) {
+  const duration = Math.max(0.1, Number(durationSec) || 1);
+  const fadeIn = Math.min(Number(musicSettings.fadeIn) || 0, duration / 2);
+  const fadeOut = Math.min(Number(musicSettings.fadeOut) || 0, duration / 2);
+  const fadeOutStart = Math.max(0, duration - fadeOut);
+  const musicVolume = Math.max(0, Math.min(1, Number(musicSettings.musicVolume) || 0.22)) * (musicSettings.autoDuck ? 0.85 : 1);
+  const voiceVolume = Math.max(0, Math.min(2, Number(musicSettings.voiceVolume) || 1));
+  const musicStart = Math.max(0, Number(musicSettings.musicStart) || 0);
+  const parts = [
+    `[0:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,volume=${voiceVolume.toFixed(2)},asetpts=PTS-STARTPTS[a0]`,
+    `[1:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,atrim=start=${musicStart.toFixed(3)}:duration=${duration.toFixed(3)},asetpts=PTS-STARTPTS,apad=pad_dur=${duration.toFixed(3)},atrim=duration=${duration.toFixed(3)},volume=${musicVolume.toFixed(3)}` +
+      (fadeIn > 0 ? `,afade=t=in:st=0:d=${fadeIn.toFixed(2)}` : '') +
+      (fadeOut > 0 ? `,afade=t=out:st=${fadeOutStart.toFixed(2)}:d=${fadeOut.toFixed(2)}` : '') +
+      `[a1]`,
+    '[a0][a1]amix=inputs=2:duration=first:dropout_transition=0:normalize=0,alimiter=limit=0.95[a]'
+  ];
+  return parts.join(';\n');
+}
+
+function buildVideoFilterScript(captionLines, words, startMs, endMs, requestId, captionStyle, captionPreset, captionSettings, hookOverlay, exportFormat, removeWatermark, burnCaptions = true, musicConfig = null) {
   const format = exportFormat || normalizeExportFormat();
   const filters = [
     `scale=${format.width}:${format.height}:force_original_aspect_ratio=decrease`,
@@ -814,10 +1813,16 @@ function buildVideoFilterScript(captionLines, words, startMs, endMs, requestId, 
   console.log('Watermark:', removeWatermark ? 'removed' : 'enabled');
   if (chunks.length) console.log('First caption chunk:', chunks[0]);
 
+  const scriptLines = [`[0:v]${filters.join(',')}[v]`];
+  if (musicConfig?.musicPath) {
+    scriptLines.push(buildAudioMixFilter(musicConfig.durationSec, musicConfig.settings));
+    console.log('Background music:', musicConfig.settings.musicTrackId || musicConfig.settings.musicFileId);
+  }
+
   const scriptPath = path.join(DOWNLOAD_DIR, `filter_${requestId}.txt`);
-  fs.writeFileSync(scriptPath, `[0:v]${filters.join(',')}[v]`, 'utf8');
+  fs.writeFileSync(scriptPath, scriptLines.join(';\n'), 'utf8');
   cleanupPaths.push(scriptPath);
-  return { scriptPath, cleanupPaths };
+  return { scriptPath, cleanupPaths, hasMixedAudio: Boolean(musicConfig?.musicPath) };
 }
 
 // ─── CUT CLIP ─────────────────────────────────────────────────────────────────
@@ -836,11 +1841,20 @@ app.post('/api/cut-clip', (req, res) => {
     exportPreset,
     exportQuality,
     burnCaptions,
-    removeWatermark
+    removeWatermark,
+    musicEnabled,
+    musicFileId,
+    musicTrackId,
+    musicVolume,
+    voiceVolume,
+    musicStart,
+    musicFadeIn,
+    musicFadeOut,
+    musicAutoDuck
   } = req.body;
   if (!localFileId) return res.status(400).json({ error: 'localFileId required' });
 
-  const trycut = () => {
+  const trycut = async () => {
     if (!fs.existsSync(FFMPEG)) {
       console.log('⏳ Waiting for ffmpeg...');
       return setTimeout(trycut, 2000);
@@ -857,15 +1871,43 @@ app.post('/api/cut-clip', (req, res) => {
     const startSec = (startMs / 1000).toFixed(3);
     const durationSec = ((endMs - startMs) / 1000).toFixed(3);
     const exportFormat = normalizeExportFormat(exportPreset, exportQuality);
-    const { scriptPath, cleanupPaths } = buildVideoFilterScript(captionLines, words, startMs, endMs, requestId, captionStyle, captionPreset, captionSettings, hookOverlay, exportFormat, Boolean(removeWatermark), burnCaptions !== false);
+    let musicPath = '';
+    let musicSettings = null;
+    try {
+      const resolvedMusic = await resolveMusicPath({ musicEnabled, musicFileId, musicTrackId, musicVolume, voiceVolume, musicStart, musicFadeIn, musicFadeOut, musicAutoDuck });
+      musicPath = resolvedMusic.musicPath;
+      musicSettings = resolvedMusic.settings;
+      if (musicPath) {
+        const musicStat = fs.statSync(musicPath);
+        console.log('Resolved background music:', path.basename(musicPath), `${musicStat.size} bytes`);
+      }
+    } catch (musicErr) {
+      return res.status(400).json({ error: musicErr.message || 'Background music could not be loaded' });
+    }
+    const { scriptPath, cleanupPaths, hasMixedAudio } = buildVideoFilterScript(
+      captionLines,
+      words,
+      startMs,
+      endMs,
+      requestId,
+      captionStyle,
+      captionPreset,
+      captionSettings,
+      hookOverlay,
+      exportFormat,
+      Boolean(removeWatermark),
+      burnCaptions !== false,
+      musicPath ? { musicPath, settings: musicSettings, durationSec } : null
+    );
     const args = [
       '-y',
       '-ss', startSec,
       '-t', durationSec,
       '-i', inputPath,
+      ...(musicPath ? ['-stream_loop', '-1', '-i', musicPath] : []),
       '-filter_complex_script', scriptPath,
       '-map', '[v]',
-      '-map', '0:a?',
+      ...(hasMixedAudio ? ['-map', '[a]'] : ['-map', '0:a?']),
       '-s', `${exportFormat.width}x${exportFormat.height}`,
       '-c:v', 'libx264',
       '-preset', 'veryfast',
