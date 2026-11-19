@@ -215,7 +215,6 @@ Return one JSON object:
   ]
 }
 
-
 Rules:
 - start_seconds and end_seconds must be real video timestamps.
 - Honor requested duration when possible, 20-60 seconds per clip.
@@ -233,7 +232,7 @@ Rules:
         authorization: 'Bearer ' + GROQ_KEY
       },
       body: JSON.stringify({
-        model: 'qwen/qwen3.6-27b',
+        model: 'openai/gpt-oss-20b',
         max_tokens: 2400,
         temperature: 0.35,
         messages: [
